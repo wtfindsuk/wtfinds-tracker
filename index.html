@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>wtfindsuk · Tracker</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
 <title>Card Tracker</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -457,9 +459,19 @@ tr:hover td{background:var(--surface2)}
         </div>
         <div style="position:relative;height:220px"><canvas id="gamesChart"></canvas></div>
       </div>
-      <div class="card" style="padding:0">
+      <div class="grid2" style="margin-bottom:14px">
+        <div class="card">
+          <div class="card-title">Top 5 gainers</div>
+          <div id="games-top-gainers"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Top 5 losers</div>
+          <div id="games-top-losers"></div>
+        </div>
+      </div>
+      <div class="card" style="padding:0;margin-bottom:14px">
         <div style="overflow-x:auto"><table id="games-table" style="font-size:13px;width:100%">
-          <thead><tr><th>Name</th><th></th><th>Condition</th><th>Cost</th><th>Value</th><th>Gain</th><th></th></tr></thead>
+          <thead><tr><th>Name</th><th>Platform</th><th>Condition</th><th>Cost</th><th>Value</th><th>Gain £</th><th>Gain %</th><th></th></tr></thead>
           <tbody id="games-tbody"></tbody>
         </table></div>
       </div>
@@ -1705,40 +1717,32 @@ function updateGameValue(id,val){
 function renderGamesPage(){
   const games=state.games;
   const totalValue=games.reduce((a,g)=>a+g.value,0);
-  const platforms=[...new Set(games.map(g=>g.platform))].sort();
-
   const totalCost=games.reduce((a,g)=>a+g.cost,0);
   const totalGain=totalValue-totalCost;
+  const avgGainPct=totalCost>0?((totalGain/totalCost)*100):0;
+  const platforms=[...new Set(games.map(g=>g.platform))].sort();
+  const bestGame=[...games].filter(g=>g.cost>0).sort((a,b)=>(b.value-b.cost)-(a.value-a.cost))[0];
 
   document.getElementById('games-summary').innerHTML=`
     <div class="coll-metric"><div class="coll-metric-label">Total games</div><div class="coll-metric-value">${games.length}</div></div>
     <div class="coll-metric"><div class="coll-metric-label">Cost paid</div><div class="coll-metric-value">${fm(totalCost)}</div></div>
     <div class="coll-metric"><div class="coll-metric-label">Collection value</div><div class="coll-metric-value">${fm(totalValue)}</div></div>
-    <div class="coll-metric"><div class="coll-metric-label">Gain / loss</div><div class="coll-metric-value ${totalGain>=0?'up':'down'}">${totalGain>=0?'+':''}${fm(totalGain)}</div></div>`;
+    <div class="coll-metric"><div class="coll-metric-label">Total gain</div><div class="coll-metric-value ${totalGain>=0?'up':'down'}">${totalGain>=0?'+':''}${fm(totalGain)}</div></div>
+    <div class="coll-metric"><div class="coll-metric-label">Avg gain %</div><div class="coll-metric-value ${avgGainPct>=0?'up':'down'}">${avgGainPct>=0?'+':''}${avgGainPct.toFixed(1)}%</div></div>
+    ${bestGame?`<div class="coll-metric"><div class="coll-metric-label">Best performer</div><div class="coll-metric-value" style="font-size:13px">${bestGame.name.split(':')[0].trim()}</div></div>`:''}`;
 
-  // Show last refresh status
-  const statusEl=document.getElementById('refresh-games-status');
-  if(statusEl&&state._lastGameRefresh&&state._lastGameRefresh!=='pending'){
-    const d=new Date(state._lastGameRefresh);
-    statusEl.style.display='block';
-    statusEl.style.color='var(--green)';
-    statusEl.textContent=`Last refreshed: ${d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})} at ${d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})} · ${state._gamesUpdated} games updated`;
-  }
   const PLATFORM_COLORS=['#185FA5','#1D9E75','#534AB7','#D85A30','#BA7517','#DC2626','#0BC4C4','#9333EA','#065F46','#92400E'];
   const platformColorMap={};
   platforms.forEach((p,i)=>platformColorMap[p]=PLATFORM_COLORS[i%PLATFORM_COLORS.length]);
 
-  // Chart from GameSnapshots — if we have per-platform columns use them, else show total only
+  // Chart
   if(gamesChartInst) gamesChartInst.destroy();
   const snaps=state.gameSnapshots||[];
   const legendEl=document.getElementById('games-legend');
-
   if(snaps.length>0){
-    const labels=snaps.map(s=>fd(s.date));
-    // Check if snapshots have platform columns
+    const labels=snaps.map(s=>fd(s.Date||s.date));
     const firstSnap=snaps[0];
     const platformKeys=Object.keys(firstSnap).filter(k=>k.startsWith('Platform_'));
-
     let datasets;
     if(platformKeys.length>0){
       datasets=platformKeys.map(key=>{
@@ -1748,53 +1752,56 @@ function renderGamesPage(){
       }).filter(d=>d.data.some(v=>v>0));
       if(legendEl) legendEl.innerHTML=datasets.map(d=>`<span><span class="lsq" style="background:${d.borderColor}"></span>${d.label}</span>`).join('');
     } else {
-      // Fallback: total only
-      datasets=[{label:'Total value',data:snaps.map(s=>s.value),borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',tension:0.3,pointRadius:3,fill:true}];
-      if(legendEl) legendEl.innerHTML='<span style="color:var(--muted);font-size:11px">Upload a new CSV to enable per-platform tracking</span>';
+      datasets=[{label:'Total value',data:snaps.map(s=>parseFloat(s.TotalValue||s.value)||0),borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',tension:0.3,pointRadius:3,fill:true}];
+      if(legendEl) legendEl.innerHTML='';
     }
-
     gamesChartInst=new Chart(document.getElementById('gamesChart').getContext('2d'),{
-      type:'line',
-      data:{labels,datasets},
+      type:'line',data:{labels,datasets},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:11}}}}}
     });
   } else {
-    if(legendEl) legendEl.innerHTML='<span style="color:var(--muted);font-size:11px">No snapshot data yet</span>';
+    if(legendEl) legendEl.innerHTML='<span style="color:var(--muted);font-size:11px">No snapshot data yet — import a CSV</span>';
   }
 
-  const el=document.getElementById('games-by-platform');
-  if(!games.length){el.innerHTML='<div class="empty">No games added yet</div>';return;}
-
-  const sorted=[...games].sort((a,b)=>a.platform.localeCompare(b.platform)||b.value-a.value);
-  const tbody=document.getElementById('games-tbody');
-  if(!tbody) return;
-
   const CONDITION_COLORS={'Sealed':'#065F46','Near Mint':'#1D9E75','Good':'#185FA5','Played':'#BA7517','Poor':'#D85A30'};
+  const sorted=[...games].sort((a,b)=>(b.value-b.cost)-(a.value-a.cost));
+  const withCost=sorted.filter(g=>g.cost>0);
+  const gainers=withCost.slice(0,5);
+  const losers=[...withCost].reverse().slice(0,5);
 
-  let html='';
-  let lastPlatform=null;
-  sorted.forEach(g=>{
-    if(g.platform!==lastPlatform){
-      const ptotal=games.filter(x=>x.platform===g.platform).reduce((a,x)=>a+x.value,0);
-      const pcost=games.filter(x=>x.platform===g.platform).reduce((a,x)=>a+x.cost,0);
-      const pgain=ptotal-pcost;
-      html+=`<tr style="background:var(--surface2)"><td colspan="2" style="font-weight:600;font-size:12px;color:var(--muted);letter-spacing:0.04em;text-transform:uppercase;padding:6px 10px">
-        <span style="width:8px;height:8px;border-radius:50%;background:${platformColorMap[g.platform]||'#888'};display:inline-block;margin-right:6px"></span>${g.platform}
-      </td><td></td><td style="font-weight:600;font-size:12px;padding:6px 10px">${fm(pcost)}</td><td style="font-weight:600;font-size:12px;padding:6px 10px">${fm(ptotal)}</td><td style="font-weight:600;font-size:12px;padding:6px 10px" class="${pgain>=0?'profit-pos':'profit-neg'}">${pgain>=0?'+':''}${fm(pgain)}</td><td></td></tr>`;
-      lastPlatform=g.platform;
-    }
+  function miniGameRow(g){
     const gain=g.value-g.cost;
-    html+=`<tr>
-      <td style="padding-left:20px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${g.name}">${g.name}</td>
-      <td></td>
+    const pct=g.cost>0?((gain/g.cost)*100):0;
+    return`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+      <div><div style="font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${g.name}">${g.name}</div>
+      <div style="color:var(--muted);font-size:11px">${g.platform}</div></div>
+      <div style="text-align:right"><div class="${gain>=0?'profit-pos':'profit-neg'}">${gain>=0?'+':''}${fm(gain)}</div>
+      <div style="color:var(--muted);font-size:11px">${pct>=0?'+':''}${pct.toFixed(0)}%</div></div>
+    </div>`;
+  }
+
+  const gainersEl=document.getElementById('games-top-gainers');
+  const losersEl=document.getElementById('games-top-losers');
+  if(gainersEl) gainersEl.innerHTML=gainers.length?gainers.map(miniGameRow).join(''):'<div class="empty">No data</div>';
+  if(losersEl) losersEl.innerHTML=losers.length?losers.map(miniGameRow).join(''):'<div class="empty">No data</div>';
+
+  const tbody=document.getElementById('games-tbody');
+  if(!games.length){tbody.innerHTML='<tr><td colspan="8" class="empty">No games added yet</td></tr>';return;}
+
+  tbody.innerHTML=sorted.map(g=>{
+    const gain=g.value-g.cost;
+    const pct=g.cost>0?((gain/g.cost)*100):null;
+    return`<tr>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${g.name}">${g.name}</td>
+      <td><span style="font-size:11px;padding:2px 6px;border-radius:10px;background:${platformColorMap[g.platform]||'#888'}22;color:${platformColorMap[g.platform]||'#888'};font-weight:500">${g.platform}</span></td>
       <td><span style="font-size:11px;font-weight:500;color:${CONDITION_COLORS[g.condition]||'var(--muted)'}">${g.condition||'—'}</span></td>
       <td style="color:var(--muted)">${g.cost>0?fm(g.cost):'—'}</td>
       <td><input class="inline-input" type="number" step="0.01" value="${g.value}" onchange="updateGameValue('${g.id}',this.value)"></td>
       <td class="${gain>=0?'profit-pos':'profit-neg'}">${g.cost>0?(gain>=0?'+':'')+fm(gain):'—'}</td>
+      <td class="${pct!==null&&pct>=0?'profit-pos':'profit-neg'}">${pct!==null?(pct>=0?'+':'')+pct.toFixed(1)+'%':'—'}</td>
       <td><button class="btn sm danger" onclick="deleteGame('${g.id}')"><i class="ti ti-trash"></i></button></td>
     </tr>`;
-  });
-  tbody.innerHTML=html;
+  }).join('');
 }
 
 // ---- INIT ----
