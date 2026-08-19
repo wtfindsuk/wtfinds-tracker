@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Card Tracker</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f8f7f4;--surface:#ffffff;--surface2:#f2f1ee;--border:#e4e2dc;
+  --text:#1a1918;--muted:#7a7874;
+  --green:#1D9E75;--blue:#185FA5;--red:#D85A30;--purple:#534AB7;--amber:#BA7517;
+  --radius:10px;--radius-sm:6px;
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#18181a;--surface:#222224;--surface2:#2a2a2c;--border:#333336;--text:#f0efec;--muted:#88877f;}
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:200px;min-width:200px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column}
+.sidebar-header{padding:18px 16px 12px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)}
+.nav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:9px 14px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;text-align:left;transition:all 0.1s}
+.nav-btn:hover{background:var(--surface2);color:var(--text)}
+.nav-btn.active{background:var(--surface2);color:var(--text);font-weight:500}
+.nav-btn i{font-size:16px}
+.nav-section{padding:6px 0;border-top:1px solid var(--border);margin-top:4px}
+.nav-label{padding:8px 14px 4px;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)}
+.sidebar-footer{margin-top:auto;padding:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
+.sync-status{font-size:11px;text-align:center;padding:4px;color:var(--muted)}
+.sync-status.ok{color:var(--green)}
+.sync-status.err{color:var(--red)}
+.sync-status.syncing{color:var(--blue)}
+.main{flex:1;overflow-y:auto;padding:20px;background:var(--bg)}
+.page{display:none}
+.page.active{display:block}
+.page-title{font-size:18px;font-weight:600;margin-bottom:16px}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+.metric-label{font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:500;letter-spacing:0.04em;text-transform:uppercase}
+.metric-value{font-size:22px;font-weight:600}
+.metric-value.pos{color:var(--green)}
+.metric-value.neg{color:var(--red)}
+.metric-sub{font-size:11px;color:var(--muted);margin-top:3px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px}
+.card-title{font-size:13px;font-weight:600;margin-bottom:12px}
+.chart-wrap{position:relative;width:100%;height:200px;margin-bottom:4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-group{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.form-group label{font-size:12px;font-weight:500;color:var(--muted)}
+.form-group input,.form-group select{padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:inherit;width:100%}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--muted)}
+.form-row{display:grid;gap:10px;margin-bottom:0}
+.form-row.c2{grid-template-columns:1fr 1fr}
+.form-row.c3{grid-template-columns:1fr 1fr 1fr}
+.form-row.c4{grid-template-columns:1fr 1fr 1fr 1fr}
+.form-row.c6{grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr}
+.pkg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.pkg-item{display:flex;align-items:center;gap:6px;padding:7px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2)}
+.pkg-item label{font-size:12px;color:var(--muted);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pkg-item input{width:50px;padding:3px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;text-align:center}
+.cost-preview{font-size:12px;color:var(--muted);padding:8px 10px;background:var(--surface2);border-radius:var(--radius-sm);margin-bottom:10px;line-height:1.8}
+.cost-preview strong{color:var(--text)}
+.cost-preview .breakdown{display:flex;flex-wrap:wrap;gap:8px}
+.cost-preview .breakdown span{white-space:nowrap}
+.btn{padding:8px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);cursor:pointer;font-size:13px;font-family:inherit;transition:all 0.1s;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:var(--surface2)}
+.btn.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+.btn.primary:hover{opacity:0.85}
+.btn.danger{color:var(--red);border-color:var(--red)}
+.btn.sm{padding:4px 10px;font-size:12px}
+.btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--muted);letter-spacing:0.04em;text-transform:uppercase;white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
+.badge-pokemon{background:#dbeafe;color:#1e40af}
+.badge-mtg{background:#ede9fe;color:#6d28d9}
+.badge-onepiece{background:#fee2e2;color:#991b1b}
+.badge-marvel{background:#fce7f3;color:#9d174d}
+.badge-supplies{background:#dcfce7;color:#166534}
+.badge-equipment{background:#f1f5f9;color:#475569}
+.badge-other{background:#fef3c7;color:#92400e}
+.badge-cardmarket{background:#d1fae5;color:#065f46}
+.badge-ebay{background:#fef9c3;color:#713f12}
+.badge-sealed{background:#fce7f3;color:#9d174d}
+.badge-single{background:#dbeafe;color:#1e40af}
+.badge-graded{background:#fef3c7;color:#92400e}
+.badge-psa{background:#fef3c7;color:#92400e}
+.badge-collection{background:#dcfce7;color:#166534}
+.badge-pending{background:#f1f5f9;color:#475569}
+.profit-pos{color:var(--green);font-weight:500}
+.profit-neg{color:var(--red);font-weight:500}
+.tab-row{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px;overflow-x:auto}
+.tab{padding:8px 14px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;font-family:inherit}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--text);border-bottom-color:var(--text);font-weight:500}
+.settings-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.settings-row:last-child{border-bottom:none}
+.settings-row label{flex:1;font-size:13px}
+.settings-row input{width:90px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;text-align:right}
+.add-row{display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.add-row input{flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px}
+.add-row input.w90{flex:none;width:90px}
+.empty{text-align:center;padding:32px;color:var(--muted);font-size:13px}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--muted);margin-bottom:8px}
+.legend span{display:flex;align-items:center;gap:5px}
+.lsq{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.section-divider{font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin:14px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.info-box{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6}
+.loading-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:999;backdrop-filter:blur(2px)}
+.loading-box{background:var(--surface);border-radius:var(--radius);padding:24px 32px;text-align:center;font-size:14px;color:var(--text)}
+.loading-box .spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--text);border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Collection */
+.coll-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.coll-metric{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px}
+.coll-metric-label{font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:500;text-transform:uppercase;letter-spacing:0.04em}
+.coll-metric-value{font-size:18px;font-weight:600}
+.coll-metric-value.up{color:var(--green)}
+.coll-metric-value.down{color:var(--red)}
+.inv-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.inv-item:last-child{border-bottom:none}
+.inv-item-name{flex:1;font-size:13px;min-width:0}
+.inv-item-name .sub{font-size:11px;color:var(--muted);margin-top:1px}
+.inv-item-cost{font-size:12px;color:var(--muted);white-space:nowrap}
+.inv-item-value{font-size:13px;font-weight:500;white-space:nowrap;min-width:60px;text-align:right}
+.inv-item-actions{display:flex;gap:4px;align-items:center}
+.inline-input{width:70px;padding:3px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;text-align:right}
+.gain-pos{color:var(--green);font-size:11px}
+.gain-neg{color:var(--red);font-size:11px}
+.metrics4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.dash-section-title{font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.net-tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.btn.active-snap{background:var(--text);color:var(--bg);border-color:var(--text)}
+.net-tile-label{font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.net-tile-value{font-size:32px;font-weight:700}
+.net-tile-sub{font-size:12px;color:var(--muted);margin-top:4px}
+</style>
+</head>
+<body>
+<div id="loading-overlay" class="loading-overlay">
+  <div class="loading-box"><div class="spinner"></div>Loading your data...</div>
+</div>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-header">Card Tracker</div>
+    <button class="nav-btn active" onclick="showPage('dashboard')" id="nav-dashboard"><i class="ti ti-chart-bar"></i> Dashboard</button>
+    <div class="nav-section">
+      <div class="nav-label">Sales</div>
+      <button class="nav-btn" onclick="showPage('log-sale')" id="nav-log-sale"><i class="ti ti-plus"></i> Log sale</button>
+      <button class="nav-btn" onclick="showPage('sales')" id="nav-sales"><i class="ti ti-receipt"></i> All sales</button>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Purchases</div>
+      <button class="nav-btn" onclick="showPage('log-purchase')" id="nav-log-purchase"><i class="ti ti-plus"></i> Log purchase</button>
+      <button class="nav-btn" onclick="showPage('purchases')" id="nav-purchases"><i class="ti ti-shopping-bag"></i> All purchases</button>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Collection</div>
+      <button class="nav-btn" onclick="showPage('collection')" id="nav-collection"><i class="ti ti-stack"></i> View collection</button>
+      <button class="nav-btn" onclick="showPage('add-item')" id="nav-add-item"><i class="ti ti-plus"></i> Add item</button>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Games</div>
+      <button class="nav-btn" onclick="showPage('games')" id="nav-games"><i class="ti ti-device-gamepad-2"></i> Game collection</button>
+      <button class="nav-btn" onclick="showPage('add-game')" id="nav-add-game"><i class="ti ti-plus"></i> Add game</button>
+    </div>
+    <div class="nav-section">
+      <button class="nav-btn" onclick="showPage('settings')" id="nav-settings"><i class="ti ti-settings"></i> Settings</button>
+    </div>
+    <div class="sidebar-footer">
+      <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
+      <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
+      <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page active">
+      <div class="page-title">Dashboard</div>
+
+      <!-- FINANCIAL POSITION -->
+      <div class="dash-section-title">Financial position</div>
+      <div id="dash-net-position"></div>
+      <div id="dash-sellthrough"></div>
+      <div id="dash-fin-metrics" style="display:none;margin-top:10px"></div>
+
+      <!-- SALES SECTION -->
+      <div class="dash-section-title" style="margin-top:18px">Sales</div>
+      <div class="metrics4" id="dash-sales-metrics"></div>
+      <div class="card" style="margin-bottom:6px">
+        <div class="card-title">Revenue, profit &amp; spend by month</div>
+        <div class="legend" id="main-legend"></div>
+        <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">Sales volume &amp; avg order value by month</div>
+        <div class="legend" id="vol-legend"></div>
+        <div class="chart-wrap"><canvas id="volChart"></canvas></div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">Top buyers</div>
+        <div id="dash-top-buyers"></div>
+      </div>
+
+      <!-- GAME PERFORMANCE -->
+      <div class="dash-section-title" style="margin-top:4px">By game</div>
+      <div id="dash-game-breakdown"></div>
+
+      <!-- INVENTORY SECTION -->
+      <div class="dash-section-title">Inventory</div>
+      <div class="metrics4" id="dash-inv-metrics"></div>
+
+      <!-- COLLECTION SECTION -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:18px 0 10px">
+        <div class="dash-section-title" style="margin:0">Collection</div>
+        <button class="btn sm" onclick="showPage('add-item')"><i class="ti ti-plus"></i> Add item</button>
+      </div>
+      <div class="coll-summary" id="coll-summary"></div>
+      <div class="metrics4" id="dash-coll-insights" style="margin-bottom:14px"></div>
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div class="card-title" style="margin-bottom:0">Collection value over time</div>
+          <div style="display:flex;gap:4px">
+            <button id="snap-btn-total" onclick="setSnapView('total')" class="btn sm active-snap">Overall</button>
+            <button id="snap-btn-portfolio" onclick="setSnapView('portfolio')" class="btn sm">By portfolio</button>
+            <button id="snap-btn-type" onclick="setSnapView('type')" class="btn sm">By type</button>
+          </div>
+        </div>
+        <div class="legend" id="snap-legend"></div>
+        <div style="position:relative;height:200px"><canvas id="snapChart"></canvas></div>
+      </div>
+      <div class="grid2" style="margin-bottom:14px">
+        <div class="card">
+          <div class="card-title">Top 5 singles by gain</div>
+          <div id="dash-top-singles"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Top 5 sealed by gain</div>
+          <div id="dash-top-sealed"></div>
+        </div>
+        <div class="card" style="grid-column:span 2">
+          <div class="card-title">Graded cards</div>
+          <div id="dash-graded"></div>
+        </div>
+        <div class="card" style="grid-column:span 2">
+          <div class="card-title">By collection</div>
+          <div id="dash-sealed"></div>
+        </div>
+      </div>
+
+      <!-- SET PERFORMANCE -->
+      <div class="dash-section-title">By set</div>
+      <div id="dash-set-performance"></div>
+
+    </div>
+
+    <!-- LOG SALE -->
+    <div id="page-log-sale" class="page">
+      <div class="page-title">Log a sale</div>
+      <div class="card">
+        <div class="form-row c4" style="margin-bottom:10px">
+          <div class="form-group"><label>Date</label><input type="date" id="s-date"></div>
+          <div class="form-group"><label>Platform</label>
+            <select id="s-platform" onchange="updateSalePreview();togglePromotedField()">
+              <option>Cardmarket</option><option>eBay</option><option>Other</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Sale ID</label><input type="text" id="s-item"></div>
+          <div class="form-group"><label>Buyer username</label><input type="text" id="s-username" placeholder="Cardmarket username" oninput="checkBuyerVIP()"></div>
+        </div>
+        <div class="form-row c6" style="margin-bottom:10px">
+          <div class="form-group"><label>Price sold (£)</label><input type="number" id="s-price" step="0.01" min="0" placeholder="0.00" oninput="updateSalePreview()"></div>
+          <div class="form-group"><label>Shipping (£)</label><input type="number" id="s-shipping" step="0.01" min="0" value="1.17" oninput="updateSalePreview()"></div>
+          <div class="form-group" style="grid-column:span 2"><label>Postage type</label><select id="s-postage" onchange="updateSalePreview()"></select></div>
+          <div class="form-group"><label>Articles</label><input type="number" id="s-article-count" min="1" placeholder="qty" oninput="updateSalePreview()"></div>
+          <div class="form-group" id="s-promoted-group" style="display:none"><label>Promoted fee (£)</label><input type="number" id="s-promoted" step="0.01" min="0" placeholder="0.00" oninput="updateSalePreview()"></div>
+        </div>
+        <div id="s-vip-alert" style="display:none;align-items:center;gap:8px;padding:8px 12px;background:#fef3c7;border:1px solid #f59e0b;border-radius:var(--radius-sm);font-size:13px;color:#92400e;margin-bottom:10px">
+          <i class="ti ti-star-filled" style="color:#f59e0b"></i>
+          <span id="s-vip-msg"></span>
+        </div>
+        <div class="section-divider">Game breakdown</div>
+        <div class="pkg-grid" style="grid-template-columns:repeat(4,1fr)">
+          <div class="pkg-item"><label>Avatar TLA</label><input type="number" min="0" value="0" id="gq-mtg_avatar_tla" oninput="updateSalePreview()"></div>
+          <div class="pkg-item"><label>Avatar TLE</label><input type="number" min="0" value="0" id="gq-mtg_avatar_tle" oninput="updateSalePreview()"></div>
+          <div class="pkg-item"><label>Strixhaven</label><input type="number" min="0" value="0" id="gq-mtg_strixhaven" oninput="updateSalePreview()"></div>
+          <div class="pkg-item"><label>Marvel MTG</label><input type="number" min="0" value="0" id="gq-mtg_marvel" oninput="updateSalePreview()"></div>
+          <div class="pkg-item"><label>Final Fantasy</label><input type="number" min="0" value="0" id="gq-mtg_ff" oninput="updateSalePreview()"></div>
+          <div class="pkg-item"><label>MTG Hobbit</label><input type="number" min="0" value="0" id="gq-mtg_hobbit" oninput="updateSalePreview()"></div>
+          <div class="pkg-item"><label>MTG Other</label><input type="number" min="0" value="0" id="gq-mtg" oninput="updateSalePreview()"></div>
+          <div class="pkg-item"><label>Pokémon</label><input type="number" min="0" value="0" id="gq-pokemon" oninput="updateSalePreview()"></div>
+          <div class="pkg-item"><label>One Piece</label><input type="number" min="0" value="0" id="gq-onepiece" oninput="updateSalePreview()"></div>
+          <div class="pkg-item"><label>Dragon Ball Z</label><input type="number" min="0" value="0" id="gq-dbz" oninput="updateSalePreview()"></div>
+          <div class="pkg-item"><label>Riftbound</label><input type="number" min="0" value="0" id="gq-riftbound" oninput="updateSalePreview()"></div>
+          <div class="pkg-item"><label>Other</label><input type="number" min="0" value="0" id="gq-other" oninput="updateSalePreview()"></div>
+        </div>
+        <div class="section-divider">Standard packaging</div>
+        <div class="pkg-grid" id="pkg-inputs-standard"></div>
+        <div class="section-divider">Additional packaging</div>
+        <div id="pkg-inputs-extra"></div>
+        <div class="cost-preview" id="sale-preview">Enter a price and postage type to see your profit</div>
+        <div class="btn-row"><button class="btn primary" onclick="logSale()"><i class="ti ti-check"></i> Log sale</button></div>
+      </div>
+    </div>
+
+    <!-- ALL SALES -->
+    <div id="page-sales" class="page">
+      <div class="page-title">All sales</div>
+      <div class="card" style="padding:0">
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Date</th><th>Item</th><th>Platform</th><th>Sold</th><th>Shipping</th><th>Postage</th><th>Supplies</th><th>Fee</th><th>Profit</th><th></th></tr></thead>
+            <tbody id="sales-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOG PURCHASE -->
+    <div id="page-log-purchase" class="page">
+      <div class="page-title">Log a purchase</div>
+      <div class="card">
+        <div class="form-row c2">
+          <div class="form-group"><label>Date</label><input type="date" id="p-date"></div>
+          <div class="form-group"><label>Category</label>
+            <select id="p-category">
+              <option value="pokemon">Pokémon</option><option value="mtg">MTG</option>
+              <option value="onepiece">One Piece</option><option value="dbz">Dragon Ball Z</option>
+              <option value="riftbound">Riftbound</option><option value="marvel">Marvel</option>
+              <option value="supplies">Supplies</option><option value="equipment">Equipment</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group"><label>Description</label><input type="text" id="p-desc" placeholder="e.g. Destined Rivals booster box x3"></div>
+        <div class="form-row c2">
+          <div class="form-group"><label>Amount (£)</label><input type="number" id="p-amount" step="0.01" min="0" placeholder="0.00"></div>
+          <div class="form-group"><label>Supplier</label><input type="text" id="p-supplier" placeholder="e.g. Pendulum, Amazon..."></div>
+        </div>
+        <div class="form-row c2">
+          <div class="form-group"><label>Set (optional)</label><input type="text" id="p-set" placeholder="e.g. Destined Rivals"></div>
+        </div>
+        <div class="btn-row"><button class="btn primary" onclick="logPurchase()"><i class="ti ti-check"></i> Log purchase</button></div>
+      </div>
+    </div>
+
+    <!-- ALL PURCHASES -->
+    <div id="page-purchases" class="page">
+      <div class="page-title">All purchases</div>
+      <div class="tab-row">
+        <button class="tab active" onclick="showPurchaseTab('all')" id="ptab-all">All</button>
+        <button class="tab" onclick="showPurchaseTab('pokemon')" id="ptab-pokemon">Pokémon</button>
+        <button class="tab" onclick="showPurchaseTab('mtg')" id="ptab-mtg">MTG</button>
+        <button class="tab" onclick="showPurchaseTab('onepiece')" id="ptab-onepiece">One Piece</button>
+        <button class="tab" onclick="showPurchaseTab('dbz')" id="ptab-dbz">Dragon Ball Z</button>
+        <button class="tab" onclick="showPurchaseTab('riftbound')" id="ptab-riftbound">Riftbound</button>
+        <button class="tab" onclick="showPurchaseTab('marvel')" id="ptab-marvel">Marvel</button>
+        <button class="tab" onclick="showPurchaseTab('supplies')" id="ptab-supplies">Supplies</button>
+        <button class="tab" onclick="showPurchaseTab('equipment')" id="ptab-equipment">Equipment</button>
+        <button class="tab" onclick="showPurchaseTab('other')" id="ptab-other">Other</button>
+      </div>
+      <div class="card" style="padding:0">
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Supplier</th><th>Amount</th><th></th></tr></thead>
+            <tbody id="purchases-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- COLLECTION PAGE -->
+    <div id="page-collection" class="page">
+      <div class="page-title">Collection &amp; inventory</div>
+      <div class="tab-row">
+        <button class="tab active" onclick="showCollTab('all')" id="ctab-all">All</button>
+        <button class="tab" onclick="showCollTab('sealed')" id="ctab-sealed">Sealed</button>
+        <button class="tab" onclick="showCollTab('single')" id="ctab-single">Singles</button>
+        <button class="tab" onclick="showCollTab('graded')" id="ctab-graded">Graded</button>
+      </div>
+      <div class="card" style="padding:0">
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Set / CN</th><th>Cost paid</th><th>Market value</th><th>Gain/Loss</th><th>Price link</th><th></th></tr></thead>
+            <tbody id="collection-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADD COLLECTION ITEM -->
+    <div id="page-add-item" class="page">
+      <div class="page-title">Add to collection</div>
+      <div class="card">
+        <div class="form-row c3">
+          <div class="form-group"><label>Type</label>
+            <select id="ci-type" onchange="toggleGradedFields()">
+              <option value="sealed">Sealed product</option>
+              <option value="single">Single card</option>
+              <option value="graded">Graded card</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Game / category</label>
+            <select id="ci-game">
+              <option value="pokemon">Pokémon</option><option value="mtg">MTG</option>
+              <option value="onepiece">One Piece</option><option value="dbz">Dragon Ball Z</option>
+              <option value="riftbound">Riftbound</option><option value="marvel">Marvel</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-group" id="ci-status-group"><label>Status</label>
+            <select id="ci-status">
+              <option value="collection">In collection</option>
+              <option value="psa">At PSA</option>
+              <option value="pending">Pending submission</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group"><label>Name</label><input type="text" id="ci-name" placeholder="e.g. 151 10 Pack Booster Bundle"></div>
+        <div class="form-row c2" id="ci-set-row">
+          <div class="form-group"><label>Set</label><input type="text" id="ci-set" placeholder="e.g. Scarlet & Violet 151"></div>
+          <div class="form-group"><label>Card number</label><input type="text" id="ci-cn" placeholder="e.g. 226"></div>
+        </div>
+        <div class="form-row c2">
+          <div class="form-group"><label>Cost paid (£)</label><input type="number" id="ci-cost" step="0.01" min="0" placeholder="0.00"></div>
+          <div class="form-group"><label>Current market value (£)</label><input type="number" id="ci-value" step="0.01" min="0" placeholder="0.00"></div>
+        </div>
+        <div class="form-group"><label>Price tracking URL (optional)</label><input type="text" id="ci-url" placeholder="e.g. https://www.ebay.co.uk/sch/..."></div>
+        <div class="form-group"><label>Notes (optional)</label><input type="text" id="ci-notes" placeholder="e.g. PSA grade, condition notes..."></div>
+        <div class="btn-row"><button class="btn primary" onclick="addCollectionItem()"><i class="ti ti-check"></i> Add to collection</button></div>
+      </div>
+    </div>
+
+    <!-- GAMES COLLECTION -->
+    <div id="page-games" class="page">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div class="page-title" style="margin-bottom:0">Game collection</div>
+        <button class="btn" onclick="refreshGamePrices()" id="refresh-games-btn"><i class="ti ti-refresh"></i> Refresh prices</button>
+      </div>
+      <div id="refresh-games-status" style="display:none;font-size:12px;color:var(--muted);margin-bottom:10px;padding:8px 12px;background:var(--surface2);border-radius:var(--radius-sm)"></div>
+      <div class="coll-summary" id="games-summary"></div>
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div class="card-title" style="margin-bottom:0">Value over time by platform</div>
+          <div class="legend" id="games-legend"></div>
+        </div>
+        <div style="position:relative;height:220px"><canvas id="gamesChart"></canvas></div>
+      </div>
+      <div class="card" style="padding:0">
+        <div style="overflow-x:auto"><table id="games-table" style="font-size:13px;width:100%">
+          <thead><tr><th>Name</th><th></th><th>Condition</th><th>Cost</th><th>Value</th><th>Gain</th><th></th></tr></thead>
+          <tbody id="games-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ADD GAME -->
+    <div id="page-add-game" class="page">
+      <div class="page-title">Add game</div>
+      <div class="card">
+        <div class="form-row c2">
+          <div class="form-group"><label>Name</label><input type="text" id="g-name" placeholder="e.g. The Legend of Zelda: Tears of the Kingdom"></div>
+          <div class="form-group"><label>Platform</label><input type="text" id="g-platform" placeholder="e.g. Nintendo Switch"></div>
+        </div>
+        <div class="form-row c3">
+          <div class="form-group"><label>Condition</label>
+            <select id="g-condition">
+              <option value="Sealed">Sealed</option>
+              <option value="Near Mint">Near Mint</option>
+              <option value="Good" selected>Good</option>
+              <option value="Played">Played</option>
+              <option value="Poor">Poor</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Cost paid (£)</label><input type="number" id="g-cost" step="0.01" min="0" placeholder="0.00"></div>
+          <div class="form-group"><label>Current value (£)</label><input type="number" id="g-value" step="0.01" min="0" placeholder="0.00"></div>
+        </div>
+        <div class="btn-row"><button class="btn primary" onclick="addGame()"><i class="ti ti-check"></i> Add game</button></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="page-settings" class="page">
+      <div class="page-title">Settings</div>
+      <div class="info-box">Changes save automatically to Google Sheets and will be available on all your devices.</div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">Platform fees</div>
+        <div class="settings-row"><label>Cardmarket fee (%)</label><input type="number" id="set-cm" step="0.1" onchange="saveSettings()"></div>
+        <div class="settings-row"><label>eBay fee (%)</label><input type="number" id="set-eb" step="0.1" onchange="saveSettings()"></div>
+        <div class="settings-row"><label>Other fee (%)</label><input type="number" id="set-ot" step="0.1" onchange="saveSettings()"></div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">Cardmarket inventory value</div>
+        <div class="settings-row">
+          <label>Current inventory value (£) <span style="color:var(--muted);font-size:11px">— paste from your Cardmarket inventory page</span></label>
+          <input type="number" id="set-inventory" step="0.01" min="0" onchange="saveSettings()">
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">Packaging unit costs (£)</div>
+        <div id="pkg-settings"></div>
+        <div class="add-row">
+          <input type="text" id="new-pkg-name" placeholder="Packaging type name">
+          <input type="number" class="w90" id="new-pkg-cost" step="0.001" placeholder="£ cost">
+          <button class="btn" onclick="addPkg()"><i class="ti ti-plus"></i> Add</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Postage types</div>
+        <div id="postage-settings"></div>
+        <div class="add-row">
+          <input type="text" id="new-post-name" placeholder="Postage type name">
+          <input type="number" class="w90" id="new-post-cost" step="0.01" placeholder="£ cost">
+          <button class="btn" onclick="addPost()"><i class="ti ti-plus"></i> Add</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbych_44YhqvkW1U3YGqR6MTSzf-H4mbacany9X2xHr233vKXFw7k2WpARmhl56gTlje/exec';
+const CAT_LABELS = {pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',marvel:'Marvel',supplies:'Supplies',equipment:'Equipment',other:'Other'};
+const CAT_COLORS = {pokemon:'#185FA5',mtg:'#534AB7',onepiece:'#D85A30',marvel:'#A32D2D',supplies:'#1D9E75',equipment:'#7a7874',other:'#BA7517'};
+const GAME_LABELS = {pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',marvel:'Marvel',other:'Other'};
+
+const DEFAULTS = {
+  sales:[],purchases:[],collection:[],buyers:[],sets:[],snapshots:[],games:[],gameSnapshots:[],
+  packaging:[
+    {name:'Thermal label',cost:0.00988},{name:'Penny sleeve',cost:0.02},{name:'Toploader',cost:0.15},
+    {name:'Team bag',cost:0.12},{name:'A6 envelope',cost:0.15},{name:'A5 envelope',cost:0.30},
+    {name:'A5 bubble mailer',cost:0.12},{name:'A6 bubble mailer',cost:0.50},{name:'A4 label',cost:0.14},
+    {name:'Foam insert',cost:0.05495},{name:'Promotional sticker',cost:0.1872},
+    {name:'A5/C5 PIP envelope',cost:0.185},{name:'10x8x4 box',cost:1.649},
+    {name:'C6/A6 box',cost:0.1798},{name:'C7/A7 envelope',cost:0.1459},{name:'M4 envelope',cost:1.259},
+  ],
+  postage:[
+    {name:'RM 2nd Letter',cost:0.91},{name:'RM 1st Letter',cost:1.80},
+    {name:'RM 2nd Large Letter',cost:1.55},{name:'RM 1st Large Letter',cost:3.30},
+    {name:'RM 2nd Signed Large Letter',cost:3.55},{name:'Tracked 48 Large Letter',cost:2.85},
+    {name:'Tracked 24 Large Letter',cost:3.80},{name:'Tracked 48 Small Parcel',cost:3.65},
+    {name:'Tracked 24 Small Parcel',cost:4.65},{name:'International Letter',cost:3.60},
+    {name:'International Large Letter',cost:3.80},
+  ],
+  settings:{cmFee:5,ebFee:12,otFee:0,inventoryValue:0}
+};
+
+let state = JSON.parse(JSON.stringify(DEFAULTS));
+let mainChartInst = null, catChartInst = null, volChartInst = null, cumChartInst = null, snapChartInst = null;
+let snapView = 'total';
+let purchaseTab = 'all', collTab = 'all';
+let saveQueue = {}, saveTimer = null;
+
+// ---- SHEETS SYNC ----
+async function sheetsGet(action){const url=SCRIPT_URL+'?action='+action+'&t='+Date.now();const res=await fetch(url);return res.json();}
+async function sheetsPost(payload){const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});return res.json();}
+function setSyncStatus(msg,type=''){const el=document.getElementById('sync-status');el.textContent=msg;el.className='sync-status'+(type?' '+type:'');}
+
+async function loadFromSheets(){
+  try{
+    setSyncStatus('Loading...','syncing');
+    const result=await sheetsGet('load');
+    if(!result.ok) throw new Error();
+    const data=result.data;
+    if(data.Sales&&data.Sales.length>1){
+      state.sales=data.Sales.slice(1).map(r=>({date:r[0],item:r[1],platform:r[2],price:parseFloat(r[3])||0,shippingCharged:parseFloat(r[4])||0,postageCost:parseFloat(r[5])||0,packaging:r[6]?JSON.parse(r[6]):[],articleCount:parseInt(r[7])||1,actualCommission:r[8]!==undefined&&r[8]!==''?parseFloat(r[8]):null,promotedFee:parseFloat(r[9])||0,gameQty:{pokemon:parseInt(r[10])||0,mtg:parseInt(r[11])||0,onepiece:parseInt(r[12])||0,marvel:parseInt(r[13])||0,other:parseInt(r[14])||0,dbz:parseInt(r[15])||0,riftbound:parseInt(r[16])||0,mtg_hobbit:parseInt(r[17])||0,mtg_avatar_tla:parseInt(r[18])||0,mtg_avatar_tle:parseInt(r[19])||0,mtg_strixhaven:parseInt(r[20])||0,mtg_marvel:parseInt(r[21])||0,mtg_ff:parseInt(r[22])||0},username:r[23]||''})).filter(s=>s.item);
+    }
+    if(data.Purchases&&data.Purchases.length>1){
+      state.purchases=data.Purchases.slice(1).map(r=>({date:r[0],description:r[1],category:r[2],amount:parseFloat(r[3])||0,supplier:r[4]||'',set:r[5]||''})).filter(p=>p.description);
+    }
+    if(data.Collection&&data.Collection.length>1){
+      state.collection=data.Collection.slice(1).map(r=>({id:r[0],name:r[1],type:r[2],game:r[3],status:r[4],set:r[5]||'',cn:r[6]||'',cost:parseFloat(r[7])||0,marketValue:parseFloat(r[8])||0,priceUrl:r[9]||'',notes:r[10]||''})).filter(c=>c.name);
+    }
+    if(data.Settings&&data.Settings.length>1){const map={};data.Settings.slice(1).forEach(r=>{if(r[0])map[r[0]]=r[1];});if(map.cmFee!==undefined)state.settings.cmFee=parseFloat(map.cmFee)||5;if(map.ebFee!==undefined)state.settings.ebFee=parseFloat(map.ebFee)||12;if(map.otFee!==undefined)state.settings.otFee=parseFloat(map.otFee)||0;if(map.inventoryValue!==undefined)state.settings.inventoryValue=parseFloat(map.inventoryValue)||0;}
+    if(data.Packaging&&data.Packaging.length>1){state.packaging=data.Packaging.slice(1).map(r=>({name:r[0],cost:parseFloat(r[1])||0})).filter(p=>p.name);}
+    if(data.Postage&&data.Postage.length>1){state.postage=data.Postage.slice(1).map(r=>({name:r[0],cost:parseFloat(r[1])||0})).filter(p=>p.name);}
+    if(data.Buyers&&data.Buyers.length>1){
+      // Keep Buyers tab as fallback for historical data without usernames in Sales
+      const sheetBuyers=data.Buyers.slice(1).map(r=>({username:r[0],orders:parseInt(r[1])||1,totalSpend:parseFloat(r[2])||0,totalArticles:parseInt(r[3])||0,firstOrder:r[4]||'',lastOrder:r[5]||''})).filter(b=>b.username);
+      state._sheetBuyers=sheetBuyers;
+    }
+    if(data.Sets&&data.Sets.length>1){
+      state.sets=data.Sets.slice(1).map(r=>({set:r[0],game:r[1],cardsSold:parseInt(r[2])||0,revenue:parseFloat(r[3])||0,avgPrice:parseFloat(r[4])||0,profit:parseFloat(r[5])||0,profitPerCard:parseFloat(r[6])||0,costPaid:parseFloat(r[7])||0})).filter(s=>s.set);
+    }
+    if(data.Games&&data.Games.length>1){
+      state.games=data.Games.slice(1).map(r=>({id:r[0],name:r[1],platform:r[2],condition:r[3]||'',cost:parseFloat(r[4])||0,value:parseFloat(r[5])||0,added:r[6]||''})).filter(g=>g.name);
+    }
+    if(data.Status&&data.Status.length>1){
+      const statusMap={};
+      data.Status.slice(1).forEach(r=>{if(r[0])statusMap[r[0]]=r[1];});
+      state._lastGameRefresh=statusMap['LastGameRefresh']||null;
+      state._gamesUpdated=statusMap['GamesUpdated']||null;
+    }
+    if(data.GameSnapshots&&data.GameSnapshots.length>1){
+      const gHdrs=data.GameSnapshots[0];
+      state.gameSnapshots=data.GameSnapshots.slice(1).map(r=>{
+        const obj={};
+        gHdrs.forEach((h,i)=>obj[h]=r[i]);
+        obj.date=obj.Date||'';
+        obj.value=parseFloat(obj.TotalValue)||0;
+        return obj;
+      });
+    }
+    if(data.Snapshots&&data.Snapshots.length>1){
+      const hdrs=data.Snapshots[0];
+      state.snapshots=data.Snapshots.slice(1).map(r=>{
+        const obj={};
+        hdrs.forEach((h,i)=>obj[h]=r[i]);
+        return obj;
+      });
+    }
+    setSyncStatus('Synced with Google Sheets','ok');
+    buildBuyersFromSales();
+  }catch(e){
+    setSyncStatus('Offline — changes saved locally','err');
+    try{const raw=localStorage.getItem('cardtracker_v1');if(raw)state=JSON.parse(raw);}catch(e2){}
+  }
+}
+
+async function saveSheetData(sheetName,headers,rows){
+  try{setSyncStatus('Saving...','syncing');await sheetsPost({action:'save',sheet:sheetName,rows:[headers,...rows]});setSyncStatus('Synced with Google Sheets','ok');}
+  catch(e){setSyncStatus('Sync failed — saved locally','err');}
+  try{localStorage.setItem('cardtracker_v1',JSON.stringify(state));}catch(e){}
+}
+function scheduleSave(sheetName){saveQueue[sheetName]=true;clearTimeout(saveTimer);saveTimer=setTimeout(()=>flushSaves(),800);}
+async function flushSaves(){
+  const sheets=Object.keys(saveQueue);saveQueue={};
+  for(const sheet of sheets){
+    if(sheet==='Sales') await saveSheetData('Sales',['Date','Item','Platform','Price','ShippingCharged','PostageCost','Packaging','ArticleCount','ActualCommission','PromotedFee','PokemonQty','MTGQty','OnePieceQty','MarvelQty','OtherQty','DBZQty','RiftboundQty','MTGHobbitQty','MTGAvatarTLAQty','MTGAvatarTLEQty','MTGStrixhavenQty','MTGMarvelQty','MTGFFQty','BuyerUsername'],state.sales.map(s=>[s.date,s.item,s.platform,s.price,s.shippingCharged||0,s.postageCost,JSON.stringify(s.packaging||[]),s.articleCount||1,s.actualCommission!==null&&s.actualCommission!==undefined?s.actualCommission:'',s.promotedFee||0,(s.gameQty?.pokemon||0),(s.gameQty?.mtg||0),(s.gameQty?.onepiece||0),(s.gameQty?.marvel||0),(s.gameQty?.other||0),(s.gameQty?.dbz||0),(s.gameQty?.riftbound||0),(s.gameQty?.mtg_hobbit||0),(s.gameQty?.mtg_avatar_tla||0),(s.gameQty?.mtg_avatar_tle||0),(s.gameQty?.mtg_strixhaven||0),(s.gameQty?.mtg_marvel||0),(s.gameQty?.mtg_ff||0),s.username||'']));
+    if(sheet==='Purchases') await saveSheetData('Purchases',['Date','Description','Category','Amount','Supplier','Set'],state.purchases.map(p=>[p.date,p.description,p.category,p.amount,p.supplier||'',p.set||'']));
+    if(sheet==='Collection') await saveSheetData('Collection',['ID','Name','Type','Game','Status','Set','CN','Cost','MarketValue','PriceUrl','Notes'],state.collection.map(c=>[c.id,c.name,c.type,c.game,c.status,c.set||'',c.cn||'',c.cost,c.marketValue,c.priceUrl||'',c.notes||'']));
+    if(sheet==='Games') await saveSheetData('Games',['ID','Name','Platform','Condition','Cost','Value','Added'],state.games.map(g=>[g.id,g.name,g.platform,g.condition||'',g.cost,g.value,g.added]));
+    if(sheet==='GameSnapshots') await saveSheetData('GameSnapshots',['Date','TotalValue'],state.gameSnapshots.map(s=>[s.date,s.value]));
+    if(sheet==='Settings') await saveSheetData('Settings',['Key','Value'],[['cmFee',state.settings.cmFee],['ebFee',state.settings.ebFee],['otFee',state.settings.otFee],['inventoryValue',state.settings.inventoryValue||0]]);
+    if(sheet==='Packaging') await saveSheetData('Packaging',['Name','Cost'],state.packaging.map(p=>[p.name,p.cost]));
+    if(sheet==='Postage') await saveSheetData('Postage',['Name','Cost'],state.postage.map(p=>[p.name,p.cost]));
+  }
+}
+async function syncNow(){await loadFromSheets();renderDashboard();}
+
+// ---- HELPERS ----
+function fm(v){return'£'+parseFloat(v||0).toFixed(2);}
+function fd(d){
+  if(!d)return'';
+  // Handle Date objects, numbers (Excel serial), and strings
+  let s = String(d).trim();
+  // Already YYYY-MM-DD
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return new Date(parseInt(m[1]),parseInt(m[2])-1,parseInt(m[3])).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});
+  // DD/MM/YYYY
+  m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if(m) return new Date(parseInt(m[3]),parseInt(m[2])-1,parseInt(m[1])).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});
+  // MM/DD/YYYY or other — try native parse as fallback
+  const dd = new Date(d);
+  if(!isNaN(dd)) return dd.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});
+  return s;
+}
+function today(){return new Date().toISOString().split('T')[0];}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function calcSaleSupplies(sale){return(sale.packaging||[]).reduce((a,p)=>{const pkg=state.packaging.find(x=>x.name===p.name);return a+(pkg?parseFloat(pkg.cost)*(parseInt(p.qty)||0):0);},0);}
+function checkBuyerVIP(){
+  const username=document.getElementById('s-username')?.value.trim().toLowerCase();
+  const alert=document.getElementById('s-vip-alert');
+  const msg=document.getElementById('s-vip-msg');
+  if(!alert||!msg) return;
+  if(!username||!state.buyers.length){alert.style.display='none';return;}
+  const buyer=state.buyers.find(b=>b.username.toLowerCase()===username);
+  if(buyer&&buyer.orders>=2){
+    alert.style.display='flex';
+    msg.textContent=`${buyer.username} is a repeat buyer — ${buyer.orders} orders, ${fm(buyer.totalSpend)} spent. Consider including a personal note.`;
+  } else {
+    alert.style.display='none';
+  }
+}
+
+function togglePromotedField(){
+  const platform=document.getElementById('s-platform')?.value;
+  const grp=document.getElementById('s-promoted-group');
+  const visible=platform==='eBay';
+  if(grp) grp.style.display=visible?'flex':'none';
+  if(!visible){const inp=document.getElementById('s-promoted');if(inp)inp.value='';}
+}
+function getPlatformFee(platform,price,articleCount,actualCommission,promotedFee){
+  if(actualCommission!==null&&actualCommission!==undefined&&actualCommission!=='') return parseFloat(actualCommission);
+  if(platform==='eBay'){
+    // Private seller: no final value fee, only optional promoted listings fee
+    return parseFloat(promotedFee)||0;
+  }
+  if(platform==='Cardmarket'){
+    const p=parseFloat(price)||0,count=parseInt(articleCount)||1;
+    return Math.max(Math.ceil(p*0.05*100)/100,count*0.01);
+  }
+  const p=parseFloat(price)||0,s=state.settings;
+  return p*(s.otFee/100);
+}
+function calcSaleProfit(sale){const price=parseFloat(sale.price)||0,shipping=parseFloat(sale.shippingCharged)||0,post=parseFloat(sale.postageCost)||0,supply=calcSaleSupplies(sale),fee=getPlatformFee(sale.platform,price,sale.articleCount,sale.actualCommission,sale.promotedFee||0);return(price+shipping)-post-supply-fee;}
+
+function buildBuyersFromSales(){
+  // Build buyer stats from sales username field
+  const map={};
+  state.sales.forEach(s=>{
+    const u=(s.username||'').trim();
+    if(!u) return;
+    const key=u.toLowerCase();
+    if(!map[key]) map[key]={username:u,orders:0,totalSpend:0,totalArticles:0,firstOrder:s.date,lastOrder:s.date};
+    map[key].orders++;
+    map[key].totalSpend+=parseFloat(s.price)||0;
+    map[key].totalArticles+=parseInt(s.articleCount)||1;
+    if(s.date&&s.date<map[key].firstOrder) map[key].firstOrder=s.date;
+    if(s.date&&s.date>map[key].lastOrder) map[key].lastOrder=s.date;
+  });
+  // Merge with sheet buyers for any historical entries not in sales
+  const salesUsernames=new Set(Object.keys(map));
+  const sheetOnly=(state._sheetBuyers||[]).filter(b=>!salesUsernames.has(b.username.toLowerCase()));
+  state.buyers=[...Object.values(map),...sheetOnly];
+}
+
+// ---- NAVIGATION ----
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.getElementById('nav-'+id).classList.add('active');
+  if(id==='dashboard')renderDashboard();
+  if(id==='sales')renderSalesTable();
+  if(id==='purchases')renderPurchasesTable(purchaseTab);
+  if(id==='collection')renderCollectionTable(collTab);
+  if(id==='games')renderGamesPage();
+  if(id==='add-game'){document.getElementById('g-name').value='';document.getElementById('g-platform').value='';document.getElementById('g-value').value='';}
+  if(id==='settings')renderSettings();
+  if(id==='log-sale')initSaleForm();
+  if(id==='log-purchase')document.getElementById('p-date').value=today();
+  if(id==='add-item')toggleGradedFields();
+}
+
+// ---- DASHBOARD ----
+function renderDashboard(){
+  const totalRevenue=state.sales.reduce((a,s)=>a+(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0),0);
+  const totalProfit=state.sales.reduce((a,s)=>a+calcSaleProfit(s),0);
+  const totalSpend=state.purchases.reduce((a,p)=>a+(parseFloat(p.amount)||0),0);
+  const totalCollectionValue=state.collection.reduce((a,c)=>a+(parseFloat(c.marketValue)||0),0);
+  const inventoryValue=parseFloat(state.settings.inventoryValue)||0;
+  const standing=totalProfit-totalSpend;
+  const netPosition=totalProfit-totalSpend+totalCollectionValue+inventoryValue;
+  const avgProfit=state.sales.length?totalProfit/state.sales.length:0;
+  const avgPrice=state.sales.length?totalRevenue/state.sales.length:0;
+  const profitMargin=totalRevenue>0?(totalProfit/totalRevenue*100):0;
+
+  // --- Sales insights ---
+  const DAY_NAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const dayTotals={};
+  const monthTotals={};
+  state.sales.forEach(s=>{
+    if(s.date){
+      const d=new Date(s.date.slice(0,10)+'T12:00:00');
+      if(!isNaN(d)){
+        const day=DAY_NAMES[d.getDay()];
+        dayTotals[day]=(dayTotals[day]||0)+1;
+        const mo=d.toLocaleDateString('en-GB',{month:'long'});
+        monthTotals[mo]=(monthTotals[mo]||0)+1;
+      }
+    }
+  });
+  const bestDay=Object.entries(dayTotals).sort((a,b)=>b[1]-a[1])[0];
+  const bestMonth=Object.entries(monthTotals).sort((a,b)=>b[1]-a[1])[0];
+  const repeatBuyers=state.buyers.filter(b=>b.orders>1).length;
+
+  // Collection insights
+  const collGroups={};
+  state.collection.forEach(c=>{
+    const key=c.set&&c.set.trim()?c.set.trim():'Other';
+    if(!collGroups[key])collGroups[key]={cost:0,market:0};
+    collGroups[key].cost+=parseFloat(c.cost)||0;
+    collGroups[key].market+=parseFloat(c.marketValue)||0;
+  });
+  const bestColl=Object.entries(collGroups).filter(([,g])=>g.cost>0).map(([name,g])=>({name,pct:((g.market-g.cost)/g.cost*100)})).sort((a,b)=>b.pct-a.pct)[0];
+  const totalCollCost=state.collection.reduce((a,c)=>a+(parseFloat(c.cost)||0),0);
+  const unrealisedPct=totalCollCost>0?((totalCollectionValue-totalCollCost)/totalCollCost*100):0;
+
+  // Sales metrics
+  document.getElementById('dash-sales-metrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Revenue</div><div class="metric-value">${fm(totalRevenue)}</div><div class="metric-sub">${state.sales.length} sales</div></div>
+    <div class="metric"><div class="metric-label">Profit</div><div class="metric-value ${totalProfit>=0?'pos':'neg'}">${fm(totalProfit)}</div><div class="metric-sub">after all costs</div></div>
+    <div class="metric"><div class="metric-label">Profit margin</div><div class="metric-value ${profitMargin>=0?'pos':'neg'}">${profitMargin.toFixed(1)}%</div><div class="metric-sub">of total revenue</div></div>
+    <div class="metric"><div class="metric-label">Avg sale profit</div><div class="metric-value ${avgProfit>=0?'pos':'neg'}">${fm(avgProfit)}</div><div class="metric-sub">avg order value ${fm(avgPrice)}</div></div>
+    <div class="metric"><div class="metric-label">Best day</div><div class="metric-value" style="font-size:16px">${bestDay?bestDay[0]:'—'}</div><div class="metric-sub">${bestDay?bestDay[1]+' sales':''}</div></div>
+    <div class="metric"><div class="metric-label">Best month</div><div class="metric-value" style="font-size:16px">${bestMonth?bestMonth[0]:'—'}</div><div class="metric-sub">${bestMonth?bestMonth[1]+' sales':''}</div></div>
+    <div class="metric"><div class="metric-label">Repeat buyers</div><div class="metric-value">${repeatBuyers}</div><div class="metric-sub">${state.buyers.length?'of '+state.buyers.length+' unique buyers':'add Buyers tab to enable'}</div></div>`;
+
+  // Inventory metrics
+  document.getElementById('dash-inv-metrics').innerHTML=`
+    <div class="metric" style="grid-column:span 2"><div class="metric-label">Cardmarket inventory value</div><div class="metric-value">${fm(inventoryValue)}</div><div class="metric-sub">${inventoryValue?'as entered in Settings':'not yet entered — go to Settings'}</div></div>`;
+
+  // Financial position metrics (hidden by default)
+  document.getElementById('dash-fin-metrics').innerHTML=`
+    <div class="metrics4" style="margin-bottom:0">
+      <div class="metric"><div class="metric-label">Total spend</div><div class="metric-value">${fm(totalSpend)}</div><div class="metric-sub">${state.purchases.length} purchases</div></div>
+      <div class="metric"><div class="metric-label">Break-even standing</div><div class="metric-value ${standing>=0?'pos':'neg'}">${fm(standing)}</div><div class="metric-sub">profit minus spend</div></div>
+    </div>`;
+
+  // Calculate projected break-even date based on avg monthly profit trend
+  function calcProjection(){
+    const{keys,months}=getMonthlyData();
+    if(keys.length<2) return null;
+    const recentKeys=keys.slice(-3);
+    const recentProfits=recentKeys.map(k=>months[k].profit);
+    const avgMonthlyProfit=recentProfits.reduce((a,b)=>a+b,0)/recentProfits.length;
+    if(avgMonthlyProfit<=0) return null;
+    const monthsNeeded=Math.ceil(Math.abs(netPosition)/avgMonthlyProfit);
+    if(monthsNeeded>120) return null;
+    const projDate=new Date();
+    projDate.setMonth(projDate.getMonth()+monthsNeeded);
+    return{date:projDate.toLocaleDateString('en-GB',{month:'long',year:'numeric'}),months:monthsNeeded,avgMonthly:avgMonthlyProfit};
+  }
+  const projection=netPosition<0?calcProjection():null;
+
+  // Net position tile
+  document.getElementById('dash-net-position').innerHTML=`
+    <div class="net-tile" style="border-color:${netPosition>=0?'var(--green)':'var(--red)'}">
+      <div style="flex:1">
+        <div class="net-tile-label">Net position &nbsp;·&nbsp; profit + collection + inventory − spend</div>
+        <div class="net-tile-value ${netPosition>=0?'pos':'neg'}">${(netPosition>=0?'+':'')+fm(netPosition)}</div>
+        <div class="net-tile-sub" style="display:flex;align-items:center;gap:12px">
+          <span>${netPosition>=0?'Overall you are in profit':fm(Math.abs(netPosition))+' needed to break even overall'}</span>
+          <button onclick="toggleFinDetails()" id="fin-toggle-btn" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0;text-decoration:underline">show details</button>
+        </div>
+      </div>
+      ${projection?`<div style="text-align:right;padding-left:24px;border-left:1px solid var(--border);min-width:180px">
+        <div class="net-tile-label">Projected break-even</div>
+        <div style="font-size:18px;font-weight:600;color:var(--text)">${projection.date}</div>
+        <div class="net-tile-sub">${projection.months} month${projection.months===1?'':'s'} · ${fm(projection.avgMonthly)}/mo avg</div>
+      </div>`:''}
+    </div>`;
+
+  // Sell-through tile
+  const stEl=document.getElementById('dash-sellthrough');
+  if(stEl){
+    if(netPosition>=0){
+      stEl.innerHTML='';
+    } else {
+      // Historical avg profit margin: total profit / total revenue
+      const avgMargin=totalRevenue>0?totalProfit/totalRevenue:0;
+      if(avgMargin>0){
+        // Stock to sell through = gap / margin
+        const gap=Math.abs(netPosition);
+        const stockNeeded=gap/avgMargin;
+        const inventoryPct=inventoryValue>0?(stockNeeded/inventoryValue*100):null;
+        stEl.innerHTML=`
+          <div class="net-tile" style="border-color:var(--border);margin-top:10px">
+            <div style="flex:1">
+              <div class="net-tile-label">Inventory to sell through to break even</div>
+              <div class="net-tile-value" style="font-size:26px">${fm(stockNeeded)}</div>
+              <div class="net-tile-sub">based on your ${(avgMargin*100).toFixed(1)}% avg profit margin on revenue</div>
+            </div>
+            ${inventoryPct!==null?`<div style="text-align:right;padding-left:24px;border-left:1px solid var(--border);min-width:180px">
+              <div class="net-tile-label">Of current inventory</div>
+              <div style="font-size:18px;font-weight:600;color:var(--text)">${inventoryPct.toFixed(0)}%</div>
+              <div class="net-tile-sub">${fm(stockNeeded)} of ${fm(inventoryValue)} inventory value</div>
+            </div>`:''}
+          </div>`;
+      } else {
+        stEl.innerHTML='';
+      }
+    }
+  }
+
+  renderMainChart();
+  renderVolChart();
+  renderGameBreakdown();
+  renderSetPerformance();
+  renderTopBuyers();
+  renderCollectionDashboard(bestColl,unrealisedPct);
+}
+
+function renderSetPerformance(){
+  const el=document.getElementById('dash-set-performance');
+  if(!el) return;
+
+  if(!state.sets.length){el.innerHTML='<div class="empty" style="margin-bottom:14px">No set data yet — add the Sets tab to your Sheet</div>';return;}
+
+  const sets=state.sets;
+
+  // Game filter
+  const games=['All',...[...new Set(sets.map(s=>s.game))].sort()];
+  const filterId='set-game-filter';
+  const existingFilter=document.getElementById(filterId);
+  const currentFilter=existingFilter?existingFilter.value:'All';
+
+  const filtered=currentFilter==='All'?sets:sets.filter(s=>s.game===currentFilter);
+  const sorted=[...filtered].sort((a,b)=>b.profit-a.profit);
+
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <select id="${filterId}" onchange="renderSetPerformance()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px">
+        ${games.map(g=>`<option value="${g}" ${g===currentFilter?'selected':''}>${g}</option>`).join('')}
+      </select>
+      <span style="font-size:12px;color:var(--muted)">${sorted.length} sets · sorted by profit</span>
+    </div>
+    <div class="card" style="margin-bottom:14px;padding:0">
+      <div style="overflow-x:auto">
+        <table style="font-size:13px">
+          <thead><tr><th>Set</th><th>Game</th><th>Cards sold</th><th>Avg price</th><th>Profit/card</th><th>Total profit</th></tr></thead>
+          <tbody>${sorted.slice(0,5).map(s=>`<tr>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.set}">${s.set}</td>
+            <td style="color:var(--muted);font-size:12px">${s.game}</td>
+            <td>${s.cardsSold}</td>
+            <td>${fm(s.avgPrice)}</td>
+            <td class="${s.profitPerCard>=0?'profit-pos':'profit-neg'}">${s.profitPerCard>=0?'+':''}${fm(s.profitPerCard)}</td>
+            <td class="${s.profit>=0?'profit-pos':'profit-neg'}">${s.profit>=0?'+':''}${fm(s.profit)}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>
+      ${sorted.length>5?`
+      <div id="set-rest" style="display:none;overflow-x:auto">
+        <table style="font-size:13px">
+          <tbody>${sorted.slice(5).map(s=>`<tr>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.set}">${s.set}</td>
+            <td style="color:var(--muted);font-size:12px">${s.game}</td>
+            <td>${s.cardsSold}</td>
+            <td>${fm(s.avgPrice)}</td>
+            <td class="${s.profitPerCard>=0?'profit-pos':'profit-neg'}">${s.profitPerCard>=0?'+':''}${fm(s.profitPerCard)}</td>
+            <td class="${s.profit>=0?'profit-pos':'profit-neg'}">${s.profit>=0?'+':''}${fm(s.profit)}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>
+      <div style="padding:8px 10px;border-top:1px solid var(--border);text-align:center">
+        <button onclick="const r=document.getElementById('set-rest');const b=this;if(r.style.display==='none'){r.style.display='block';b.textContent='Show less'}else{r.style.display='none';b.textContent='Show ${sorted.length-5} more'}" class="btn sm" style="font-size:12px">Show ${sorted.length-5} more</button>
+      </div>`:''}
+    </div>`;
+}
+
+function renderGameBreakdown(){
+  const GAME_LABELS={pokemon:'Pokémon',mtg:'MTG',mtg_hobbit:'MTG Hobbit',onepiece:'One Piece',other:'Other',dbz:'Dragon Ball Z',riftbound:'Riftbound'};
+  const GAME_COLORS={pokemon:'#185FA5',mtg:'#534AB7',mtg_hobbit:'#7C3AED',onepiece:'#D85A30',other:'#BA7517',dbz:'#DC2626',riftbound:'#0BC4C4'};
+  const games=['pokemon','mtg','mtg_hobbit','onepiece','dbz','riftbound','other'];
+
+  const stats={};
+  games.forEach(g=>{stats[g]={cards:0,revenue:0,profit:0,byMonth:{}};});
+  let tagged=0,untagged=0;
+
+  state.sales.forEach(s=>{
+    const gq=s.gameQty||{};
+    const merged={
+      pokemon:gq.pokemon||0,
+      mtg:(gq.mtg||0)+(gq.marvel||0),
+      mtg_hobbit:gq.mtg_hobbit||0,
+      onepiece:gq.onepiece||0,
+      dbz:gq.dbz||0,
+      riftbound:gq.riftbound||0,
+      other:gq.other||0
+    };
+    const total=Object.values(merged).reduce((a,b)=>a+b,0);
+    if(!total){untagged++;return;}
+    tagged++;
+    const orderRevenue=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);
+    const orderProfit=calcSaleProfit(s);
+    const month=parseToYYYYMM(s.date);
+    Object.entries(merged).forEach(([game,qty])=>{
+      if(!qty||!(game in stats)) return;
+      const share=qty/total;
+      stats[game].cards+=qty;
+      stats[game].revenue+=orderRevenue*share;
+      stats[game].profit+=orderProfit*share;
+      if(month){if(!stats[game].byMonth[month])stats[game].byMonth[month]=0;stats[game].byMonth[month]+=qty;}
+    });
+  });
+
+  function getTrend(byMonth){
+    const months=Object.keys(byMonth).sort();
+    if(months.length<2) return null;
+    const last=byMonth[months[months.length-1]],prev=byMonth[months[months.length-2]];
+    if(prev===0) return null;
+    const pct=((last-prev)/prev)*100;
+    if(pct>10) return{dir:'up',pct};
+    if(pct<-10) return{dir:'down',pct};
+    return{dir:'flat',pct};
+  }
+  function trendBadge(trend){
+    if(!trend) return '<span style="color:var(--muted)">—</span>';
+    if(trend.dir==='up') return`<span class="profit-pos">▲ ${trend.pct.toFixed(0)}%</span>`;
+    if(trend.dir==='down') return`<span class="profit-neg">▼ ${Math.abs(trend.pct).toFixed(0)}%</span>`;
+    return`<span style="color:var(--muted)">→ flat</span>`;
+  }
+
+  const hasData=games.some(g=>stats[g].cards>0);
+  const el=document.getElementById('dash-game-breakdown');
+  if(!hasData){el.innerHTML='<div class="empty" style="margin-bottom:14px">No game data yet — add game breakdowns when logging sales.</div>';return;}
+
+  const sorted=[...games].filter(g=>stats[g].cards>0).sort((a,b)=>stats[b].profit-stats[a].profit);
+  const coverageNote=untagged>0?`<div style="font-size:11px;color:var(--muted);padding:8px 10px;border-top:1px solid var(--border)">${tagged} of ${tagged+untagged} sales tagged · figures are proportional estimates · trend = last month vs previous</div>`:'';
+
+  el.innerHTML=`<div class="card" style="margin-bottom:14px;padding:0">
+    <table style="font-size:13px">
+      <thead><tr><th>Game</th><th>Cards sold</th><th>Avg sale price</th><th>Profit per card</th><th>Total profit</th><th>Volume vs. last month</th></tr></thead>
+      <tbody>${sorted.map(g=>{
+        const s=stats[g];
+        const avgPrice=s.cards>0?s.revenue/s.cards:0;
+        const profPerCard=s.cards>0?s.profit/s.cards:0;
+        const trend=getTrend(s.byMonth);
+        return`<tr>
+          <td><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:${GAME_COLORS[g]};flex-shrink:0"></span>${GAME_LABELS[g]}</span></td>
+          <td>${s.cards.toLocaleString()}</td>
+          <td>${fm(avgPrice)}</td>
+          <td class="${profPerCard>=0?'profit-pos':'profit-neg'}">${profPerCard>=0?'+':''}${fm(profPerCard)}</td>
+          <td class="${s.profit>=0?'profit-pos':'profit-neg'}">${s.profit>=0?'+':''}${fm(s.profit)}</td>
+          <td>${trendBadge(trend)}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>
+    ${coverageNote}
+  </div>`;
+}
+
+
+
+
+function setSnapView(view){
+  snapView=view;
+  ['total','portfolio','type'].forEach(v=>{
+    const btn=document.getElementById('snap-btn-'+v);
+    if(btn) btn.className='btn sm'+(v===view?' active-snap':'');
+  });
+  renderSnapChart();
+}
+
+function renderSnapChart(){
+  const snaps=state.snapshots;
+  if(!snaps||snaps.length<1){
+    const el=document.getElementById('snap-legend');
+    if(el) el.innerHTML='<span style="color:var(--muted);font-size:12px">No snapshot data yet — add the Snapshots tab to your Sheet</span>';
+    return;
+  }
+
+  const labels=snaps.map(s=>fd(s.Date));
+  const PORTFOLIO_COLORS={
+    'Avatar_TLA':'#185FA5','Avatar_TLE':'#534AB7','Avatar_ART':'#8B5CF6',
+    'Singles_One_Piece':'#D85A30','Singles_DBZ':'#DC2626','Singles_Pokemon':'#1D9E75',
+    'Singles_MTG_SOS':'#BA7517','Sealed':'#065F46'
+  };
+  const PORTFOLIO_LABELS={
+    'Avatar_TLA':'Avatar TLA','Avatar_TLE':'Avatar TLE','Avatar_ART':'Avatar ART',
+    'Singles_One_Piece':'Singles One Piece','Singles_DBZ':'Singles DBZ',
+    'Singles_Pokemon':'Singles Pokemon','Singles_MTG_SOS':'Singles MTG SOS','Sealed':'Sealed'
+  };
+  const TYPE_COLORS={Sealed:'#065F46',Single:'#185FA5',Graded:'#BA7517'};
+
+  let datasets=[];
+  let legendHTML='';
+
+  if(snapView==='total'){
+    datasets=[
+      {label:'Market value',data:snaps.map(s=>parseFloat(s.TotalMarket)||0),borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',tension:0.3,pointRadius:4,fill:true},
+      {label:'Cost paid',data:snaps.map(s=>parseFloat(s.TotalCost)||0),borderColor:'#D85A30',backgroundColor:'rgba(216,90,48,0.05)',tension:0.3,pointRadius:4,fill:false,borderDash:[4,4]}
+    ];
+    legendHTML=`<span><span class="lsq" style="background:#1D9E75"></span>Market value</span><span><span class="lsq" style="background:#D85A30"></span>Cost paid</span>`;
+  } else if(snapView==='portfolio'){
+    const portfolioKeys=Object.keys(PORTFOLIO_COLORS);
+    datasets=portfolioKeys.map(key=>({
+      label:PORTFOLIO_LABELS[key],
+      data:snaps.map(s=>parseFloat(s['Portfolio_'+key])||0),
+      borderColor:PORTFOLIO_COLORS[key],
+      backgroundColor:PORTFOLIO_COLORS[key]+'20',
+      tension:0.3,pointRadius:4,fill:false
+    })).filter(d=>d.data.some(v=>v>0));
+    legendHTML=datasets.map(d=>`<span><span class="lsq" style="background:${d.borderColor}"></span>${d.label}</span>`).join('');
+  } else {
+    const typeKeys=['Sealed','Single','Graded'];
+    datasets=typeKeys.map(key=>({
+      label:key,
+      data:snaps.map(s=>parseFloat(s['Type_'+key])||0),
+      borderColor:TYPE_COLORS[key],
+      backgroundColor:TYPE_COLORS[key]+'20',
+      tension:0.3,pointRadius:4,fill:false
+    })).filter(d=>d.data.some(v=>v>0));
+    legendHTML=datasets.map(d=>`<span><span class="lsq" style="background:${d.borderColor}"></span>${d.label}</span>`).join('');
+  }
+
+  const legendEl=document.getElementById('snap-legend');
+  if(legendEl) legendEl.innerHTML=legendHTML;
+  if(snapChartInst) snapChartInst.destroy();
+  const ctx=document.getElementById('snapChart')?.getContext('2d');
+  if(!ctx) return;
+  snapChartInst=new Chart(ctx,{
+    type:'line',
+    data:{labels,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:11}}}}
+    }
+  });
+}
+
+function renderCollectionDashboard(bestColl,unrealisedPct){
+  const coll=state.collection;
+  const totalCost=coll.reduce((a,c)=>a+(parseFloat(c.cost)||0),0);
+  const totalMarket=coll.reduce((a,c)=>a+(parseFloat(c.marketValue)||0),0);
+  const gain=totalMarket-totalCost;
+  document.getElementById('coll-summary').innerHTML=`
+    <div class="coll-metric"><div class="coll-metric-label">Total items</div><div class="coll-metric-value">${coll.length}</div></div>
+    <div class="coll-metric"><div class="coll-metric-label">Cost paid</div><div class="coll-metric-value">${fm(totalCost)}</div></div>
+    <div class="coll-metric"><div class="coll-metric-label">Market value</div><div class="coll-metric-value">${fm(totalMarket)}</div></div>
+    <div class="coll-metric"><div class="coll-metric-label">Unrealised gain</div><div class="coll-metric-value ${gain>=0?'up':'down'}">${gain>=0?'+':''}${fm(gain)}</div></div>`;
+
+  const insEl=document.getElementById('dash-coll-insights');
+  if(insEl) insEl.innerHTML=`
+    <div class="metric"><div class="metric-label">Best performer</div><div class="metric-value" style="font-size:15px">${bestColl?bestColl.name:'—'}</div><div class="metric-sub">${bestColl?'+'+bestColl.pct.toFixed(1)+'% gain':''}</div></div>
+    <div class="metric"><div class="metric-label">Unrealised gain %</div><div class="metric-value ${unrealisedPct>=0?'pos':'neg'}">${unrealisedPct>=0?'+':''}${(unrealisedPct||0).toFixed(1)}%</div><div class="metric-sub">on cost paid</div></div>`;
+
+  renderSnapChart();
+  // Group by portfolio — graded all merge into one "Graded" group
+  const groups={};
+  coll.forEach(c=>{
+    let key;
+    if(c.type==='graded') key='Graded';
+    else if(c.set&&c.set.trim()) key=c.set.trim();
+    else key=c.type==='sealed'?'Sealed':'Singles';
+    if(!groups[key])groups[key]={items:0,cost:0,market:0};
+    groups[key].items++;
+    groups[key].cost+=parseFloat(c.cost)||0;
+    groups[key].market+=parseFloat(c.marketValue)||0;
+  });
+
+  const sorted=Object.entries(groups).sort((a,b)=>b[1].market-a[1].market);
+  const el=document.getElementById('dash-sealed');
+  el.innerHTML=`<table style="font-size:13px">
+    <thead><tr><th>Collection</th><th>Items</th><th>Cost</th><th>Market value</th><th>Gain / loss</th></tr></thead>
+    <tbody>${sorted.map(([name,g])=>{
+      const gain=g.market-g.cost;
+      return`<tr>
+        <td style="font-weight:500">${name}</td>
+        <td style="color:var(--muted)">${g.items}</td>
+        <td style="color:var(--muted)">${fm(g.cost)}</td>
+        <td>${fm(g.market)}</td>
+        <td class="${gain>=0?'profit-pos':'profit-neg'}">${gain>=0?'+':''}${fm(gain)}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+
+  // Graded cards still shown individually below the table
+  const graded=coll.filter(c=>c.type==='graded');
+  renderCollGraded('dash-graded',graded);
+
+  // Top 5 by gain — singles and sealed separately
+  function renderTop5(elId, type, label){
+    const el=document.getElementById(elId);
+    if(!el) return;
+    const items=coll
+      .filter(c=>c.type===type&&(parseFloat(c.cost)||0)>0)
+      .map(c=>({...c,gain:(parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0),gainPct:((parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0))/(parseFloat(c.cost)||1)*100}))
+      .sort((a,b)=>b.gain-a.gain)
+      .slice(0,5);
+    if(!items.length){el.innerHTML=`<div class="empty">No ${label} with cost data yet</div>`;return;}
+    el.innerHTML=`<table style="font-size:12px">
+      <thead><tr><th>Item</th><th>Cost</th><th>Value</th><th>Gain</th><th>%</th></tr></thead>
+      <tbody>${items.map(c=>`<tr>
+        <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.name}">${c.name}</td>
+        <td style="color:var(--muted)">${fm(c.cost)}</td>
+        <td>${fm(c.marketValue)}</td>
+        <td class="${c.gain>=0?'profit-pos':'profit-neg'}">${c.gain>=0?'+':''}${fm(c.gain)}</td>
+        <td class="${c.gainPct>=0?'profit-pos':'profit-neg'}">${c.gainPct>=0?'+':''}${c.gainPct.toFixed(0)}%</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  }
+  renderTop5('dash-top-singles','single','singles');
+  renderTop5('dash-top-sealed','sealed','sealed product');
+}
+
+function renderCollGraded(elId,items){
+  const el=document.getElementById(elId);
+  if(!items.length){el.innerHTML='<div class="empty">No graded cards yet</div>';return;}
+  el.innerHTML=items.map(c=>{
+    const gain=(parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0);
+    const gainStr=gain>=0?`<span class="gain-pos">+${fm(gain)}</span>`:`<span class="gain-neg">${fm(gain)}</span>`;
+    const statusBadge=`<span class="badge badge-${c.status==='psa'?'psa':c.status==='pending'?'pending':'collection'}" style="margin-right:6px">${c.status==='psa'?'At PSA':c.status==='pending'?'Pending':'In collection'}</span>`;
+    const urlBtn=c.priceUrl?`<a href="${c.priceUrl}" target="_blank" class="btn sm" style="padding:3px 7px;font-size:11px" title="Open price link"><i class="ti ti-external-link"></i></a>`:'';
+    return`<div class="inv-item">
+      <div class="inv-item-name">
+        ${statusBadge}<span>${c.name}</span>
+        ${c.notes?`<div class="sub">${c.notes}</div>`:''}
+      </div>
+      <div class="inv-item-cost">${fm(c.cost)}</div>
+      <div class="inv-item-value">${fm(c.marketValue)} ${gainStr}</div>
+      <div class="inv-item-actions">
+        ${urlBtn}
+        <input class="inline-input" type="number" step="0.01" value="${parseFloat(c.marketValue)||0}" onchange="updateMarketValue('${c.id}',this.value)" title="Update market value">
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderCollSection(elId,items,showStatus=false){
+  const el=document.getElementById(elId);
+  if(!items.length){el.innerHTML='<div class="empty">None added yet</div>';return;}
+  el.innerHTML=items.map(c=>{
+    const gain=(parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0);
+    const gainStr=gain>=0?`<span class="gain-pos">+${fm(gain)}</span>`:`<span class="gain-neg">${fm(gain)}</span>`;
+    const statusBadge=showStatus?`<span class="badge badge-${c.status==='psa'?'psa':c.status==='pending'?'pending':'collection'}" style="margin-right:6px">${c.status==='psa'?'At PSA':c.status==='pending'?'Pending':'In collection'}</span>`:'';
+    const urlBtn=c.priceUrl?`<a href="${c.priceUrl}" target="_blank" class="btn sm" style="padding:3px 7px;font-size:11px" title="Open price link"><i class="ti ti-external-link"></i></a>`:'';
+    return`<div class="inv-item">
+      <div class="inv-item-name">
+        ${statusBadge}<span>${c.name}</span>
+        ${c.set||c.cn?`<div class="sub">${[c.set,c.cn?'#'+c.cn:''].filter(Boolean).join(' · ')}</div>`:''}
+        ${c.notes?`<div class="sub">${c.notes}</div>`:''}
+      </div>
+      <div class="inv-item-cost">${fm(c.cost)}</div>
+      <div class="inv-item-value">${fm(c.marketValue)} ${gainStr}</div>
+      <div class="inv-item-actions">
+        ${urlBtn}
+        <input class="inline-input" type="number" step="0.01" value="${parseFloat(c.marketValue)||0}" onchange="updateMarketValue('${c.id}',this.value)" title="Update market value">
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateMarketValue(id,val){
+  const item=state.collection.find(c=>c.id===id);
+  if(!item)return;
+  item.marketValue=parseFloat(val)||0;
+  scheduleSave('Collection');
+  renderCollectionDashboard();
+  if(document.getElementById('page-collection').classList.contains('active')) renderCollectionTable(collTab);
+}
+
+function toggleFinDetails(){
+  const el=document.getElementById('dash-fin-metrics');
+  const btn=document.getElementById('fin-toggle-btn');
+  if(!el||!btn)return;
+  const visible=el.style.display!=='none';
+  el.style.display=visible?'none':'block';
+  btn.textContent=visible?'show details':'hide details';
+}
+
+// ---- CHARTS ----
+function parseToYYYYMM(dateVal){
+  if(!dateVal) return null;
+  let s = String(dateVal).trim();
+  // YYYY-MM-DD or YYYY-MM-DDThh:mm:ss
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return `${m[1]}-${m[2]}`;
+  // DD/MM/YYYY
+  m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if(m) return `${m[3]}-${m[2]}`;
+  // Try native parse as last resort
+  const d = new Date(dateVal);
+  if(!isNaN(d)) return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  return null;
+}
+function getMonthlyData(){
+  const months={};
+  state.sales.forEach(s=>{
+    const key=parseToYYYYMM(s.date);
+    if(!key) return;
+    if(!months[key])months[key]={revenue:0,profit:0,spend:0};
+    months[key].revenue+=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);
+    months[key].profit+=calcSaleProfit(s);
+  });
+  state.purchases.forEach(p=>{
+    const key=parseToYYYYMM(p.date);
+    if(!key) return;
+    if(!months[key])months[key]={revenue:0,profit:0,spend:0};
+    months[key].spend+=parseFloat(p.amount)||0;
+  });
+  const keys=Object.keys(months).sort();
+  return{keys,months};
+}
+function renderMainChart(){
+  const{keys,months}=getMonthlyData();
+  const labels=keys.map(k=>{const[y,m]=k.split('-');return new Date(y,m-1).toLocaleDateString('en-GB',{month:'short',year:'2-digit'});});
+  document.getElementById('main-legend').innerHTML=`<span><span class="lsq" style="background:#1D9E75"></span>Revenue</span><span><span class="lsq" style="background:#185FA5"></span>Profit</span><span><span class="lsq" style="background:#D85A30"></span>Spend</span>`;
+  if(mainChartInst)mainChartInst.destroy();
+  mainChartInst=new Chart(document.getElementById('mainChart'),{type:'bar',data:{labels:labels.length?labels:['No data'],datasets:[{label:'Revenue',data:keys.map(k=>+months[k].revenue.toFixed(2)),backgroundColor:'#1D9E75',borderRadius:3},{label:'Profit',data:keys.map(k=>+months[k].profit.toFixed(2)),backgroundColor:'#185FA5',borderRadius:3},{label:'Spend',data:keys.map(k=>+months[k].spend.toFixed(2)),backgroundColor:'#D85A30',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:11}}}}}});
+}
+function renderTopBuyers(){
+  const el=document.getElementById('dash-top-buyers');
+  if(!el) return;
+  const repeat=state.buyers.filter(b=>b.orders>1).sort((a,b)=>b.orders-a.orders||b.totalSpend-a.totalSpend).slice(0,5);
+  if(!repeat.length){el.innerHTML='<div class="empty">No buyer data yet — add the Buyers tab to your Sheet</div>';return;}
+  el.innerHTML=`<table style="font-size:12px">
+    <thead><tr><th>Username</th><th>Orders</th><th>Spent</th><th>Last order</th></tr></thead>
+    <tbody>${repeat.map(b=>`<tr>
+      <td style="font-weight:500">${b.username}</td>
+      <td>${b.orders}</td>
+      <td>${fm(b.totalSpend)}</td>
+      <td style="color:var(--muted);font-size:11px">${fd(b.lastOrder)}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function renderVolChart(){
+  const{keys,months}=getMonthlyData();
+  const labels=keys.map(k=>{const[y,m]=k.split('-');return new Date(y,m-1).toLocaleDateString('en-GB',{month:'short',year:'2-digit'});});
+
+  const volByMonth={};
+  const avgPriceByMonth={};
+  state.sales.forEach(s=>{
+    const key=parseToYYYYMM(s.date);
+    if(!key)return;
+    if(!volByMonth[key]){volByMonth[key]=0;avgPriceByMonth[key]=[];}
+    volByMonth[key]+=(s.articleCount||1);
+    avgPriceByMonth[key].push((parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0));
+  });
+  const vols=keys.map(k=>volByMonth[k]||0);
+  const avgs=keys.map(k=>{const arr=avgPriceByMonth[k]||[];return arr.length?parseFloat((arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(2)):0;});
+
+  document.getElementById('vol-legend').innerHTML=`
+    <span><span class="lsq" style="background:#534AB7"></span>Articles sold</span>
+    <span><span class="lsq" style="background:#BA7517"></span>Avg order value (£)</span>`;
+
+  if(volChartInst)volChartInst.destroy();
+  volChartInst=new Chart(document.getElementById('volChart').getContext('2d'),{
+    type:'line',
+    data:{
+      labels:labels.length?labels:['No data'],
+      datasets:[
+        {label:'Articles sold',data:vols,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',tension:0.3,pointRadius:3,yAxisID:'y'},
+        {label:'Avg order value',data:avgs,borderColor:'#BA7517',backgroundColor:'rgba(186,117,23,0.08)',tension:0.3,pointRadius:3,yAxisID:'y2'}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.dataset.yAxisID==='y2'?'£':'')+c.raw}}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:11}}},
+        y:{position:'left',grid:{color:'rgba(128,128,128,0.08)'},ticks:{font:{size:11}},title:{display:true,text:'Articles',font:{size:10},color:'var(--muted)'}},
+        y2:{position:'right',grid:{display:false},ticks:{callback:v=>'£'+v,font:{size:11}},title:{display:true,text:'Avg value',font:{size:10},color:'var(--muted)'}}
+      }
+    }
+  });
+}
+function renderCatChart(){
+  const cats={};state.purchases.forEach(p=>{const c=p.category||'other';cats[c]=(cats[c]||0)+(parseFloat(p.amount)||0);});
+  const keys=Object.keys(cats);
+  if(catChartInst){catChartInst.destroy();catChartInst=null;}
+  if(!keys.length){document.getElementById('cat-legend').innerHTML='<span style="color:var(--muted)">No purchases yet</span>';return;}
+  document.getElementById('cat-legend').innerHTML=keys.map(k=>`<span><span class="lsq" style="background:${CAT_COLORS[k]||'#888'}"></span>${CAT_LABELS[k]||k} ${fm(cats[k])}</span>`).join('');
+  catChartInst=new Chart(document.getElementById('catChart'),{type:'doughnut',data:{labels:keys.map(k=>CAT_LABELS[k]||k),datasets:[{data:keys.map(k=>+cats[k].toFixed(2)),backgroundColor:keys.map(k=>CAT_COLORS[k]||'#888'),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: £${c.raw.toFixed(2)}`}}}}});
+}
+
+// ---- SALES ----
+function renderSalesTable(){
+  const tbody=document.getElementById('sales-tbody');
+  if(!state.sales.length){tbody.innerHTML='<tr><td colspan="10" class="empty">No sales logged yet.</td></tr>';return;}
+  tbody.innerHTML=[...state.sales].reverse().map((s,ri)=>{
+    const idx=state.sales.length-1-ri,pr=calcSaleProfit(s),pc=parseFloat(s.postageCost)||0,sc=calcSaleSupplies(s),fee=getPlatformFee(s.platform,s.price,s.articleCount,s.actualCommission,s.promotedFee||0),sh=parseFloat(s.shippingCharged)||0;
+    return`<tr><td>${fd(s.date)}</td><td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.item||''}">${s.item||'—'}</td><td><span class="badge badge-${(s.platform||'').toLowerCase()}">${s.platform}</span></td><td>${fm(s.price)}</td><td>${fm(sh)}</td><td>${fm(pc)}</td><td>${fm(sc)}</td><td>${fm(fee)}</td><td class="${pr>=0?'profit-pos':'profit-neg'}">${fm(pr)}</td><td><button class="btn sm danger" onclick="deleteSale(${idx})"><i class="ti ti-trash"></i></button></td></tr>`;
+  }).join('');
+}
+function deleteSale(idx){if(!confirm('Delete this sale?'))return;state.sales.splice(idx,1);scheduleSave('Sales');renderSalesTable();}
+function initSaleForm(){
+  document.getElementById('s-date').value=today();
+  const sh=document.getElementById('s-shipping');if(sh&&!sh.value)sh.value='1.17';
+  document.getElementById('s-postage').innerHTML=state.postage.map(p=>`<option value="${p.name}">${p.name} (£${p.cost.toFixed(2)})</option>`).join('');
+
+  const STANDARD_PKG=['Thermal label','Penny sleeve','Toploader','Team bag','Promotional sticker','A6 envelope'];
+  const defaults={'Thermal label':1,'Promotional sticker':1,'Team bag':1,'A6 envelope':1};
+
+  const PKG_GROUPS=[
+    {label:'Standard packaging', names:['Thermal label','Penny sleeve','Toploader','Team bag','Promotional sticker','A6 envelope']},
+    {label:'Envelopes & mailers — Letter', names:['C7/A7 envelope','A6 bubble mailer']},
+    {label:'Envelopes & mailers — Large letter', names:['A5 envelope','A5/C5 PIP envelope','A5 bubble mailer','C6/A6 box']},
+    {label:'Accessories', names:['A4 label','Foam insert','Card Cocoon']},
+    {label:'Boxes — Small parcel', names:['M4 envelope','10x8x4 box']},
+  ];
+
+  function pkgItem(p){
+    const def=defaults[p.name]||0;
+    return`<div class="pkg-item"><label title="${p.name}" style="flex:1"><span style="font-size:12px">${p.name}</span><span style="font-size:10px;color:var(--muted);display:block">£${p.cost.toFixed(2)}</span></label><input type="number" min="0" value="${def}" id="pkg-${p.name.replace(/\W+/g,'_')}" oninput="updateSalePreview()"></div>`;
+  }
+
+  // Find containers
+  const stdEl=document.getElementById('pkg-inputs-standard');
+  const extEl=document.getElementById('pkg-inputs-extra');
+
+  // Standard group
+  if(stdEl){
+    const standardItems=PKG_GROUPS[0].names.map(n=>state.packaging.find(p=>p.name===n)).filter(Boolean);
+    stdEl.innerHTML=standardItems.map(pkgItem).join('');
+  }
+
+  // Extra groups
+  if(extEl){
+    extEl.style.display='grid';
+    extEl.style.gridTemplateColumns='repeat(3,1fr)';
+    extEl.style.gap='6px';
+    let html='';
+    for(const group of PKG_GROUPS.slice(1)){
+      const items=group.names.map(n=>state.packaging.find(p=>p.name===n)).filter(Boolean);
+      if(items.length){
+        html+=`<div style="font-size:10px;font-weight:600;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;padding:6px 0 2px;grid-column:1/-1;border-top:1px solid var(--border);margin-top:4px">${group.label}</div>`;
+        html+=items.map(pkgItem).join('');
+      }
+    }
+    // Any remaining unlisted packaging
+    const allNamed=PKG_GROUPS.flatMap(g=>g.names);
+    const unlisted=state.packaging.filter(p=>!allNamed.includes(p.name));
+    if(unlisted.length){
+      html+=`<div style="font-size:10px;font-weight:600;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;padding:6px 0 2px;grid-column:1/-1;border-top:1px solid var(--border);margin-top:4px">Other</div>`;
+      html+=unlisted.map(pkgItem).join('');
+    }
+    extEl.innerHTML=html;
+  }
+
+  togglePromotedField();
+  updateSalePreview();
+}
+function updateSalePreview(){
+  const price=parseFloat(document.getElementById('s-price')?.value)||0,shipping=parseFloat(document.getElementById('s-shipping')?.value)||0,platform=document.getElementById('s-platform')?.value||'Cardmarket',postName=document.getElementById('s-postage')?.value,post=state.postage.find(p=>p.name===postName),pc=post?post.cost:0,articleCount=parseInt(document.getElementById('s-article-count')?.value)||1,promotedFee=parseFloat(document.getElementById('s-promoted')?.value)||0;
+  const sc=state.packaging.reduce((a,p)=>{const inp=document.getElementById('pkg-'+p.name.replace(/\W+/g,'_'));return a+((parseInt(inp?.value)||0)*parseFloat(p.cost||0));},0);
+  const fee=getPlatformFee(platform,price,articleCount,null,promotedFee),profit=(price+shipping)-pc-sc-fee;
+  const el=document.getElementById('sale-preview');
+  if(el)el.innerHTML=`<div class="breakdown"><span>Sale: ${fm(price)}</span><span>+ Shipping: ${fm(shipping)}</span><span>− Postage: ${fm(pc)}</span><span>− Supplies: ${fm(sc)}</span><span>− Fee: ${fm(fee)}</span><span><strong style="color:${profit>=0?'var(--green)':'var(--red)'}">= Profit: ${fm(profit)}</strong></span></div>`;
+}
+function logSale(){
+  const date=document.getElementById('s-date').value,platform=document.getElementById('s-platform').value,item=document.getElementById('s-item').value.trim(),price=parseFloat(document.getElementById('s-price').value)||0,shipping=parseFloat(document.getElementById('s-shipping').value)||0,articleCount=parseInt(document.getElementById('s-article-count').value)||1,promotedFee=parseFloat(document.getElementById('s-promoted')?.value)||0,postName=document.getElementById('s-postage').value,post=state.postage.find(p=>p.name===postName);
+  const buyerUsername=document.getElementById('s-username')?.value.trim()||'';
+  if(!item){alert('Please enter a Sale ID.');return;}
+  if(!price){alert('Please enter a price.');return;}
+  const packaging=state.packaging.map(p=>({name:p.name,qty:parseInt(document.getElementById('pkg-'+p.name.replace(/\W+/g,'_'))?.value||0)})).filter(p=>p.qty>0);
+  const gameQty={
+    pokemon:parseInt(document.getElementById('gq-pokemon')?.value)||0,
+    mtg:(parseInt(document.getElementById('gq-mtg')?.value)||0)+(parseInt(document.getElementById('gq-mtg_avatar_tla')?.value)||0)+(parseInt(document.getElementById('gq-mtg_avatar_tle')?.value)||0)+(parseInt(document.getElementById('gq-mtg_marvel')?.value)||0)+(parseInt(document.getElementById('gq-mtg_strixhaven')?.value)||0)+(parseInt(document.getElementById('gq-mtg_ff')?.value)||0)+(parseInt(document.getElementById('gq-mtg_hobbit')?.value)||0),
+    mtg_hobbit:parseInt(document.getElementById('gq-mtg_hobbit')?.value)||0,
+    mtg_avatar_tla:parseInt(document.getElementById('gq-mtg_avatar_tla')?.value)||0,
+    mtg_avatar_tle:parseInt(document.getElementById('gq-mtg_avatar_tle')?.value)||0,
+    mtg_strixhaven:parseInt(document.getElementById('gq-mtg_strixhaven')?.value)||0,
+    mtg_marvel:parseInt(document.getElementById('gq-mtg_marvel')?.value)||0,
+    mtg_ff:parseInt(document.getElementById('gq-mtg_ff')?.value)||0,
+    onepiece:parseInt(document.getElementById('gq-onepiece')?.value)||0,
+    dbz:parseInt(document.getElementById('gq-dbz')?.value)||0,
+    riftbound:parseInt(document.getElementById('gq-riftbound')?.value)||0,
+    other:parseInt(document.getElementById('gq-other')?.value)||0
+  };
+  state.sales.push({date,platform,item,price,shippingCharged:shipping,postageCost:post?post.cost:0,packaging,articleCount,actualCommission:null,promotedFee,gameQty,username:buyerUsername});
+  scheduleSave('Sales');
+  buildBuyersFromSales();
+  document.getElementById('s-item').value='';document.getElementById('s-price').value='';document.getElementById('s-shipping').value='1.17';document.getElementById('s-article-count').value='';const sp=document.getElementById('s-promoted');if(sp)sp.value='';
+  const su=document.getElementById('s-username');if(su)su.value='';
+  const va=document.getElementById('s-vip-alert');if(va)va.style.display='none';
+  ['gq-pokemon','gq-mtg','gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_marvel','gq-mtg_strixhaven','gq-mtg_ff','gq-mtg_hobbit','gq-onepiece','gq-dbz','gq-riftbound','gq-other'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=0;});
+  const defaults={'Thermal label':1,'Promotional sticker':1,'Team bag':1,'A6 envelope':1};
+  state.packaging.forEach(p=>{const inp=document.getElementById('pkg-'+p.name.replace(/\W+/g,'_'));if(inp)inp.value=defaults[p.name]||0;});
+  updateSalePreview();showPage('sales');
+}
+
+// ---- PURCHASES ----
+function showPurchaseTab(cat){purchaseTab=cat;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('ptab-'+cat).classList.add('active');renderPurchasesTable(cat);}
+function renderPurchasesTable(cat){
+  const tbody=document.getElementById('purchases-tbody');
+  const list=cat==='all'?[...state.purchases].reverse():[...state.purchases].filter(p=>p.category===cat).reverse();
+  if(!list.length){tbody.innerHTML='<tr><td colspan="6" class="empty">No purchases here yet.</td></tr>';return;}
+  tbody.innerHTML=list.map(p=>{const realIdx=state.purchases.indexOf(p);return`<tr><td>${fd(p.date)}</td><td>${p.description||'—'}</td><td><span class="badge badge-${p.category||'other'}">${CAT_LABELS[p.category]||p.category||'Other'}</span></td><td>${p.supplier||'—'}</td><td>${fm(p.amount)}</td><td><button class="btn sm danger" onclick="deletePurchase(${realIdx})"><i class="ti ti-trash"></i></button></td></tr>`;}).join('');
+}
+function logPurchase(){
+  const date=document.getElementById('p-date').value,category=document.getElementById('p-category').value,description=document.getElementById('p-desc').value.trim(),amount=parseFloat(document.getElementById('p-amount').value)||0,supplier=document.getElementById('p-supplier').value.trim(),set=document.getElementById('p-set')?.value.trim()||'';
+  if(!description){alert('Please enter a description.');return;}
+  if(!amount){alert('Please enter an amount.');return;}
+  state.purchases.push({date,category,description,amount,supplier,set});
+  scheduleSave('Purchases');
+  document.getElementById('p-desc').value='';document.getElementById('p-amount').value='';document.getElementById('p-supplier').value='';
+  const ps=document.getElementById('p-set');if(ps)ps.value='';
+  showPage('purchases');
+}
+function deletePurchase(idx){if(!confirm('Delete this purchase?'))return;state.purchases.splice(idx,1);scheduleSave('Purchases');renderPurchasesTable(purchaseTab);}
+
+// ---- COLLECTION ----
+function toggleGradedFields(){
+  const type=document.getElementById('ci-type').value;
+  document.getElementById('ci-status-group').style.display=type==='graded'?'flex':'none';
+  document.getElementById('ci-set-row').style.display=type==='sealed'?'none':'grid';
+}
+
+function addCollectionItem(){
+  const name=document.getElementById('ci-name').value.trim();
+  if(!name){alert('Please enter a name.');return;}
+  const item={
+    id:uid(),name,
+    type:document.getElementById('ci-type').value,
+    game:document.getElementById('ci-game').value,
+    status:document.getElementById('ci-type').value==='graded'?document.getElementById('ci-status').value:'collection',
+    set:document.getElementById('ci-set').value.trim(),
+    cn:document.getElementById('ci-cn').value.trim(),
+    cost:parseFloat(document.getElementById('ci-cost').value)||0,
+    marketValue:parseFloat(document.getElementById('ci-value').value)||0,
+    priceUrl:document.getElementById('ci-url').value.trim(),
+    notes:document.getElementById('ci-notes').value.trim(),
+  };
+  state.collection.push(item);
+  scheduleSave('Collection');
+  ['ci-name','ci-set','ci-cn','ci-cost','ci-value','ci-url','ci-notes'].forEach(id=>document.getElementById(id).value='');
+  showPage('collection');
+}
+
+function showCollTab(tab){
+  collTab=tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('ctab-'+tab).classList.add('active');
+  renderCollectionTable(tab);
+}
+
+function renderCollectionTable(tab){
+  const tbody=document.getElementById('collection-tbody');
+  const list=tab==='all'?[...state.collection]:[...state.collection].filter(c=>c.type===tab);
+  if(!list.length){tbody.innerHTML='<tr><td colspan="9" class="empty">Nothing here yet.</td></tr>';return;}
+  tbody.innerHTML=list.map(c=>{
+    const gain=(parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0);
+    const realIdx=state.collection.indexOf(c);
+    const statusLabel=c.type==='graded'?(c.status==='psa'?'At PSA':c.status==='pending'?'Pending':'In collection'):'—';
+    const urlBtn=c.priceUrl?`<a href="${c.priceUrl}" target="_blank" class="btn sm" title="Open price link"><i class="ti ti-external-link"></i></a>`:'-';
+    return`<tr>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.name}">${c.name}</td>
+      <td><span class="badge badge-${c.type}">${c.type==='sealed'?'Sealed':c.type==='single'?'Single':'Graded'}</span></td>
+      <td>${c.type==='graded'?`<span class="badge badge-${c.status}">${statusLabel}</span>`:'—'}</td>
+      <td>${[c.set,c.cn?'#'+c.cn:''].filter(Boolean).join(' ')||'—'}</td>
+      <td>${fm(c.cost)}</td>
+      <td><input class="inline-input" type="number" step="0.01" value="${parseFloat(c.marketValue)||0}" onchange="updateMarketValue('${c.id}',this.value)"></td>
+      <td class="${gain>=0?'profit-pos':'profit-neg'}">${gain>=0?'+':''}${fm(gain)}</td>
+      <td>${urlBtn}</td>
+      <td><button class="btn sm danger" onclick="deleteCollItem(${realIdx})"><i class="ti ti-trash"></i></button></td>
+    </tr>`;
+  }).join('');
+}
+
+function deleteCollItem(idx){
+  if(!confirm('Remove this item from your collection?'))return;
+  state.collection.splice(idx,1);scheduleSave('Collection');
+  renderCollectionTable(collTab);renderCollectionDashboard();
+}
+
+// ---- SETTINGS ----
+function renderSettings(){
+  const s=state.settings;
+  document.getElementById('set-cm').value=s.cmFee;document.getElementById('set-eb').value=s.ebFee;document.getElementById('set-ot').value=s.otFee;document.getElementById('set-inventory').value=s.inventoryValue||0;
+  document.getElementById('pkg-settings').innerHTML=state.packaging.map((p,i)=>`<div class="settings-row"><label>${p.name}</label><input type="number" step="0.0001" value="${p.cost.toFixed(4)}" onchange="updatePkgCost(${i},this.value)"><button class="btn sm danger" onclick="removePkg(${i})" style="margin-left:6px"><i class="ti ti-trash"></i></button></div>`).join('');
+  document.getElementById('postage-settings').innerHTML=state.postage.map((p,i)=>`<div class="settings-row"><label>${p.name}</label><input type="number" step="0.01" value="${p.cost.toFixed(2)}" onchange="updatePostCost(${i},this.value)"><button class="btn sm danger" onclick="removePost(${i})" style="margin-left:6px"><i class="ti ti-trash"></i></button></div>`).join('');
+}
+function saveSettings(){state.settings.cmFee=parseFloat(document.getElementById('set-cm').value)||5;state.settings.ebFee=parseFloat(document.getElementById('set-eb').value)||12;state.settings.otFee=parseFloat(document.getElementById('set-ot').value)||0;state.settings.inventoryValue=parseFloat(document.getElementById('set-inventory').value)||0;scheduleSave('Settings');}
+function updatePkgCost(i,v){state.packaging[i].cost=parseFloat(v)||0;scheduleSave('Packaging');}
+function removePkg(i){if(!confirm('Remove?'))return;state.packaging.splice(i,1);scheduleSave('Packaging');renderSettings();}
+function addPkg(){const name=document.getElementById('new-pkg-name').value.trim(),cost=parseFloat(document.getElementById('new-pkg-cost').value)||0;if(!name)return;state.packaging.push({name,cost});scheduleSave('Packaging');document.getElementById('new-pkg-name').value='';document.getElementById('new-pkg-cost').value='';renderSettings();}
+function updatePostCost(i,v){state.postage[i].cost=parseFloat(v)||0;scheduleSave('Postage');}
+function removePost(i){if(!confirm('Remove?'))return;state.postage.splice(i,1);scheduleSave('Postage');renderSettings();}
+function addPost(){const name=document.getElementById('new-post-name').value.trim(),cost=parseFloat(document.getElementById('new-post-cost').value)||0;if(!name)return;state.postage.push({name,cost});scheduleSave('Postage');document.getElementById('new-post-name').value='';document.getElementById('new-post-cost').value='';renderSettings();}
+
+// ---- CSV EXPORT ----
+function exportCSV(){
+  const rows=[['SALES'],['Date','Item','Platform','Price Sold','Shipping Charged','Postage Cost','Supplies Cost','Platform Fee','Profit','Article Count'],...state.sales.map(s=>[s.date,`"${s.item||''}"`,s.platform,(parseFloat(s.price)||0).toFixed(2),(parseFloat(s.shippingCharged)||0).toFixed(2),(parseFloat(s.postageCost)||0).toFixed(2),calcSaleSupplies(s).toFixed(2),getPlatformFee(s.platform,s.price,s.articleCount,s.actualCommission,s.promotedFee||0).toFixed(2),calcSaleProfit(s).toFixed(2),s.articleCount||1]),
+    [],['PURCHASES'],['Date','Description','Category','Supplier','Amount'],...state.purchases.map(p=>[p.date,`"${p.description||''}"`,p.category||'other',`"${p.supplier||''}"` ,(parseFloat(p.amount)||0).toFixed(2)]),
+    [],['COLLECTION'],['Name','Type','Status','Set','CN','Cost','MarketValue','Notes'],...state.collection.map(c=>[`"${c.name}"`,c.type,c.status,`"${c.set||''}"`,c.cn||'',(parseFloat(c.cost)||0).toFixed(2),(parseFloat(c.marketValue)||0).toFixed(2),`"${c.notes||''}"`])];
+  const blob=new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`cardtracker_${today()}.csv`;a.click();
+}
+
+async function refreshGamePrices(){
+  const btn=document.getElementById('refresh-games-btn');
+  const status=document.getElementById('refresh-games-status');
+
+  btn.disabled=true;
+  btn.innerHTML='<i class="ti ti-refresh"></i> Requested...';
+  status.style.display='block';
+  status.style.color='var(--muted)';
+
+  try{
+    await sheetsPost({action:'save',sheet:'Status',rows:[['Key','Value'],['LastGameRefresh','pending'],['GamesUpdated',0]]});
+    
+    // Countdown then auto-sync
+    let secs=300;
+    const interval=setInterval(()=>{
+      secs--;
+      const mins=Math.floor(secs/60);
+      const s=String(secs%60).padStart(2,'0');
+      status.textContent=`Price refresh in progress — syncing in ${mins}:${s}...`;
+      if(secs<=0){
+        clearInterval(interval);
+        status.textContent='Fetching updated prices...';
+        loadFromSheets().then(()=>{
+          renderGamesPage();
+          renderDashboard();
+        });
+      }
+    },1000);
+
+    btn.innerHTML='<i class="ti ti-refresh"></i> Refresh prices';
+    btn.disabled=false;
+  }catch(e){
+    status.textContent='Could not write refresh request. Try syncing manually.';
+    status.style.color='var(--red)';
+    btn.innerHTML='<i class="ti ti-refresh"></i> Refresh prices';
+    btn.disabled=false;
+  }
+}
+
+// ---- GAMES ----
+let gamesChartInst=null;
+
+function addGame(){
+  const name=document.getElementById('g-name').value.trim();
+  const platform=document.getElementById('g-platform').value.trim();
+  if(!name){alert('Please enter a game name.');return;}
+  if(!platform){alert('Please enter a platform.');return;}
+  const game={
+    id:uid(),name,platform,
+    condition:document.getElementById('g-condition').value,
+    cost:parseFloat(document.getElementById('g-cost')?.value)||0,
+    value:parseFloat(document.getElementById('g-value').value)||0,
+    added:today()
+  };
+  state.games.push(game);
+  scheduleSave('Games');
+  showPage('games');
+}
+
+function deleteGame(id){
+  if(!confirm('Remove this game?'))return;
+  state.games=state.games.filter(g=>g.id!==id);
+  scheduleSave('Games');
+  renderGamesPage();
+}
+
+function updateGameValue(id,val){
+  const game=state.games.find(g=>g.id===id);
+  if(!game)return;
+  game.value=parseFloat(val)||0;
+  scheduleSave('Games');
+  renderGamesPage();
+}
+
+function renderGamesPage(){
+  const games=state.games;
+  const totalValue=games.reduce((a,g)=>a+g.value,0);
+  const platforms=[...new Set(games.map(g=>g.platform))].sort();
+
+  const totalCost=games.reduce((a,g)=>a+g.cost,0);
+  const totalGain=totalValue-totalCost;
+
+  document.getElementById('games-summary').innerHTML=`
+    <div class="coll-metric"><div class="coll-metric-label">Total games</div><div class="coll-metric-value">${games.length}</div></div>
+    <div class="coll-metric"><div class="coll-metric-label">Cost paid</div><div class="coll-metric-value">${fm(totalCost)}</div></div>
+    <div class="coll-metric"><div class="coll-metric-label">Collection value</div><div class="coll-metric-value">${fm(totalValue)}</div></div>
+    <div class="coll-metric"><div class="coll-metric-label">Gain / loss</div><div class="coll-metric-value ${totalGain>=0?'up':'down'}">${totalGain>=0?'+':''}${fm(totalGain)}</div></div>`;
+
+  // Show last refresh status
+  const statusEl=document.getElementById('refresh-games-status');
+  if(statusEl&&state._lastGameRefresh&&state._lastGameRefresh!=='pending'){
+    const d=new Date(state._lastGameRefresh);
+    statusEl.style.display='block';
+    statusEl.style.color='var(--green)';
+    statusEl.textContent=`Last refreshed: ${d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})} at ${d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})} · ${state._gamesUpdated} games updated`;
+  }
+  const PLATFORM_COLORS=['#185FA5','#1D9E75','#534AB7','#D85A30','#BA7517','#DC2626','#0BC4C4','#9333EA','#065F46','#92400E'];
+  const platformColorMap={};
+  platforms.forEach((p,i)=>platformColorMap[p]=PLATFORM_COLORS[i%PLATFORM_COLORS.length]);
+
+  // Chart from GameSnapshots — if we have per-platform columns use them, else show total only
+  if(gamesChartInst) gamesChartInst.destroy();
+  const snaps=state.gameSnapshots||[];
+  const legendEl=document.getElementById('games-legend');
+
+  if(snaps.length>0){
+    const labels=snaps.map(s=>fd(s.date));
+    // Check if snapshots have platform columns
+    const firstSnap=snaps[0];
+    const platformKeys=Object.keys(firstSnap).filter(k=>k.startsWith('Platform_'));
+
+    let datasets;
+    if(platformKeys.length>0){
+      datasets=platformKeys.map(key=>{
+        const pName=key.replace('Platform_','').replace(/_/g,' ');
+        const color=platformColorMap[pName]||'#888';
+        return{label:pName,data:snaps.map(s=>parseFloat(s[key])||0),borderColor:color,backgroundColor:color+'20',tension:0.3,pointRadius:3,fill:false};
+      }).filter(d=>d.data.some(v=>v>0));
+      if(legendEl) legendEl.innerHTML=datasets.map(d=>`<span><span class="lsq" style="background:${d.borderColor}"></span>${d.label}</span>`).join('');
+    } else {
+      // Fallback: total only
+      datasets=[{label:'Total value',data:snaps.map(s=>s.value),borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',tension:0.3,pointRadius:3,fill:true}];
+      if(legendEl) legendEl.innerHTML='<span style="color:var(--muted);font-size:11px">Upload a new CSV to enable per-platform tracking</span>';
+    }
+
+    gamesChartInst=new Chart(document.getElementById('gamesChart').getContext('2d'),{
+      type:'line',
+      data:{labels,datasets},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:11}}}}}
+    });
+  } else {
+    if(legendEl) legendEl.innerHTML='<span style="color:var(--muted);font-size:11px">No snapshot data yet</span>';
+  }
+
+  const el=document.getElementById('games-by-platform');
+  if(!games.length){el.innerHTML='<div class="empty">No games added yet</div>';return;}
+
+  const sorted=[...games].sort((a,b)=>a.platform.localeCompare(b.platform)||b.value-a.value);
+  const tbody=document.getElementById('games-tbody');
+  if(!tbody) return;
+
+  const CONDITION_COLORS={'Sealed':'#065F46','Near Mint':'#1D9E75','Good':'#185FA5','Played':'#BA7517','Poor':'#D85A30'};
+
+  let html='';
+  let lastPlatform=null;
+  sorted.forEach(g=>{
+    if(g.platform!==lastPlatform){
+      const ptotal=games.filter(x=>x.platform===g.platform).reduce((a,x)=>a+x.value,0);
+      const pcost=games.filter(x=>x.platform===g.platform).reduce((a,x)=>a+x.cost,0);
+      const pgain=ptotal-pcost;
+      html+=`<tr style="background:var(--surface2)"><td colspan="2" style="font-weight:600;font-size:12px;color:var(--muted);letter-spacing:0.04em;text-transform:uppercase;padding:6px 10px">
+        <span style="width:8px;height:8px;border-radius:50%;background:${platformColorMap[g.platform]||'#888'};display:inline-block;margin-right:6px"></span>${g.platform}
+      </td><td></td><td style="font-weight:600;font-size:12px;padding:6px 10px">${fm(pcost)}</td><td style="font-weight:600;font-size:12px;padding:6px 10px">${fm(ptotal)}</td><td style="font-weight:600;font-size:12px;padding:6px 10px" class="${pgain>=0?'profit-pos':'profit-neg'}">${pgain>=0?'+':''}${fm(pgain)}</td><td></td></tr>`;
+      lastPlatform=g.platform;
+    }
+    const gain=g.value-g.cost;
+    html+=`<tr>
+      <td style="padding-left:20px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${g.name}">${g.name}</td>
+      <td></td>
+      <td><span style="font-size:11px;font-weight:500;color:${CONDITION_COLORS[g.condition]||'var(--muted)'}">${g.condition||'—'}</span></td>
+      <td style="color:var(--muted)">${g.cost>0?fm(g.cost):'—'}</td>
+      <td><input class="inline-input" type="number" step="0.01" value="${g.value}" onchange="updateGameValue('${g.id}',this.value)"></td>
+      <td class="${gain>=0?'profit-pos':'profit-neg'}">${g.cost>0?(gain>=0?'+':'')+fm(gain):'—'}</td>
+      <td><button class="btn sm danger" onclick="deleteGame('${g.id}')"><i class="ti ti-trash"></i></button></td>
+    </tr>`;
+  });
+  tbody.innerHTML=html;
+}
+
+// ---- INIT ----
+async function init(){await loadFromSheets();document.getElementById('loading-overlay').style.display='none';renderDashboard();}
+init();
+</script>
+</body>
+</html>
