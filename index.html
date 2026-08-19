@@ -1581,6 +1581,7 @@ async function refreshGamePrices(){
     });
     const data=await response.json();
     if(!data.ok) throw new Error(data.error||'Script error');
+    if(!data.text) throw new Error('No text. Debug: ' + (data.debug||'none'));
 
     const jsonMatch=data.text.match(/\[[\s\S]*?\]/);
     if(!jsonMatch) throw new Error('Could not parse prices from response');
