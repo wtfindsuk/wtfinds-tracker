@@ -144,6 +144,8 @@ tr:hover td{background:var(--surface2)}
 .net-tile-label{font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
 .net-tile-value{font-size:32px;font-weight:700}
 .net-tile-sub{font-size:12px;color:var(--muted);margin-top:4px}
+.nav-btn-action{color:var(--text)!important;font-weight:500}
+.nav-btn-action:active{transform:translateY(1px);box-shadow:inset 0 2px 4px rgba(0,0,0,0.5);filter:brightness(0.75);transition:none}
 </style>
 </head>
 <body>
@@ -166,16 +168,16 @@ tr:hover td{background:var(--surface2)}
     <div id="nav-cards-section">
       <button class="nav-btn active" onclick="showPage('dashboard')" id="nav-dashboard"><i class="ti ti-chart-bar"></i> Dashboard</button>
       <div class="nav-section">
-        <button class="nav-btn nav-btn-action" onclick="showPage('log-sale');navFlash(this)" id="nav-log-sale"><i class="ti ti-plus"></i> Log sale</button>
+        <button class="nav-btn nav-btn-action" onclick="showPage('log-sale')" id="nav-log-sale"><i class="ti ti-plus"></i> Log sale</button>
         <button class="nav-btn" onclick="showPage('sales')" id="nav-sales"><i class="ti ti-receipt"></i> Sales</button>
       </div>
       <div class="nav-section">
-        <button class="nav-btn nav-btn-action" onclick="showPage('log-purchase');navFlash(this)" id="nav-log-purchase"><i class="ti ti-plus"></i> Log purchase</button>
+        <button class="nav-btn nav-btn-action" onclick="showPage('log-purchase')" id="nav-log-purchase"><i class="ti ti-plus"></i> Log purchase</button>
         <button class="nav-btn" onclick="showPage('purchases')" id="nav-purchases"><i class="ti ti-shopping-bag"></i> Purchases</button>
       </div>
       <div class="nav-section">
         <button class="nav-btn" onclick="showPage('collection')" id="nav-collection"><i class="ti ti-stack"></i> Collection</button>
-        <button class="nav-btn nav-btn-action" onclick="document.getElementById('collectr-csv-input').click();navFlash(this)"><i class="ti ti-upload"></i> Import Collectr CSV</button>
+        <button class="nav-btn nav-btn-action" onclick="document.getElementById('collectr-csv-input').click()"><i class="ti ti-upload"></i> Import Collectr CSV</button>
         <input type="file" id="collectr-csv-input" accept=".csv" style="display:none" onchange="importCollectrCsv(this)">
       </div>
       <div class="nav-section">
@@ -189,7 +191,7 @@ tr:hover td{background:var(--surface2)}
         <button class="nav-btn" onclick="showPage('games')" id="nav-games"><i class="ti ti-device-gamepad-2"></i> Game collection</button>
       </div>
       <div class="nav-section">
-        <button class="nav-btn nav-btn-action" onclick="document.getElementById('games-csv-nav-input').click();navFlash(this)"><i class="ti ti-upload"></i> Import PriceCharting CSV</button>
+        <button class="nav-btn nav-btn-action" onclick="document.getElementById('games-csv-nav-input').click()"><i class="ti ti-upload"></i> Import PriceCharting CSV</button>
         <input type="file" id="games-csv-nav-input" accept=".csv" style="display:none" onchange="importGamesCsv(this)">
       </div>
     </div>
@@ -777,8 +779,6 @@ function setGamesSort(col){
   else{gamesSortCol=col;gamesSortDir=1;}
   renderGamesPage();
 }
-
-function navFlash(el){el.classList.remove('nav-btn-flash');void el.offsetWidth;el.classList.add('nav-btn-flash');setTimeout(()=>el.classList.remove('nav-btn-flash'),700);}
 
 function setNavMode(mode,navigate=true){
   document.getElementById('nav-cards-section').style.display=mode==='cards'?'block':'none';
