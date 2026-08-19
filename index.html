@@ -166,16 +166,16 @@ tr:hover td{background:var(--surface2)}
     <div id="nav-cards-section">
       <button class="nav-btn active" onclick="showPage('dashboard')" id="nav-dashboard"><i class="ti ti-chart-bar"></i> Dashboard</button>
       <div class="nav-section">
-        <button class="nav-btn" onclick="showPage('log-sale')" id="nav-log-sale"><i class="ti ti-plus"></i> Log sale</button>
+        <button class="nav-btn nav-btn-action" onclick="showPage('log-sale');navFlash(this)" id="nav-log-sale"><i class="ti ti-plus"></i> Log sale</button>
         <button class="nav-btn" onclick="showPage('sales')" id="nav-sales"><i class="ti ti-receipt"></i> Sales</button>
       </div>
       <div class="nav-section">
-        <button class="nav-btn" onclick="showPage('log-purchase')" id="nav-log-purchase"><i class="ti ti-plus"></i> Log purchase</button>
+        <button class="nav-btn nav-btn-action" onclick="showPage('log-purchase');navFlash(this)" id="nav-log-purchase"><i class="ti ti-plus"></i> Log purchase</button>
         <button class="nav-btn" onclick="showPage('purchases')" id="nav-purchases"><i class="ti ti-shopping-bag"></i> Purchases</button>
       </div>
       <div class="nav-section">
         <button class="nav-btn" onclick="showPage('collection')" id="nav-collection"><i class="ti ti-stack"></i> Collection</button>
-        <button class="nav-btn" onclick="document.getElementById('collectr-csv-input').click()"><i class="ti ti-upload"></i> Import Collectr CSV</button>
+        <button class="nav-btn nav-btn-action" onclick="document.getElementById('collectr-csv-input').click();navFlash(this)"><i class="ti ti-upload"></i> Import Collectr CSV</button>
         <input type="file" id="collectr-csv-input" accept=".csv" style="display:none" onchange="importCollectrCsv(this)">
       </div>
       <div class="nav-section">
@@ -187,8 +187,9 @@ tr:hover td{background:var(--surface2)}
     <div id="nav-games-section" style="display:none">
       <div class="nav-section" style="border-top:none">
         <button class="nav-btn" onclick="showPage('games')" id="nav-games"><i class="ti ti-device-gamepad-2"></i> Game collection</button>
-        <button class="nav-btn" onclick="showPage('add-game')" id="nav-add-game"><i class="ti ti-plus"></i> Add game</button>
-        <button class="nav-btn" onclick="document.getElementById('games-csv-nav-input').click()"><i class="ti ti-upload"></i> Import PriceCharting CSV</button>
+      </div>
+      <div class="nav-section">
+        <button class="nav-btn nav-btn-action" onclick="document.getElementById('games-csv-nav-input').click();navFlash(this)"><i class="ti ti-upload"></i> Import PriceCharting CSV</button>
         <input type="file" id="games-csv-nav-input" accept=".csv" style="display:none" onchange="importGamesCsv(this)">
       </div>
     </div>
@@ -485,19 +486,17 @@ tr:hover td{background:var(--surface2)}
         </div>
       </div>
       <div class="card" style="padding:0;margin-bottom:14px">
-        <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap">
-          <span style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.04em">Sort by</span>
-          <select id="games-sort" onchange="renderGamesPage()" style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px">
-            <option value="gain_gbp">Gain £</option>
-            <option value="gain_pct">Gain %</option>
-            <option value="platform">Platform</option>
-            <option value="condition">Condition</option>
-            <option value="cost">Cost</option>
-            <option value="value">Value</option>
-          </select>
-        </div>
         <div style="overflow-x:auto"><table id="games-table" style="font-size:13px;width:100%">
-          <thead><tr><th>Name</th><th>Platform</th><th>Condition</th><th>Cost</th><th>Value</th><th>Gain £</th><th>Gain %</th><th></th></tr></thead>
+          <thead><tr>
+            <th>Name</th>
+            <th onclick="setGamesSort('platform')" style="cursor:pointer;user-select:none" id="gsort-platform">Platform <span id="gsort-platform-icon"></span></th>
+            <th onclick="setGamesSort('condition')" style="cursor:pointer;user-select:none" id="gsort-condition">Condition <span id="gsort-condition-icon"></span></th>
+            <th onclick="setGamesSort('cost')" style="cursor:pointer;user-select:none" id="gsort-cost">Cost <span id="gsort-cost-icon"></span></th>
+            <th onclick="setGamesSort('value')" style="cursor:pointer;user-select:none" id="gsort-value">Value <span id="gsort-value-icon"></span></th>
+            <th onclick="setGamesSort('gain_gbp')" style="cursor:pointer;user-select:none" id="gsort-gain_gbp">Gain £ <span id="gsort-gain_gbp-icon">↓</span></th>
+            <th onclick="setGamesSort('gain_pct')" style="cursor:pointer;user-select:none" id="gsort-gain_pct">Gain % <span id="gsort-gain_pct-icon"></span></th>
+            <th></th>
+          </tr></thead>
           <tbody id="games-tbody"></tbody>
         </table></div>
       </div>
@@ -770,6 +769,16 @@ function buildBuyersFromSales(){
   const sheetOnly=(state._sheetBuyers||[]).filter(b=>!salesUsernames.has(b.username.toLowerCase()));
   state.buyers=[...Object.values(map),...sheetOnly];
 }
+
+let gamesSortCol='gain_gbp', gamesSortDir=1;
+
+function setGamesSort(col){
+  if(gamesSortCol===col) gamesSortDir*=-1;
+  else{gamesSortCol=col;gamesSortDir=1;}
+  renderGamesPage();
+}
+
+function navFlash(el){el.classList.remove('nav-btn-flash');void el.offsetWidth;el.classList.add('nav-btn-flash');setTimeout(()=>el.classList.remove('nav-btn-flash'),700);}
 
 function setNavMode(mode,navigate=true){
   document.getElementById('nav-cards-section').style.display=mode==='cards'?'block':'none';
@@ -1938,17 +1947,23 @@ function renderGamesPage(){
   }
 
   const CONDITION_COLORS={'Sealed':'#065F46','Near Mint':'#1D9E75','Good':'#185FA5','Played':'#BA7517','Poor':'#D85A30'};
-  const sortBy=document.getElementById('games-sort')?.value||'gain_gbp';
+  // Update sort header icons
+  ['platform','condition','cost','value','gain_gbp','gain_pct'].forEach(col=>{
+    const el=document.getElementById(`gsort-${col}-icon`);
+    if(el) el.textContent=gamesSortCol===col?(gamesSortDir===1?'↓':'↑'):'';
+  });
+
   const sorted=[...games].sort((a,b)=>{
     const gainA=a.value-a.cost, gainB=b.value-b.cost;
     const pctA=a.cost>0?(gainA/a.cost):0, pctB=b.cost>0?(gainB/b.cost):0;
-    if(sortBy==='gain_gbp') return gainB-gainA;
-    if(sortBy==='gain_pct') return pctB-pctA;
-    if(sortBy==='platform') return a.platform.localeCompare(b.platform)||gainB-gainA;
-    if(sortBy==='condition') return a.condition.localeCompare(b.condition)||gainB-gainA;
-    if(sortBy==='cost') return b.cost-a.cost;
-    if(sortBy==='value') return b.value-a.value;
-    return gainB-gainA;
+    let cmp=0;
+    if(gamesSortCol==='gain_gbp') cmp=gainB-gainA;
+    else if(gamesSortCol==='gain_pct') cmp=pctB-pctA;
+    else if(gamesSortCol==='platform') cmp=a.platform.localeCompare(b.platform);
+    else if(gamesSortCol==='condition') cmp=a.condition.localeCompare(b.condition);
+    else if(gamesSortCol==='cost') cmp=b.cost-a.cost;
+    else if(gamesSortCol==='value') cmp=b.value-a.value;
+    return cmp*gamesSortDir;
   });
   const withCost=sorted.filter(g=>g.cost>0);
   const gainers=withCost.slice(0,5);
