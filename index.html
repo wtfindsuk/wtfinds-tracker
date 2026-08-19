@@ -188,6 +188,8 @@ tr:hover td{background:var(--surface2)}
       <div class="nav-section" style="border-top:none">
         <button class="nav-btn" onclick="showPage('games')" id="nav-games"><i class="ti ti-device-gamepad-2"></i> Game collection</button>
         <button class="nav-btn" onclick="showPage('add-game')" id="nav-add-game"><i class="ti ti-plus"></i> Add game</button>
+        <button class="nav-btn" onclick="document.getElementById('games-csv-nav-input').click()"><i class="ti ti-upload"></i> Import PriceCharting CSV</button>
+        <input type="file" id="games-csv-nav-input" accept=".csv" style="display:none" onchange="importGamesCsv(this)">
       </div>
     </div>
     <div class="sidebar-footer">
@@ -462,13 +464,7 @@ tr:hover td{background:var(--surface2)}
 
     <!-- GAMES COLLECTION -->
     <div id="page-games" class="page">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <div class="page-title" style="margin-bottom:0">Game collection</div>
-        <div style="display:flex;gap:8px">
-          <button class="btn" onclick="document.getElementById('games-csv-input').click()"><i class="ti ti-upload"></i> Import PriceCharting CSV</button>
-          <input type="file" id="games-csv-input" accept=".csv" style="display:none" onchange="importGamesCsv(this)">
-        </div>
-      </div>
+      <div class="page-title">Game collection</div>
       <div id="refresh-games-status" style="display:none;font-size:12px;color:var(--muted);margin-bottom:10px;padding:8px 12px;background:var(--surface2);border-radius:var(--radius-sm)"></div>
       <div class="coll-summary" id="games-summary"></div>
       <div class="card" style="margin-bottom:14px">
@@ -489,6 +485,17 @@ tr:hover td{background:var(--surface2)}
         </div>
       </div>
       <div class="card" style="padding:0;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap">
+          <span style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.04em">Sort by</span>
+          <select id="games-sort" onchange="renderGamesPage()" style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px">
+            <option value="gain_gbp">Gain £</option>
+            <option value="gain_pct">Gain %</option>
+            <option value="platform">Platform</option>
+            <option value="condition">Condition</option>
+            <option value="cost">Cost</option>
+            <option value="value">Value</option>
+          </select>
+        </div>
         <div style="overflow-x:auto"><table id="games-table" style="font-size:13px;width:100%">
           <thead><tr><th>Name</th><th>Platform</th><th>Condition</th><th>Cost</th><th>Value</th><th>Gain £</th><th>Gain %</th><th></th></tr></thead>
           <tbody id="games-tbody"></tbody>
@@ -764,11 +771,15 @@ function buildBuyersFromSales(){
   state.buyers=[...Object.values(map),...sheetOnly];
 }
 
-function setNavMode(mode){
+function setNavMode(mode,navigate=true){
   document.getElementById('nav-cards-section').style.display=mode==='cards'?'block':'none';
   document.getElementById('nav-games-section').style.display=mode==='games'?'block':'none';
   document.getElementById('mode-cards').className='nav-mode-btn'+(mode==='cards'?' active':'');
   document.getElementById('mode-games').className='nav-mode-btn'+(mode==='games'?' active':'');
+  if(navigate){
+    if(mode==='games') showPage('games');
+    else showPage('dashboard');
+  }
 }
 
 // ---- NAVIGATION ----
@@ -781,8 +792,8 @@ function showPage(id){
   if(id==='sales')renderSalesTable();
   if(id==='purchases')renderPurchasesTable(purchaseTab);
   if(id==='collection')renderCollectionTable(collTab);
-  if(id==='games'||id==='add-game') setNavMode('games');
-  else if(id!=='settings') setNavMode('cards');
+  if(id==='games'||id==='add-game') setNavMode('games',false);
+  else if(id!=='settings') setNavMode('cards',false);
   if(id==='games')renderGamesPage();
   if(id==='add-game'){document.getElementById('g-name').value='';document.getElementById('g-platform').value='';document.getElementById('g-value').value='';}
   if(id==='settings')renderSettings();
@@ -1927,7 +1938,18 @@ function renderGamesPage(){
   }
 
   const CONDITION_COLORS={'Sealed':'#065F46','Near Mint':'#1D9E75','Good':'#185FA5','Played':'#BA7517','Poor':'#D85A30'};
-  const sorted=[...games].sort((a,b)=>(b.value-b.cost)-(a.value-a.cost));
+  const sortBy=document.getElementById('games-sort')?.value||'gain_gbp';
+  const sorted=[...games].sort((a,b)=>{
+    const gainA=a.value-a.cost, gainB=b.value-b.cost;
+    const pctA=a.cost>0?(gainA/a.cost):0, pctB=b.cost>0?(gainB/b.cost):0;
+    if(sortBy==='gain_gbp') return gainB-gainA;
+    if(sortBy==='gain_pct') return pctB-pctA;
+    if(sortBy==='platform') return a.platform.localeCompare(b.platform)||gainB-gainA;
+    if(sortBy==='condition') return a.condition.localeCompare(b.condition)||gainB-gainA;
+    if(sortBy==='cost') return b.cost-a.cost;
+    if(sortBy==='value') return b.value-a.value;
+    return gainB-gainA;
+  });
   const withCost=sorted.filter(g=>g.cost>0);
   const gainers=withCost.slice(0,5);
   const losers=[...withCost].reverse().slice(0,5);
@@ -1959,7 +1981,7 @@ function renderGamesPage(){
       <td><span style="font-size:11px;padding:2px 6px;border-radius:10px;background:${platformColorMap[g.platform]||'#888'}22;color:${platformColorMap[g.platform]||'#888'};font-weight:500">${g.platform}</span></td>
       <td><span style="font-size:11px;font-weight:500;color:${CONDITION_COLORS[g.condition]||'var(--muted)'}">${g.condition||'—'}</span></td>
       <td style="color:var(--muted)">${g.cost>0?fm(g.cost):'—'}</td>
-      <td><input class="inline-input" type="number" step="0.01" value="${g.value}" onchange="updateGameValue('${g.id}',this.value)"></td>
+      <td>${fm(g.value)}</td>
       <td class="${gain>=0?'profit-pos':'profit-neg'}">${g.cost>0?(gain>=0?'+':'')+fm(gain):'—'}</td>
       <td class="${pct!==null&&pct>=0?'profit-pos':'profit-neg'}">${pct!==null?(pct>=0?'+':'')+pct.toFixed(1)+'%':'—'}</td>
       <td><button class="btn sm danger" onclick="deleteGame('${g.id}')"><i class="ti ti-trash"></i></button></td>
