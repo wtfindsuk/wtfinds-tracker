@@ -166,23 +166,20 @@ tr:hover td{background:var(--surface2)}
     <div id="nav-cards-section">
       <button class="nav-btn active" onclick="showPage('dashboard')" id="nav-dashboard"><i class="ti ti-chart-bar"></i> Dashboard</button>
       <div class="nav-section">
+        <button class="nav-btn" onclick="showPage('log-sale')" id="nav-log-sale"><i class="ti ti-plus"></i> Log sale</button>
+        <button class="nav-btn" onclick="showPage('sales')" id="nav-sales"><i class="ti ti-receipt"></i> Sales</button>
+      </div>
+      <div class="nav-section">
+        <button class="nav-btn" onclick="showPage('log-purchase')" id="nav-log-purchase"><i class="ti ti-plus"></i> Log purchase</button>
+        <button class="nav-btn" onclick="showPage('purchases')" id="nav-purchases"><i class="ti ti-shopping-bag"></i> Purchases</button>
+      </div>
+      <div class="nav-section">
+        <button class="nav-btn" onclick="showPage('collection')" id="nav-collection"><i class="ti ti-stack"></i> Collection</button>
         <button class="nav-btn" onclick="document.getElementById('collectr-csv-input').click()"><i class="ti ti-upload"></i> Import Collectr CSV</button>
         <input type="file" id="collectr-csv-input" accept=".csv" style="display:none" onchange="importCollectrCsv(this)">
       </div>
       <div class="nav-section">
-        <div class="nav-label">Sales</div>
-        <button class="nav-btn" onclick="showPage('log-sale')" id="nav-log-sale"><i class="ti ti-plus"></i> Log sale</button>
-        <button class="nav-btn" onclick="showPage('sales')" id="nav-sales"><i class="ti ti-receipt"></i> All sales</button>
-      </div>
-      <div class="nav-section">
-        <div class="nav-label">Purchases</div>
-        <button class="nav-btn" onclick="showPage('log-purchase')" id="nav-log-purchase"><i class="ti ti-plus"></i> Log purchase</button>
-        <button class="nav-btn" onclick="showPage('purchases')" id="nav-purchases"><i class="ti ti-shopping-bag"></i> All purchases</button>
-      </div>
-      <div class="nav-section">
-        <div class="nav-label">Collection</div>
-        <button class="nav-btn" onclick="showPage('collection')" id="nav-collection"><i class="ti ti-stack"></i> View collection</button>
-        <button class="nav-btn" onclick="showPage('add-item')" id="nav-add-item"><i class="ti ti-plus"></i> Add item</button>
+        <button class="nav-btn" onclick="showPage('settings')" id="nav-settings"><i class="ti ti-settings"></i> Settings</button>
       </div>
     </div>
 
@@ -192,10 +189,6 @@ tr:hover td{background:var(--surface2)}
         <button class="nav-btn" onclick="showPage('games')" id="nav-games"><i class="ti ti-device-gamepad-2"></i> Game collection</button>
         <button class="nav-btn" onclick="showPage('add-game')" id="nav-add-game"><i class="ti ti-plus"></i> Add game</button>
       </div>
-    </div>
-
-    <div class="nav-section" style="margin-top:auto">
-      <button class="nav-btn" onclick="showPage('settings')" id="nav-settings"><i class="ti ti-settings"></i> Settings</button>
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
@@ -212,6 +205,10 @@ tr:hover td{background:var(--surface2)}
 
       <!-- FINANCIAL POSITION -->
       <div class="dash-section-title">Financial position</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <label style="font-size:12px;color:var(--muted);white-space:nowrap">Cardmarket inventory value (£)</label>
+        <input type="number" id="dash-inventory-input" step="0.01" min="0" placeholder="0.00" style="width:120px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px" oninput="state.settings.inventoryValue=parseFloat(this.value)||0;scheduleSave('Settings');renderDashboard()">
+      </div>
       <div id="dash-net-position"></div>
       <div id="dash-sellthrough"></div>
       <div id="dash-fin-metrics" style="display:none;margin-top:10px"></div>
@@ -535,13 +532,6 @@ tr:hover td{background:var(--surface2)}
         <div class="settings-row"><label>Other fee (%)</label><input type="number" id="set-ot" step="0.1" onchange="saveSettings()"></div>
       </div>
       <div class="card" style="margin-bottom:14px">
-        <div class="card-title">Cardmarket inventory value</div>
-        <div class="settings-row">
-          <label>Current inventory value (£) <span style="color:var(--muted);font-size:11px">— paste from your Cardmarket inventory page</span></label>
-          <input type="number" id="set-inventory" step="0.01" min="0" onchange="saveSettings()">
-        </div>
-      </div>
-      <div class="card" style="margin-bottom:14px">
         <div class="card-title">Packaging unit costs (£)</div>
         <div id="pkg-settings"></div>
         <div class="add-row">
@@ -808,6 +798,8 @@ function renderDashboard(){
   const totalSpend=state.purchases.reduce((a,p)=>a+(parseFloat(p.amount)||0),0);
   const totalCollectionValue=state.collection.reduce((a,c)=>a+(parseFloat(c.marketValue)||0),0);
   const inventoryValue=parseFloat(state.settings.inventoryValue)||0;
+  const invInput=document.getElementById('dash-inventory-input');
+  if(invInput&&invInput!==document.activeElement) invInput.value=inventoryValue||'';
   const standing=totalProfit-totalSpend;
   const netPosition=totalProfit-totalSpend+totalCollectionValue+inventoryValue;
   const avgProfit=state.sales.length?totalProfit/state.sales.length:0;
