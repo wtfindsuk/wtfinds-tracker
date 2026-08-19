@@ -1572,7 +1572,7 @@ async function refreshGamePrices(){
   status.textContent='Looking up current UK prices — this may take 30 seconds...';
 
   const gameList=state.games.map(g=>`${g.name} (${g.platform})`).join('\n');
-  const prompt=`Search eBay UK completed listings and CEX for current UK second-hand prices for each of these video games. Return ONLY a valid JSON array, no other text, no markdown, no explanation. Format exactly: [{"name":"Game Name","value":12.99}]\n\nGames:\n${gameList}`;
+  const prompt=`For each video game below, search eBay UK completed listings to find the current second-hand selling price. After searching, output ONLY a JSON array with no other text before or after it. The array must start with [ and end with ]. Format: [{"name":"Game Name","value":12.99}]. If you cannot find a price, use 0.\n\nGames:\n${gameList}`;
 
   try{
     const response=await fetch(SCRIPT_URL,{
@@ -1582,8 +1582,8 @@ async function refreshGamePrices(){
     const data=await response.json();
     if(!data.ok) throw new Error(data.error||'Script error');
 
-    const jsonMatch=data.text.match(/\[[\s\S]*?\]/);
-    if(!jsonMatch) throw new Error('No JSON found. Response: '+(data.debug||data.text||'empty'));
+    const jsonMatch=data.text.match(/\[[\s\S]*\]/);
+    if(!jsonMatch) throw new Error('Could not parse prices from response');
     const prices=JSON.parse(jsonMatch[0]);
 
     let updated=0;
