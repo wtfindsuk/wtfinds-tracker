@@ -1635,20 +1635,8 @@ function importGamesCsv(input){
       // Take snapshot of current total before update
       const prevTotal=state.games.reduce((a,g)=>a+g.value,0);
 
-      // Update state — match by name and platform, preserve IDs
-      newGames.forEach(ng=>{
-        const existing=state.games.find(g=>
-          g.name.toLowerCase()===ng.name.toLowerCase()&&
-          g.platform.toLowerCase()===ng.platform.toLowerCase()
-        );
-        if(existing){
-          existing.value=ng.value;
-          existing.cost=ng.cost;
-          existing.condition=ng.condition;
-        } else {
-          state.games.push(ng);
-        }
-      });
+      // Fully replace games list from CSV
+      state.games=newGames;
 
       // Add snapshot row
       const newTotal=state.games.reduce((a,g)=>a+g.value,0);
