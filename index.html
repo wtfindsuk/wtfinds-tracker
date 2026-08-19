@@ -137,7 +137,10 @@ tr:hover td{background:var(--surface2)}
 .metrics4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
 .dash-section-title{font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
 .net-tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
-.btn.active-snap{background:var(--text);color:var(--bg);border-color:var(--text)}
+.nav-mode-bar{display:flex;gap:4px;padding:8px 10px;border-bottom:1px solid var(--border)}
+.nav-mode-btn{flex:1;padding:6px 0;border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;color:var(--muted);cursor:pointer;font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;transition:all 0.1s}
+.nav-mode-btn:hover{background:var(--surface2);color:var(--text)}
+.nav-mode-btn.active{background:var(--text);color:var(--bg);border-color:var(--text)}
 .net-tile-label{font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
 .net-tile-value{font-size:32px;font-weight:700}
 .net-tile-sub{font-size:12px;color:var(--muted);margin-top:4px}
@@ -150,29 +153,48 @@ tr:hover td{background:var(--surface2)}
 
 <div class="app">
   <div class="sidebar">
-    <div class="sidebar-header">Card Tracker</div>
-    <button class="nav-btn active" onclick="showPage('dashboard')" id="nav-dashboard"><i class="ti ti-chart-bar"></i> Dashboard</button>
-    <div class="nav-section">
-      <div class="nav-label">Sales</div>
-      <button class="nav-btn" onclick="showPage('log-sale')" id="nav-log-sale"><i class="ti ti-plus"></i> Log sale</button>
-      <button class="nav-btn" onclick="showPage('sales')" id="nav-sales"><i class="ti ti-receipt"></i> All sales</button>
+    <div class="sidebar-header" style="display:flex;align-items:center;gap:8px;padding:16px 14px 10px">
+      <span style="font-size:18px">🔍</span>
+      <span>wtfindsuk</span>
     </div>
-    <div class="nav-section">
-      <div class="nav-label">Purchases</div>
-      <button class="nav-btn" onclick="showPage('log-purchase')" id="nav-log-purchase"><i class="ti ti-plus"></i> Log purchase</button>
-      <button class="nav-btn" onclick="showPage('purchases')" id="nav-purchases"><i class="ti ti-shopping-bag"></i> All purchases</button>
+    <div class="nav-mode-bar">
+      <button class="nav-mode-btn active" id="mode-cards" onclick="setNavMode('cards')">Cards</button>
+      <button class="nav-mode-btn" id="mode-games" onclick="setNavMode('games')">Games</button>
     </div>
-    <div class="nav-section">
-      <div class="nav-label">Collection</div>
-      <button class="nav-btn" onclick="showPage('collection')" id="nav-collection"><i class="ti ti-stack"></i> View collection</button>
-      <button class="nav-btn" onclick="showPage('add-item')" id="nav-add-item"><i class="ti ti-plus"></i> Add item</button>
+
+    <!-- CARDS NAV -->
+    <div id="nav-cards-section">
+      <button class="nav-btn active" onclick="showPage('dashboard')" id="nav-dashboard"><i class="ti ti-chart-bar"></i> Dashboard</button>
+      <div class="nav-section">
+        <button class="nav-btn" onclick="document.getElementById('collectr-csv-input').click()"><i class="ti ti-upload"></i> Import Collectr CSV</button>
+        <input type="file" id="collectr-csv-input" accept=".csv" style="display:none" onchange="importCollectrCsv(this)">
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Sales</div>
+        <button class="nav-btn" onclick="showPage('log-sale')" id="nav-log-sale"><i class="ti ti-plus"></i> Log sale</button>
+        <button class="nav-btn" onclick="showPage('sales')" id="nav-sales"><i class="ti ti-receipt"></i> All sales</button>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Purchases</div>
+        <button class="nav-btn" onclick="showPage('log-purchase')" id="nav-log-purchase"><i class="ti ti-plus"></i> Log purchase</button>
+        <button class="nav-btn" onclick="showPage('purchases')" id="nav-purchases"><i class="ti ti-shopping-bag"></i> All purchases</button>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Collection</div>
+        <button class="nav-btn" onclick="showPage('collection')" id="nav-collection"><i class="ti ti-stack"></i> View collection</button>
+        <button class="nav-btn" onclick="showPage('add-item')" id="nav-add-item"><i class="ti ti-plus"></i> Add item</button>
+      </div>
     </div>
-    <div class="nav-section">
-      <div class="nav-label">Games</div>
-      <button class="nav-btn" onclick="showPage('games')" id="nav-games"><i class="ti ti-device-gamepad-2"></i> Game collection</button>
-      <button class="nav-btn" onclick="showPage('add-game')" id="nav-add-game"><i class="ti ti-plus"></i> Add game</button>
+
+    <!-- GAMES NAV -->
+    <div id="nav-games-section" style="display:none">
+      <div class="nav-section" style="border-top:none">
+        <button class="nav-btn" onclick="showPage('games')" id="nav-games"><i class="ti ti-device-gamepad-2"></i> Game collection</button>
+        <button class="nav-btn" onclick="showPage('add-game')" id="nav-add-game"><i class="ti ti-plus"></i> Add game</button>
+      </div>
     </div>
-    <div class="nav-section">
+
+    <div class="nav-section" style="margin-top:auto">
       <button class="nav-btn" onclick="showPage('settings')" id="nav-settings"><i class="ti ti-settings"></i> Settings</button>
     </div>
     <div class="sidebar-footer">
@@ -661,6 +683,13 @@ async function flushSaves(){
         await saveSheetData('GameSnapshots',allKeys,dataRows);
       }
     }
+    if(sheet==='Snapshots'){
+      if(state.snapshots&&state.snapshots.length){
+        const allKeys=[...new Set(state.snapshots.flatMap(s=>Object.keys(s)))];
+        const dataRows=state.snapshots.map(s=>allKeys.map(h=>s[h]||0));
+        await saveSheetData('Snapshots',allKeys,dataRows);
+      }
+    }
     if(sheet==='Settings') await saveSheetData('Settings',['Key','Value'],[['cmFee',state.settings.cmFee],['ebFee',state.settings.ebFee],['otFee',state.settings.otFee],['inventoryValue',state.settings.inventoryValue||0]]);
     if(sheet==='Packaging') await saveSheetData('Packaging',['Name','Cost'],state.packaging.map(p=>[p.name,p.cost]));
     if(sheet==='Postage') await saveSheetData('Postage',['Name','Cost'],state.postage.map(p=>[p.name,p.cost]));
@@ -745,6 +774,13 @@ function buildBuyersFromSales(){
   state.buyers=[...Object.values(map),...sheetOnly];
 }
 
+function setNavMode(mode){
+  document.getElementById('nav-cards-section').style.display=mode==='cards'?'block':'none';
+  document.getElementById('nav-games-section').style.display=mode==='games'?'block':'none';
+  document.getElementById('mode-cards').className='nav-mode-btn'+(mode==='cards'?' active':'');
+  document.getElementById('mode-games').className='nav-mode-btn'+(mode==='games'?' active':'');
+}
+
 // ---- NAVIGATION ----
 function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -755,6 +791,8 @@ function showPage(id){
   if(id==='sales')renderSalesTable();
   if(id==='purchases')renderPurchasesTable(purchaseTab);
   if(id==='collection')renderCollectionTable(collTab);
+  if(id==='games'||id==='add-game') setNavMode('games');
+  else if(id!=='settings') setNavMode('cards');
   if(id==='games')renderGamesPage();
   if(id==='add-game'){document.getElementById('g-name').value='';document.getElementById('g-platform').value='';document.getElementById('g-value').value='';}
   if(id==='settings')renderSettings();
@@ -1678,6 +1716,139 @@ function importGamesCsv(input){
 }
 
 function round2(n){return Math.round(n*100)/100;}
+
+// ---- COLLECTR CSV IMPORT ----
+function importCollectrCsv(input){
+  const file=input.files[0];
+  if(!file) return;
+
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const text=e.target.result;
+      const lines=text.split('\n').filter(l=>l.trim());
+
+      function parseCSVLine(line){
+        const result=[];let current='';let inQuotes=false;
+        for(let i=0;i<line.length;i++){
+          if(line[i]==='"'){inQuotes=!inQuotes;}
+          else if(line[i]===','&&!inQuotes){result.push(current.trim());current='';}
+          else{current+=line[i];}
+        }
+        result.push(current.trim());
+        return result;
+      }
+
+      const headers=parseCSVLine(lines[0]).map(h=>h.replace(/"/g,'').trim().toLowerCase());
+      const nameIdx=headers.findIndex(h=>h.includes('product name'));
+      const portfolioIdx=headers.findIndex(h=>h.includes('portfolio name'));
+      const marketIdx=headers.findIndex(h=>h.includes('market price'));
+      const costIdx=headers.findIndex(h=>h.includes('average cost paid'));
+      const qtyIdx=headers.findIndex(h=>h==='quantity');
+      const gradeIdx=headers.findIndex(h=>h==='grade');
+      const cardNumIdx=headers.findIndex(h=>h.includes('card number'));
+      const notesIdx=headers.findIndex(h=>h==='notes');
+      const catIdx=headers.findIndex(h=>h==='category');
+
+      if(nameIdx===-1||marketIdx===-1) throw new Error('Invalid Collectr CSV format');
+
+      const PORTFOLIO_MAP={
+        'MTG Avatar TLA Collection':'Avatar TLA',
+        'MTG Avatar TLE Collection':'Avatar TLE',
+        'MTG Avatar Art Collection':'Avatar ART',
+        'Singles - One Piece':'Singles One Piece',
+        'Singles - DBZ':'Singles DBZ',
+        'Singles - Pokemon':'Singles Pokemon',
+        'Singles - MTG SOS':'Singles MTG SOS',
+        'Singles - MTG':'Singles MTG',
+        'Sealed':'Sealed',
+      };
+
+      function mapGame(cat,port){
+        const c=String(cat).toLowerCase(),p=String(port).toLowerCase();
+        if(c.includes('pokemon')) return 'pokemon';
+        if(c.includes('one piece')) return 'onepiece';
+        if(c.includes('dragon ball')) return 'other';
+        if(c.includes('magic')) return p.includes('avatar')?'other':'mtg';
+        return 'other';
+      }
+
+      function mapType(port,grade){
+        if(String(port).toLowerCase().includes('sealed')) return 'sealed';
+        if(String(grade).toLowerCase().includes('psa')) return 'graded';
+        return 'single';
+      }
+
+      const newCollection=[];
+      const portfolioTotals={};
+      const typeTotals={sealed:0,single:0,graded:0};
+      let totalMarket=0,totalCost=0;
+
+      for(let i=1;i<lines.length;i++){
+        const cols=parseCSVLine(lines[i]);
+        if(!cols[nameIdx]) continue;
+        const qty=parseInt(cols[qtyIdx])||1;
+        const market=parseFloat(cols[marketIdx])||0;
+        const cost=parseFloat(cols[costIdx])||0;
+        const portfolio=cols[portfolioIdx]||'';
+        const short=PORTFOLIO_MAP[portfolio]||portfolio;
+        const grade=cols[gradeIdx]||'';
+        const cat=cols[catIdx]||'';
+        const itype=mapType(portfolio,grade);
+        const game=mapGame(cat,portfolio);
+        let notes=cols[notesIdx]||'';
+        if(grade&&grade!=='Ungraded') notes=grade+(notes?' — '+notes:'');
+        let name=cols[nameIdx].replace(/"/g,'').trim();
+        if(qty>1) name=`${name} (x${qty})`;
+        const cn=(cols[cardNumIdx]||'').replace(/"/g,'').trim();
+        const itemCost=round2(cost*qty);
+        const itemMarket=round2(market*qty);
+
+        newCollection.push({id:uid(),name,type:itype,game,status:'collection',set:short,cn,cost:itemCost,marketValue:itemMarket,priceUrl:'',notes});
+        portfolioTotals[short]=(portfolioTotals[short]||0)+itemMarket;
+        typeTotals[itype]=(typeTotals[itype]||0)+itemMarket;
+        totalMarket+=itemMarket;
+        totalCost+=itemCost;
+      }
+
+      if(!newCollection.length) throw new Error('No items found in CSV');
+
+      // Replace collection
+      state.collection=newCollection;
+
+      // Build snapshot row
+      const PORTFOLIOS=['Avatar TLA','Avatar TLE','Avatar ART','Singles One Piece','Singles DBZ','Singles Pokemon','Singles MTG SOS','Singles MTG','Sealed'];
+      const snapObj={Date:today(),TotalMarket:round2(totalMarket),TotalCost:round2(totalCost),UnrealisedGain:round2(totalMarket-totalCost)};
+      PORTFOLIOS.forEach(p=>{snapObj['Portfolio_'+p.replace(/ /g,'_')]=round2(portfolioTotals[p]||0);});
+      snapObj.Type_Sealed=round2(typeTotals.sealed);
+      snapObj.Type_Single=round2(typeTotals.single);
+      snapObj.Type_Graded=round2(typeTotals.graded);
+
+      state.snapshots=state.snapshots||[];
+      // Only add snapshot if date is new
+      if(!state.snapshots.find(s=>s.Date===today())){
+        state.snapshots.push(snapObj);
+      } else {
+        // Update today's snapshot
+        const idx=state.snapshots.findIndex(s=>s.Date===today());
+        state.snapshots[idx]=snapObj;
+      }
+
+      scheduleSave('Collection');
+      scheduleSave('Snapshots');
+      renderDashboard();
+      showPage('collection');
+
+      const gain=totalMarket-totalCost;
+      alert(`Imported ${newCollection.length} items\nMarket value: £${totalMarket.toFixed(2)}\nCost paid: £${totalCost.toFixed(2)}\nGain: ${gain>=0?'+':''}£${gain.toFixed(2)}\n\nCollection and snapshot saved.`);
+
+    }catch(err){
+      alert('Import error: '+err.message);
+    }
+    input.value='';
+  };
+  reader.readAsText(file);
+}
 
 // ---- GAMES ----
 let gamesChartInst=null;
