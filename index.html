@@ -146,6 +146,10 @@ tr:hover td{background:var(--surface2)}
 .net-tile-sub{font-size:12px;color:var(--muted);margin-top:4px}
 .nav-btn-action{color:var(--text)!important;font-weight:500}
 .nav-btn:active,.nav-btn-action:active{transform:translateY(1px);box-shadow:inset 0 2px 4px rgba(0,0,0,0.5);filter:brightness(0.75);transition:none}
+.tip{position:relative;display:inline-flex;align-items:center;gap:4px}
+.tip-icon{width:14px;height:14px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);font-size:9px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);cursor:help;flex-shrink:0}
+.tip-icon:hover+.tip-text,.tip:hover .tip-text{display:block}
+.tip-text{display:none;position:absolute;bottom:calc(100% + 6px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 10px;font-size:11px;color:var(--text);white-space:normal;width:220px;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.3);line-height:1.4}
 </style>
 </head>
 <body>
@@ -179,6 +183,11 @@ tr:hover td{background:var(--surface2)}
         <button class="nav-btn" onclick="showPage('collection')" id="nav-collection"><i class="ti ti-stack"></i> Collection</button>
         <button class="nav-btn nav-btn-action" onclick="document.getElementById('collectr-csv-input').click()"><i class="ti ti-upload"></i> Import Collectr CSV</button>
         <input type="file" id="collectr-csv-input" accept=".csv" style="display:none" onchange="importCollectrCsv(this)">
+        <button class="nav-btn" onclick="toggleInventoryInput()" id="nav-inventory-btn"><i class="ti ti-building-store"></i> Inventory value</button>
+        <div id="nav-inventory-panel" style="display:none;padding:4px 10px 8px">
+          <input type="number" id="nav-inventory-input" step="0.01" min="0" placeholder="£0.00" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text);font-size:13px" oninput="state.settings.inventoryValue=parseFloat(this.value)||0;scheduleSave('Settings');renderDashboard()">
+          <div style="font-size:10px;color:var(--muted);margin-top:4px">Paste from Cardmarket inventory page</div>
+        </div>
       </div>
       <div class="nav-section">
         <button class="nav-btn" onclick="showPage('settings')" id="nav-settings"><i class="ti ti-settings"></i> Settings</button>
@@ -210,45 +219,45 @@ tr:hover td{background:var(--surface2)}
 
       <!-- FINANCIAL POSITION -->
       <div class="dash-section-title">Financial position</div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <label style="font-size:12px;color:var(--muted);white-space:nowrap">Cardmarket inventory value (£)</label>
-        <input type="number" id="dash-inventory-input" step="0.01" min="0" placeholder="0.00" style="width:120px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px" oninput="state.settings.inventoryValue=parseFloat(this.value)||0;scheduleSave('Settings');renderDashboard()">
-      </div>
       <div id="dash-net-position"></div>
-      <div id="dash-sellthrough"></div>
       <div id="dash-fin-metrics" style="display:none;margin-top:10px"></div>
 
       <!-- SALES SECTION -->
       <div class="dash-section-title" style="margin-top:18px">Sales</div>
       <div class="metrics4" id="dash-sales-metrics"></div>
       <div class="card" style="margin-bottom:6px">
-        <div class="card-title">Revenue, profit &amp; spend by month</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div class="card-title" style="margin-bottom:0">Revenue, profit &amp; spend by month</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span id="main-chart-month-label" style="font-size:11px;color:var(--muted)"></span>
+            <button class="btn sm" id="main-chart-back" onclick="mainChartDrillBack()" style="display:none"><i class="ti ti-arrow-left"></i> Back</button>
+          </div>
+        </div>
         <div class="legend" id="main-legend"></div>
         <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
       </div>
       <div class="card" style="margin-bottom:14px">
-        <div class="card-title">Sales volume &amp; avg order value by month</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div class="card-title" style="margin-bottom:0">Sales volume &amp; avg order value by month</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span id="vol-chart-month-label" style="font-size:11px;color:var(--muted)"></span>
+            <button class="btn sm" id="vol-chart-back" onclick="volChartDrillBack()" style="display:none"><i class="ti ti-arrow-left"></i> Back</button>
+          </div>
+        </div>
         <div class="legend" id="vol-legend"></div>
         <div class="chart-wrap"><canvas id="volChart"></canvas></div>
       </div>
-      <div class="card" style="margin-bottom:14px">
-        <div class="card-title">Top buyers</div>
-        <div id="dash-top-buyers"></div>
-      </div>
 
-      <!-- GAME PERFORMANCE -->
-      <div class="dash-section-title" style="margin-top:4px">By game</div>
+      <!-- BY GAME -->
+      <div class="dash-section-title">By game</div>
       <div id="dash-game-breakdown"></div>
 
-      <!-- INVENTORY SECTION -->
-      <div class="dash-section-title">Inventory</div>
-      <div class="metrics4" id="dash-inv-metrics"></div>
+      <!-- BY SET -->
+      <div class="dash-section-title">By set</div>
+      <div id="dash-set-performance"></div>
 
       <!-- COLLECTION SECTION -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin:18px 0 10px">
-        <div class="dash-section-title" style="margin:0">Collection</div>
-        <button class="btn sm" onclick="showPage('add-item')"><i class="ti ti-plus"></i> Add item</button>
-      </div>
+      <div class="dash-section-title" style="margin-top:18px">Collection</div>
       <div class="coll-summary" id="coll-summary"></div>
       <div class="metrics4" id="dash-coll-insights" style="margin-bottom:14px"></div>
       <div class="card" style="margin-bottom:14px">
@@ -272,19 +281,23 @@ tr:hover td{background:var(--surface2)}
           <div class="card-title">Top 5 sealed by gain</div>
           <div id="dash-top-sealed"></div>
         </div>
-        <div class="card" style="grid-column:span 2">
-          <div class="card-title">Graded cards</div>
+        <div class="card">
+          <div class="card-title">Top 5 graded by gain</div>
           <div id="dash-graded"></div>
         </div>
         <div class="card" style="grid-column:span 2">
-          <div class="card-title">By collection</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div class="card-title" style="margin-bottom:0">By collection</div>
+            <div style="display:flex;gap:4px">
+              <button id="coll-view-table" onclick="setCollView('table')" class="btn sm active-snap">Table</button>
+              <button id="coll-view-chart" onclick="setCollView('chart')" class="btn sm">Chart</button>
+            </div>
+          </div>
           <div id="dash-sealed"></div>
         </div>
       </div>
-
-      <!-- SET PERFORMANCE -->
-      <div class="dash-section-title">By set</div>
-      <div id="dash-set-performance"></div>
+      <!-- TOP BUYERS (compact, appended to collection) -->
+      <div id="dash-top-buyers"></div>
 
     </div>
 
@@ -569,7 +582,7 @@ const CAT_COLORS = {pokemon:'#185FA5',mtg:'#534AB7',onepiece:'#D85A30',marvel:'#
 const GAME_LABELS = {pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',marvel:'Marvel',other:'Other'};
 
 const DEFAULTS = {
-  sales:[],purchases:[],collection:[],buyers:[],sets:[],snapshots:[],games:[],gameSnapshots:[],
+  sales:[],purchases:[],collection:[],buyers:[],sets:[],snapshots:[],games:[],gameSnapshots:[],itemSnapshots:{},
   packaging:[
     {name:'Thermal label',cost:0.00988},{name:'Penny sleeve',cost:0.02},{name:'Toploader',cost:0.15},
     {name:'Team bag',cost:0.12},{name:'A6 envelope',cost:0.15},{name:'A5 envelope',cost:0.30},
@@ -635,6 +648,16 @@ async function loadFromSheets(){
       state._lastGameRefresh=statusMap['LastGameRefresh']||null;
       state._gamesUpdated=statusMap['GamesUpdated']||null;
     }
+    if(data.ItemSnapshots&&data.ItemSnapshots.length>1){
+      // Format: Date, ItemID, Name, MarketValue
+      state.itemSnapshots={};
+      data.ItemSnapshots.slice(1).forEach(r=>{
+        const id=r[1];
+        if(!id) return;
+        if(!state.itemSnapshots[id]) state.itemSnapshots[id]=[];
+        state.itemSnapshots[id].push({date:r[0],value:parseFloat(r[3])||0,name:r[2]||''});
+      });
+    }
     if(data.GameSnapshots&&data.GameSnapshots.length>1){
       const gHdrs=data.GameSnapshots[0];
       state.gameSnapshots=data.GameSnapshots.slice(1).map(r=>{
@@ -674,6 +697,15 @@ async function flushSaves(){
     if(sheet==='Purchases') await saveSheetData('Purchases',['Date','Description','Category','Amount','Supplier','Set'],state.purchases.map(p=>[p.date,p.description,p.category,p.amount,p.supplier||'',p.set||'']));
     if(sheet==='Collection') await saveSheetData('Collection',['ID','Name','Type','Game','Status','Set','CN','Cost','MarketValue','PriceUrl','Notes'],state.collection.map(c=>[c.id,c.name,c.type,c.game,c.status,c.set||'',c.cn||'',c.cost,c.marketValue,c.priceUrl||'',c.notes||'']));
     if(sheet==='Games') await saveSheetData('Games',['ID','Name','Platform','Condition','Cost','Value','Added'],state.games.map(g=>[g.id,g.name,g.platform,g.condition||'',g.cost,g.value,g.added]));
+    if(sheet==='ItemSnapshots'){
+      if(state.itemSnapshots&&Object.keys(state.itemSnapshots).length){
+        const dataRows=[];
+        Object.entries(state.itemSnapshots).forEach(([id,snaps])=>{
+          snaps.forEach(s=>dataRows.push([s.date,id,s.name,s.value]));
+        });
+        await saveSheetData('ItemSnapshots',['Date','ItemID','Name','MarketValue'],dataRows);
+      }
+    }
     if(sheet==='GameSnapshots'){
       if(state.gameSnapshots&&state.gameSnapshots.length){
         const allKeys=[...new Set(state.gameSnapshots.flatMap(s=>Object.keys(s)))];
@@ -780,6 +812,94 @@ function setGamesSort(col){
   renderGamesPage();
 }
 
+function toggleInventoryInput(){
+  const panel=document.getElementById('nav-inventory-panel');
+  const input=document.getElementById('nav-inventory-input');
+  if(!panel) return;
+  const visible=panel.style.display==='block';
+  panel.style.display=visible?'none':'block';
+  if(!visible){
+    if(input) input.value=state.settings.inventoryValue||'';
+    setTimeout(()=>input&&input.focus(),50);
+  }
+}
+
+let collView='table';
+let collByPortfolioChartInst=null;
+
+function setCollView(view){
+  collView=view;
+  document.getElementById('coll-view-table').className='btn sm'+(view==='table'?' active-snap':'');
+  document.getElementById('coll-view-chart').className='btn sm'+(view==='chart'?' active-snap':'');
+  renderCollByPortfolio();
+}
+
+function renderCollByPortfolio(){
+  const el=document.getElementById('dash-sealed');
+  if(!el) return;
+  const coll=state.collection;
+  const groups={};
+  coll.forEach(c=>{
+    let key;
+    if(c.type==='graded') key='Graded';
+    else if(c.set&&c.set.trim()) key=c.set.trim();
+    else key=c.type==='sealed'?'Sealed':'Singles';
+    if(!groups[key])groups[key]={items:0,cost:0,market:0};
+    groups[key].items++;
+    groups[key].cost+=parseFloat(c.cost)||0;
+    groups[key].market+=parseFloat(c.marketValue)||0;
+  });
+  const sorted=Object.entries(groups).sort((a,b)=>b[1].market-a[1].market);
+
+  if(collView==='chart'){
+    // Chart — value per portfolio from snapshots
+    const snaps=state.snapshots||[];
+    if(!snaps.length){el.innerHTML='<div class="empty">No snapshot data yet — import a Collectr CSV first</div>';return;}
+    const labels=snaps.map(s=>fd(s.Date||s.date));
+    const PORTFOLIO_COLORS=['#185FA5','#1D9E75','#534AB7','#D85A30','#BA7517','#DC2626','#0BC4C4','#9333EA','#065F46','#92400E'];
+    const portfolioKeys=[...new Set(snaps.flatMap(s=>Object.keys(s).filter(k=>k.startsWith('Portfolio_'))))];
+    const datasets=portfolioKeys.map((key,i)=>({
+      label:key.replace('Portfolio_','').replace(/_/g,' '),
+      data:snaps.map(s=>parseFloat(s[key])||0),
+      borderColor:PORTFOLIO_COLORS[i%PORTFOLIO_COLORS.length],
+      tension:0.3,pointRadius:2,fill:false
+    })).filter(d=>d.data.some(v=>v>0));
+    const legend=datasets.map(d=>`<span><span class="lsq" style="background:${d.borderColor}"></span>${d.label}</span>`).join('');
+    el.innerHTML=`<div class="legend" style="margin-bottom:8px">${legend}</div><div style="position:relative;height:200px"><canvas id="collByPortfolioChart"></canvas></div>`;
+    if(collByPortfolioChartInst) collByPortfolioChartInst.destroy();
+    collByPortfolioChartInst=new Chart(document.getElementById('collByPortfolioChart').getContext('2d'),{
+      type:'line',data:{labels,datasets},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:11}}}}}
+    });
+    return;
+  }
+
+  el.innerHTML=`<table style="font-size:13px">
+    <thead><tr><th>Collection</th><th>Items</th><th>Cost</th><th>Market value</th><th>Gain / loss</th></tr></thead>
+    <tbody>${sorted.map(([name,g])=>{
+      const gain=g.market-g.cost;
+      return`<tr>
+        <td style="font-weight:500">${name}</td>
+        <td style="color:var(--muted)">${g.items}</td>
+        <td style="color:var(--muted)">${fm(g.cost)}</td>
+        <td>${fm(g.market)}</td>
+        <td class="${gain>=0?'profit-pos':'profit-neg'}">${gain>=0?'+':''}${fm(gain)}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+function renderTopBuyers(){
+  const el=document.getElementById('dash-top-buyers');
+  if(!el) return;
+  const repeat=state.buyers.filter(b=>b.orders>1).sort((a,b)=>b.orders-a.orders||b.totalSpend-a.totalSpend).slice(0,5);
+  if(!repeat.length){el.style.display='none';return;}
+  el.style.display='block';
+  el.innerHTML=`<div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Top repeat buyers</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11px;margin-bottom:14px">${repeat.map(b=>`
+    <span style="color:var(--muted)"><span style="font-weight:600;color:var(--text)">${b.username}</span> · ${b.orders} orders · ${fm(b.totalSpend)}</span>`).join('')}</div>`;
+}
+
 function setNavMode(mode,navigate=true){
   document.getElementById('nav-cards-section').style.display=mode==='cards'?'block':'none';
   document.getElementById('nav-games-section').style.display=mode==='games'?'block':'none';
@@ -818,30 +938,36 @@ function renderDashboard(){
   const totalSpend=state.purchases.reduce((a,p)=>a+(parseFloat(p.amount)||0),0);
   const totalCollectionValue=state.collection.reduce((a,c)=>a+(parseFloat(c.marketValue)||0),0);
   const inventoryValue=parseFloat(state.settings.inventoryValue)||0;
-  const invInput=document.getElementById('dash-inventory-input');
-  if(invInput&&invInput!==document.activeElement) invInput.value=inventoryValue||'';
   const standing=totalProfit-totalSpend;
   const netPosition=totalProfit-totalSpend+totalCollectionValue+inventoryValue;
   const avgProfit=state.sales.length?totalProfit/state.sales.length:0;
   const avgPrice=state.sales.length?totalRevenue/state.sales.length:0;
   const profitMargin=totalRevenue>0?(totalProfit/totalRevenue*100):0;
 
-  // --- Sales insights ---
+  // --- Best day of week by average ---
   const DAY_NAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const dayTotals={};
+  const dayRevMap={};
+  const dayCountMap={};
   const monthTotals={};
   state.sales.forEach(s=>{
     if(s.date){
       const d=new Date(s.date.slice(0,10)+'T12:00:00');
       if(!isNaN(d)){
         const day=DAY_NAMES[d.getDay()];
-        dayTotals[day]=(dayTotals[day]||0)+1;
+        dayRevMap[day]=(dayRevMap[day]||0)+(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);
+        dayCountMap[day]=(dayCountMap[day]||0)+1;
         const mo=d.toLocaleDateString('en-GB',{month:'long'});
         monthTotals[mo]=(monthTotals[mo]||0)+1;
       }
     }
   });
-  const bestDay=Object.entries(dayTotals).sort((a,b)=>b[1]-a[1])[0];
+  // Avg revenue per day-of-week occurrence
+  const totalDays=state.sales.length?Math.ceil((new Date()-new Date(state.sales[state.sales.length-1]?.date||new Date()))/(1000*60*60*24*7)):1;
+  const dayAvgRev={};
+  DAY_NAMES.forEach(day=>{if(dayCountMap[day]) dayAvgRev[day]=(dayRevMap[day]||0)/dayCountMap[day];});
+  const overallDailyAvg=totalRevenue/Math.max(Object.keys(dayCountMap).length,1);
+  const bestDayEntry=Object.entries(dayAvgRev).sort((a,b)=>b[1]-a[1])[0];
+  const bestDayVsAvg=bestDayEntry&&overallDailyAvg>0?((bestDayEntry[1]-overallDailyAvg)/overallDailyAvg*100):null;
   const bestMonth=Object.entries(monthTotals).sort((a,b)=>b[1]-a[1])[0];
   const repeatBuyers=state.buyers.filter(b=>b.orders>1).length;
 
@@ -858,33 +984,29 @@ function renderDashboard(){
   const unrealisedPct=totalCollCost>0?((totalCollectionValue-totalCollCost)/totalCollCost*100):0;
 
   // Sales metrics
+  function tip(text){return`<span class="tip"><span class="tip-icon">?</span><span class="tip-text">${text}</span></span>`;}
   document.getElementById('dash-sales-metrics').innerHTML=`
-    <div class="metric"><div class="metric-label">Revenue</div><div class="metric-value">${fm(totalRevenue)}</div><div class="metric-sub">${state.sales.length} sales</div></div>
-    <div class="metric"><div class="metric-label">Profit</div><div class="metric-value ${totalProfit>=0?'pos':'neg'}">${fm(totalProfit)}</div><div class="metric-sub">after all costs</div></div>
-    <div class="metric"><div class="metric-label">Profit margin</div><div class="metric-value ${profitMargin>=0?'pos':'neg'}">${profitMargin.toFixed(1)}%</div><div class="metric-sub">of total revenue</div></div>
-    <div class="metric"><div class="metric-label">Avg sale profit</div><div class="metric-value ${avgProfit>=0?'pos':'neg'}">${fm(avgProfit)}</div><div class="metric-sub">avg order value ${fm(avgPrice)}</div></div>
-    <div class="metric"><div class="metric-label">Best day</div><div class="metric-value" style="font-size:16px">${bestDay?bestDay[0]:'—'}</div><div class="metric-sub">${bestDay?bestDay[1]+' sales':''}</div></div>
-    <div class="metric"><div class="metric-label">Best month</div><div class="metric-value" style="font-size:16px">${bestMonth?bestMonth[0]:'—'}</div><div class="metric-sub">${bestMonth?bestMonth[1]+' sales':''}</div></div>
-    <div class="metric"><div class="metric-label">Repeat buyers</div><div class="metric-value">${repeatBuyers}</div><div class="metric-sub">${state.buyers.length?'of '+state.buyers.length+' unique buyers':'add Buyers tab to enable'}</div></div>`;
+    <div class="metric"><div class="metric-label">Revenue ${tip('Total money received from buyers — card price plus shipping charged. Does not subtract any costs.')}</div><div class="metric-value">${fm(totalRevenue)}</div><div class="metric-sub">${state.sales.length} sales</div></div>
+    <div class="metric"><div class="metric-label">Profit ${tip('Revenue minus all costs: postage, packaging supplies, and platform fees. This is your actual take-home per sale.')}</div><div class="metric-value ${totalProfit>=0?'pos':'neg'}">${fm(totalProfit)}</div><div class="metric-sub">after all costs</div></div>
+    <div class="metric"><div class="metric-label">Profit margin ${tip('Profit as a percentage of revenue. Higher is better — a 70%+ margin on TCG singles is typical when pricing well.')}</div><div class="metric-value ${profitMargin>=0?'pos':'neg'}">${profitMargin.toFixed(1)}%</div><div class="metric-sub">of total revenue</div></div>
+    <div class="metric"><div class="metric-label">Avg sale profit ${tip('Average profit per order after costs. Useful for gauging whether small orders are worth the packing effort.')}</div><div class="metric-value ${avgProfit>=0?'pos':'neg'}">${fm(avgProfit)}</div><div class="metric-sub">avg order ${fm(avgPrice)}</div></div>
+    <div class="metric"><div class="metric-label">Best day (avg) ${tip('The day of the week where your average revenue per sale is highest. Useful for timing when you list or promote cards.')}</div><div class="metric-value" style="font-size:16px">${bestDayEntry?bestDayEntry[0]:'—'}</div><div class="metric-sub">${bestDayEntry?fm(bestDayEntry[1])+'/sale'+(bestDayVsAvg!==null?' · '+(bestDayVsAvg>=0?'+':'')+bestDayVsAvg.toFixed(0)+'% vs avg':''):''}</div></div>
+    <div class="metric"><div class="metric-label">Best month ${tip('The calendar month with the most sales orders. Helps identify seasonal patterns in buyer demand.')}</div><div class="metric-value" style="font-size:16px">${bestMonth?bestMonth[0]:'—'}</div><div class="metric-sub">${bestMonth?bestMonth[1]+' sales':''}</div></div>
+    <div class="metric"><div class="metric-label">Repeat buyers ${tip('Buyers who have placed more than one order with you. A higher number signals strong buyer satisfaction and loyalty.')}</div><div class="metric-value">${repeatBuyers}</div><div class="metric-sub">${state.buyers.length?'of '+state.buyers.length+' unique':'—'}</div></div>`;
 
-  // Inventory metrics
-  document.getElementById('dash-inv-metrics').innerHTML=`
-    <div class="metric" style="grid-column:span 2"><div class="metric-label">Cardmarket inventory value</div><div class="metric-value">${fm(inventoryValue)}</div><div class="metric-sub">${inventoryValue?'as entered in Settings':'not yet entered — go to Settings'}</div></div>`;
-
-  // Financial position metrics (hidden by default)
+  // Financial details (hidden)
   document.getElementById('dash-fin-metrics').innerHTML=`
     <div class="metrics4" style="margin-bottom:0">
       <div class="metric"><div class="metric-label">Total spend</div><div class="metric-value">${fm(totalSpend)}</div><div class="metric-sub">${state.purchases.length} purchases</div></div>
       <div class="metric"><div class="metric-label">Break-even standing</div><div class="metric-value ${standing>=0?'pos':'neg'}">${fm(standing)}</div><div class="metric-sub">profit minus spend</div></div>
     </div>`;
 
-  // Calculate projected break-even date based on avg monthly profit trend
+  // Projection
   function calcProjection(){
     const{keys,months}=getMonthlyData();
     if(keys.length<2) return null;
     const recentKeys=keys.slice(-3);
-    const recentProfits=recentKeys.map(k=>months[k].profit);
-    const avgMonthlyProfit=recentProfits.reduce((a,b)=>a+b,0)/recentProfits.length;
+    const avgMonthlyProfit=recentKeys.map(k=>months[k].profit).reduce((a,b)=>a+b,0)/recentKeys.length;
     if(avgMonthlyProfit<=0) return null;
     const monthsNeeded=Math.ceil(Math.abs(netPosition)/avgMonthlyProfit);
     if(monthsNeeded>120) return null;
@@ -893,15 +1015,19 @@ function renderDashboard(){
     return{date:projDate.toLocaleDateString('en-GB',{month:'long',year:'numeric'}),months:monthsNeeded,avgMonthly:avgMonthlyProfit};
   }
   const projection=netPosition<0?calcProjection():null;
+  const avgMargin=totalRevenue>0?totalProfit/totalRevenue:0;
+  const stockNeeded=avgMargin>0&&netPosition<0?Math.abs(netPosition)/avgMargin:null;
+  const inventoryPct=stockNeeded&&inventoryValue>0?(stockNeeded/inventoryValue*100):null;
 
-  // Net position tile
+  // Net position tile — merged with sellthrough and projection
   document.getElementById('dash-net-position').innerHTML=`
     <div class="net-tile" style="border-color:${netPosition>=0?'var(--green)':'var(--red)'}">
       <div style="flex:1">
         <div class="net-tile-label">Net position &nbsp;·&nbsp; profit + collection + inventory − spend</div>
         <div class="net-tile-value ${netPosition>=0?'pos':'neg'}">${(netPosition>=0?'+':'')+fm(netPosition)}</div>
         <div class="net-tile-sub" style="display:flex;align-items:center;gap:12px">
-          <span>${netPosition>=0?'Overall you are in profit':fm(Math.abs(netPosition))+' needed to break even overall'}</span>
+          <span>${netPosition>=0?'Overall you are in profit':fm(Math.abs(netPosition))+' needed to break even'}</span>
+          ${stockNeeded?`<span style="color:var(--muted)">·</span><span>Sell ${fm(stockNeeded)} of inventory${inventoryPct!==null?' ('+inventoryPct.toFixed(0)+'% of stock)':''}</span>`:''}
           <button onclick="toggleFinDetails()" id="fin-toggle-btn" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0;text-decoration:underline">show details</button>
         </div>
       </div>
@@ -911,38 +1037,6 @@ function renderDashboard(){
         <div class="net-tile-sub">${projection.months} month${projection.months===1?'':'s'} · ${fm(projection.avgMonthly)}/mo avg</div>
       </div>`:''}
     </div>`;
-
-  // Sell-through tile
-  const stEl=document.getElementById('dash-sellthrough');
-  if(stEl){
-    if(netPosition>=0){
-      stEl.innerHTML='';
-    } else {
-      // Historical avg profit margin: total profit / total revenue
-      const avgMargin=totalRevenue>0?totalProfit/totalRevenue:0;
-      if(avgMargin>0){
-        // Stock to sell through = gap / margin
-        const gap=Math.abs(netPosition);
-        const stockNeeded=gap/avgMargin;
-        const inventoryPct=inventoryValue>0?(stockNeeded/inventoryValue*100):null;
-        stEl.innerHTML=`
-          <div class="net-tile" style="border-color:var(--border);margin-top:10px">
-            <div style="flex:1">
-              <div class="net-tile-label">Inventory to sell through to break even</div>
-              <div class="net-tile-value" style="font-size:26px">${fm(stockNeeded)}</div>
-              <div class="net-tile-sub">based on your ${(avgMargin*100).toFixed(1)}% avg profit margin on revenue</div>
-            </div>
-            ${inventoryPct!==null?`<div style="text-align:right;padding-left:24px;border-left:1px solid var(--border);min-width:180px">
-              <div class="net-tile-label">Of current inventory</div>
-              <div style="font-size:18px;font-weight:600;color:var(--text)">${inventoryPct.toFixed(0)}%</div>
-              <div class="net-tile-sub">${fm(stockNeeded)} of ${fm(inventoryValue)} inventory value</div>
-            </div>`:''}
-          </div>`;
-      } else {
-        stEl.innerHTML='';
-      }
-    }
-  }
 
   renderMainChart();
   renderVolChart();
@@ -1009,6 +1103,9 @@ function renderSetPerformance(){
     </div>`;
 }
 
+let gameBreakdownDetailed=false;
+let gameBreakdownChartInst=null;
+
 function renderGameBreakdown(){
   const GAME_LABELS={pokemon:'Pokémon',mtg:'MTG',mtg_hobbit:'MTG Hobbit',onepiece:'One Piece',other:'Other',dbz:'Dragon Ball Z',riftbound:'Riftbound'};
   const GAME_COLORS={pokemon:'#185FA5',mtg:'#534AB7',mtg_hobbit:'#7C3AED',onepiece:'#D85A30',other:'#BA7517',dbz:'#DC2626',riftbound:'#0BC4C4'};
@@ -1045,45 +1142,58 @@ function renderGameBreakdown(){
     });
   });
 
-  function getTrend(byMonth){
-    const months=Object.keys(byMonth).sort();
-    if(months.length<2) return null;
-    const last=byMonth[months[months.length-1]],prev=byMonth[months[months.length-2]];
-    if(prev===0) return null;
-    const pct=((last-prev)/prev)*100;
-    if(pct>10) return{dir:'up',pct};
-    if(pct<-10) return{dir:'down',pct};
-    return{dir:'flat',pct};
-  }
-  function trendBadge(trend){
-    if(!trend) return '<span style="color:var(--muted)">—</span>';
-    if(trend.dir==='up') return`<span class="profit-pos">▲ ${trend.pct.toFixed(0)}%</span>`;
-    if(trend.dir==='down') return`<span class="profit-neg">▼ ${Math.abs(trend.pct).toFixed(0)}%</span>`;
-    return`<span style="color:var(--muted)">→ flat</span>`;
-  }
-
   const hasData=games.some(g=>stats[g].cards>0);
   const el=document.getElementById('dash-game-breakdown');
   if(!hasData){el.innerHTML='<div class="empty" style="margin-bottom:14px">No game data yet — add game breakdowns when logging sales.</div>';return;}
 
   const sorted=[...games].filter(g=>stats[g].cards>0).sort((a,b)=>stats[b].profit-stats[a].profit);
-  const coverageNote=untagged>0?`<div style="font-size:11px;color:var(--muted);padding:8px 10px;border-top:1px solid var(--border)">${tagged} of ${tagged+untagged} sales tagged · figures are proportional estimates · trend = last month vs previous</div>`:'';
+  const coverageNote=untagged>0?`<div style="font-size:11px;color:var(--muted);padding:8px 10px;border-top:1px solid var(--border)">${tagged} of ${tagged+untagged} sales tagged · figures are proportional estimates</div>`:'';
+
+  if(gameBreakdownDetailed){
+    // Chart view — cards sold per game over time
+    const allMonths=[...new Set(games.flatMap(g=>Object.keys(stats[g].byMonth)))].sort();
+    const mLabels=allMonths.map(k=>{const[y,m]=k.split('-');return new Date(y,m-1).toLocaleDateString('en-GB',{month:'short',year:'2-digit'});});
+    const datasets=sorted.map(g=>({
+      label:GAME_LABELS[g],
+      data:allMonths.map(m=>stats[g].byMonth[m]||0),
+      borderColor:GAME_COLORS[g],backgroundColor:GAME_COLORS[g]+'20',
+      tension:0.3,pointRadius:3,fill:false
+    }));
+    const legend=sorted.map(g=>`<span><span class="lsq" style="background:${GAME_COLORS[g]}"></span>${GAME_LABELS[g]}</span>`).join('');
+
+    el.innerHTML=`<div class="card" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="legend" style="flex:1">${legend}</div>
+        <button class="btn sm" onclick="gameBreakdownDetailed=false;renderGameBreakdown()">Show totals</button>
+      </div>
+      <div style="position:relative;height:200px"><canvas id="gameBreakdownChart"></canvas></div>
+      ${coverageNote}
+    </div>`;
+
+    if(gameBreakdownChartInst) gameBreakdownChartInst.destroy();
+    gameBreakdownChartInst=new Chart(document.getElementById('gameBreakdownChart').getContext('2d'),{
+      type:'line',data:{labels:mLabels,datasets},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw} cards`}}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{font:{size:11}}}}}
+    });
+    return;
+  }
 
   el.innerHTML=`<div class="card" style="margin-bottom:14px;padding:0">
+    <div style="display:flex;justify-content:flex-end;padding:8px 10px;border-bottom:1px solid var(--border)">
+      <button class="btn sm" onclick="gameBreakdownDetailed=true;renderGameBreakdown()">Show details</button>
+    </div>
     <table style="font-size:13px">
-      <thead><tr><th>Game</th><th>Cards sold</th><th>Avg sale price</th><th>Profit per card</th><th>Total profit</th><th>Volume vs. last month</th></tr></thead>
+      <thead><tr><th>Game</th><th>Cards sold</th><th>Avg sale price</th><th>Profit per card</th><th>Total profit</th></tr></thead>
       <tbody>${sorted.map(g=>{
         const s=stats[g];
         const avgPrice=s.cards>0?s.revenue/s.cards:0;
         const profPerCard=s.cards>0?s.profit/s.cards:0;
-        const trend=getTrend(s.byMonth);
         return`<tr>
           <td><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:${GAME_COLORS[g]};flex-shrink:0"></span>${GAME_LABELS[g]}</span></td>
           <td>${s.cards.toLocaleString()}</td>
           <td>${fm(avgPrice)}</td>
           <td class="${profPerCard>=0?'profit-pos':'profit-neg'}">${profPerCard>=0?'+':''}${fm(profPerCard)}</td>
           <td class="${s.profit>=0?'profit-pos':'profit-neg'}">${s.profit>=0?'+':''}${fm(s.profit)}</td>
-          <td>${trendBadge(trend)}</td>
         </tr>`;
       }).join('')}</tbody>
     </table>
@@ -1176,52 +1286,24 @@ function renderCollectionDashboard(bestColl,unrealisedPct){
   const totalCost=coll.reduce((a,c)=>a+(parseFloat(c.cost)||0),0);
   const totalMarket=coll.reduce((a,c)=>a+(parseFloat(c.marketValue)||0),0);
   const gain=totalMarket-totalCost;
+
+  function tip(text){return`<span class="tip"><span class="tip-icon">?</span><span class="tip-text">${text}</span></span>`;}
+
   document.getElementById('coll-summary').innerHTML=`
     <div class="coll-metric"><div class="coll-metric-label">Total items</div><div class="coll-metric-value">${coll.length}</div></div>
-    <div class="coll-metric"><div class="coll-metric-label">Cost paid</div><div class="coll-metric-value">${fm(totalCost)}</div></div>
-    <div class="coll-metric"><div class="coll-metric-label">Market value</div><div class="coll-metric-value">${fm(totalMarket)}</div></div>
-    <div class="coll-metric"><div class="coll-metric-label">Unrealised gain</div><div class="coll-metric-value ${gain>=0?'up':'down'}">${gain>=0?'+':''}${fm(gain)}</div></div>`;
+    <div class="coll-metric"><div class="coll-metric-label">Cost paid ${tip('Total amount paid for all items in your Collectr portfolios, from the Average Cost Paid field.')}</div><div class="coll-metric-value">${fm(totalCost)}</div></div>
+    <div class="coll-metric"><div class="coll-metric-label">Market value ${tip('Current market value of all items, pulled from Collectr on your last import.')}</div><div class="coll-metric-value">${fm(totalMarket)}</div></div>
+    <div class="coll-metric"><div class="coll-metric-label">Unrealised gain ${tip('The difference between market value and cost paid. "Unrealised" means it\'s on paper only — you haven\'t sold these items yet.')}</div><div class="coll-metric-value ${gain>=0?'up':'down'}">${gain>=0?'+':''}${fm(gain)}</div></div>`;
 
   const insEl=document.getElementById('dash-coll-insights');
   if(insEl) insEl.innerHTML=`
-    <div class="metric"><div class="metric-label">Best performer</div><div class="metric-value" style="font-size:15px">${bestColl?bestColl.name:'—'}</div><div class="metric-sub">${bestColl?'+'+bestColl.pct.toFixed(1)+'% gain':''}</div></div>
-    <div class="metric"><div class="metric-label">Unrealised gain %</div><div class="metric-value ${unrealisedPct>=0?'pos':'neg'}">${unrealisedPct>=0?'+':''}${(unrealisedPct||0).toFixed(1)}%</div><div class="metric-sub">on cost paid</div></div>`;
+    <div class="metric"><div class="metric-label">Best performer ${tip('The portfolio with the highest percentage gain vs cost paid.')}</div><div class="metric-value" style="font-size:15px">${bestColl?bestColl.name:'—'}</div><div class="metric-sub">${bestColl?'+'+bestColl.pct.toFixed(1)+'% gain':''}</div></div>
+    <div class="metric"><div class="metric-label">Unrealised gain % ${tip('Total unrealised gain as a percentage of total cost paid across all your portfolios.')}</div><div class="metric-value ${unrealisedPct>=0?'pos':'neg'}">${unrealisedPct>=0?'+':''}${(unrealisedPct||0).toFixed(1)}%</div><div class="metric-sub">on cost paid</div></div>`;
 
   renderSnapChart();
-  // Group by portfolio — graded all merge into one "Graded" group
-  const groups={};
-  coll.forEach(c=>{
-    let key;
-    if(c.type==='graded') key='Graded';
-    else if(c.set&&c.set.trim()) key=c.set.trim();
-    else key=c.type==='sealed'?'Sealed':'Singles';
-    if(!groups[key])groups[key]={items:0,cost:0,market:0};
-    groups[key].items++;
-    groups[key].cost+=parseFloat(c.cost)||0;
-    groups[key].market+=parseFloat(c.marketValue)||0;
-  });
+  renderCollByPortfolio();
 
-  const sorted=Object.entries(groups).sort((a,b)=>b[1].market-a[1].market);
-  const el=document.getElementById('dash-sealed');
-  el.innerHTML=`<table style="font-size:13px">
-    <thead><tr><th>Collection</th><th>Items</th><th>Cost</th><th>Market value</th><th>Gain / loss</th></tr></thead>
-    <tbody>${sorted.map(([name,g])=>{
-      const gain=g.market-g.cost;
-      return`<tr>
-        <td style="font-weight:500">${name}</td>
-        <td style="color:var(--muted)">${g.items}</td>
-        <td style="color:var(--muted)">${fm(g.cost)}</td>
-        <td>${fm(g.market)}</td>
-        <td class="${gain>=0?'profit-pos':'profit-neg'}">${gain>=0?'+':''}${fm(gain)}</td>
-      </tr>`;
-    }).join('')}</tbody>
-  </table>`;
-
-  // Graded cards still shown individually below the table
-  const graded=coll.filter(c=>c.type==='graded');
-  renderCollGraded('dash-graded',graded);
-
-  // Top 5 by gain — singles and sealed separately
+  // Top 5 by gain — singles, sealed, graded with price history
   function renderTop5(elId, type, label){
     const el=document.getElementById(elId);
     if(!el) return;
@@ -1231,19 +1313,30 @@ function renderCollectionDashboard(bestColl,unrealisedPct){
       .sort((a,b)=>b.gain-a.gain)
       .slice(0,5);
     if(!items.length){el.innerHTML=`<div class="empty">No ${label} with cost data yet</div>`;return;}
-    el.innerHTML=`<table style="font-size:12px">
-      <thead><tr><th>Item</th><th>Cost</th><th>Value</th><th>Gain</th><th>%</th></tr></thead>
-      <tbody>${items.map(c=>`<tr>
-        <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.name}">${c.name}</td>
-        <td style="color:var(--muted)">${fm(c.cost)}</td>
-        <td>${fm(c.marketValue)}</td>
-        <td class="${c.gain>=0?'profit-pos':'profit-neg'}">${c.gain>=0?'+':''}${fm(c.gain)}</td>
-        <td class="${c.gainPct>=0?'profit-pos':'profit-neg'}">${c.gainPct>=0?'+':''}${c.gainPct.toFixed(0)}%</td>
-      </tr>`).join('')}</tbody>
-    </table>`;
+
+    el.innerHTML=items.map(c=>{
+      const history=state.itemSnapshots[c.id]||[];
+      let sparkline='';
+      if(history.length>1){
+        const vals=history.map(h=>h.value);
+        const min=Math.min(...vals),max=Math.max(...vals),range=max-min||1;
+        const pts=vals.map((v,i)=>`${(i/(vals.length-1))*60},${10-((v-min)/range)*10}`).join(' ');
+        const trend=vals[vals.length-1]>vals[0];
+        sparkline=`<svg width="60" height="12" style="flex-shrink:0;margin-left:4px"><polyline points="${pts}" fill="none" stroke="${trend?'var(--green)':'var(--red)'}" stroke-width="1.5"/></svg>`;
+      }
+      return`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;gap:6px">
+        <div style="min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.name}">${c.name}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          ${sparkline}
+          <span class="${c.gain>=0?'profit-pos':'profit-neg'}" style="white-space:nowrap">${c.gain>=0?'+':''}${fm(c.gain)}</span>
+          <span style="color:var(--muted);font-size:11px">${c.gainPct>=0?'+':''}${c.gainPct.toFixed(0)}%</span>
+        </div>
+      </div>`;
+    }).join('');
   }
   renderTop5('dash-top-singles','single','singles');
   renderTop5('dash-top-sealed','sealed','sealed product');
+  renderTop5('dash-graded','graded','graded cards');
 }
 
 function renderCollGraded(elId,items){
@@ -1344,33 +1437,108 @@ function getMonthlyData(){
   const keys=Object.keys(months).sort();
   return{keys,months};
 }
+let mainChartDrillMonth=null, volChartDrillMonth=null;
+
+function mainChartDrillBack(){mainChartDrillMonth=null;renderMainChart();}
+function volChartDrillBack(){volChartDrillMonth=null;renderVolChart();}
+
 function renderMainChart(){
   const{keys,months}=getMonthlyData();
+  const backBtn=document.getElementById('main-chart-back');
+  const labelEl=document.getElementById('main-chart-month-label');
+
+  if(mainChartDrillMonth){
+    // Drill into a specific month — show daily data
+    const [y,m]=mainChartDrillMonth.split('-');
+    const monthName=new Date(y,m-1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+    if(labelEl) labelEl.textContent=monthName;
+    if(backBtn) backBtn.style.display='inline-flex';
+    const daySales={};
+    state.sales.forEach(s=>{
+      if(!s.date) return;
+      const d=s.date.slice(0,10);
+      if(d.startsWith(mainChartDrillMonth)){
+        if(!daySales[d]) daySales[d]={revenue:0,profit:0};
+        daySales[d].revenue+=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);
+        daySales[d].profit+=calcSaleProfit(s);
+      }
+    });
+    const days=Object.keys(daySales).sort();
+    const dLabels=days.map(d=>new Date(d+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
+    document.getElementById('main-legend').innerHTML=`<span><span class="lsq" style="background:#1D9E75"></span>Revenue</span><span><span class="lsq" style="background:#185FA5"></span>Profit</span>`;
+    if(mainChartInst) mainChartInst.destroy();
+    mainChartInst=new Chart(document.getElementById('mainChart'),{
+      type:'bar',
+      data:{labels:dLabels,datasets:[
+        {label:'Revenue',data:days.map(d=>+daySales[d].revenue.toFixed(2)),backgroundColor:'#1D9E75',borderRadius:3},
+        {label:'Profit',data:days.map(d=>+daySales[d].profit.toFixed(2)),backgroundColor:'#185FA5',borderRadius:3}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:11}}}}}
+    });
+    return;
+  }
+
+  if(labelEl) labelEl.textContent='';
+  if(backBtn) backBtn.style.display='none';
   const labels=keys.map(k=>{const[y,m]=k.split('-');return new Date(y,m-1).toLocaleDateString('en-GB',{month:'short',year:'2-digit'});});
   document.getElementById('main-legend').innerHTML=`<span><span class="lsq" style="background:#1D9E75"></span>Revenue</span><span><span class="lsq" style="background:#185FA5"></span>Profit</span><span><span class="lsq" style="background:#D85A30"></span>Spend</span>`;
-  if(mainChartInst)mainChartInst.destroy();
-  mainChartInst=new Chart(document.getElementById('mainChart'),{type:'bar',data:{labels:labels.length?labels:['No data'],datasets:[{label:'Revenue',data:keys.map(k=>+months[k].revenue.toFixed(2)),backgroundColor:'#1D9E75',borderRadius:3},{label:'Profit',data:keys.map(k=>+months[k].profit.toFixed(2)),backgroundColor:'#185FA5',borderRadius:3},{label:'Spend',data:keys.map(k=>+months[k].spend.toFixed(2)),backgroundColor:'#D85A30',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:11}}}}}});
-}
-function renderTopBuyers(){
-  const el=document.getElementById('dash-top-buyers');
-  if(!el) return;
-  const repeat=state.buyers.filter(b=>b.orders>1).sort((a,b)=>b.orders-a.orders||b.totalSpend-a.totalSpend).slice(0,5);
-  if(!repeat.length){el.innerHTML='<div class="empty">No buyer data yet — add the Buyers tab to your Sheet</div>';return;}
-  el.innerHTML=`<table style="font-size:12px">
-    <thead><tr><th>Username</th><th>Orders</th><th>Spent</th><th>Last order</th></tr></thead>
-    <tbody>${repeat.map(b=>`<tr>
-      <td style="font-weight:500">${b.username}</td>
-      <td>${b.orders}</td>
-      <td>${fm(b.totalSpend)}</td>
-      <td style="color:var(--muted);font-size:11px">${fd(b.lastOrder)}</td>
-    </tr>`).join('')}</tbody>
-  </table>`;
+  if(mainChartInst) mainChartInst.destroy();
+  mainChartInst=new Chart(document.getElementById('mainChart'),{
+    type:'bar',
+    data:{labels:labels.length?labels:['No data'],datasets:[
+      {label:'Revenue',data:keys.map(k=>+months[k].revenue.toFixed(2)),backgroundColor:'#1D9E75',borderRadius:3},
+      {label:'Profit',data:keys.map(k=>+months[k].profit.toFixed(2)),backgroundColor:'#185FA5',borderRadius:3},
+      {label:'Spend',data:keys.map(k=>+months[k].spend.toFixed(2)),backgroundColor:'#D85A30',borderRadius:3}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      onClick:(evt,elements)=>{
+        if(elements.length){const k=keys[elements[0].index];mainChartDrillMonth=k;renderMainChart();}
+      },
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:11}}}}
+    }
+  });
 }
 
 function renderVolChart(){
   const{keys,months}=getMonthlyData();
-  const labels=keys.map(k=>{const[y,m]=k.split('-');return new Date(y,m-1).toLocaleDateString('en-GB',{month:'short',year:'2-digit'});});
+  const backBtn=document.getElementById('vol-chart-back');
+  const labelEl=document.getElementById('vol-chart-month-label');
 
+  if(volChartDrillMonth){
+    const [y,m]=volChartDrillMonth.split('-');
+    const monthName=new Date(y,m-1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+    if(labelEl) labelEl.textContent=monthName;
+    if(backBtn) backBtn.style.display='inline-flex';
+    const dayData={};
+    state.sales.forEach(s=>{
+      if(!s.date) return;
+      const d=s.date.slice(0,10);
+      if(d.startsWith(volChartDrillMonth)){
+        if(!dayData[d]) dayData[d]={vol:0,prices:[]};
+        dayData[d].vol+=(s.articleCount||1);
+        dayData[d].prices.push((parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0));
+      }
+    });
+    const days=Object.keys(dayData).sort();
+    const dLabels=days.map(d=>new Date(d+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
+    document.getElementById('vol-legend').innerHTML=`<span><span class="lsq" style="background:#534AB7"></span>Articles sold</span><span><span class="lsq" style="background:#BA7517"></span>Avg order value (£)</span>`;
+    if(volChartInst) volChartInst.destroy();
+    volChartInst=new Chart(document.getElementById('volChart').getContext('2d'),{
+      type:'line',
+      data:{labels:dLabels,datasets:[
+        {label:'Articles sold',data:days.map(d=>dayData[d].vol),borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',tension:0.3,pointRadius:3,yAxisID:'y'},
+        {label:'Avg order value',data:days.map(d=>{const a=dayData[d].prices;return a.length?parseFloat((a.reduce((s,v)=>s+v,0)/a.length).toFixed(2)):0;}),borderColor:'#BA7517',backgroundColor:'rgba(186,117,23,0.08)',tension:0.3,pointRadius:3,yAxisID:'y2'}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.dataset.yAxisID==='y2'?'£':'')+c.raw}}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{position:'left',grid:{color:'rgba(128,128,128,0.08)'},ticks:{font:{size:11}}},y2:{position:'right',grid:{display:false},ticks:{callback:v=>'£'+v,font:{size:11}}}}}
+    });
+    return;
+  }
+
+  if(labelEl) labelEl.textContent='';
+  if(backBtn) backBtn.style.display='none';
+  const labels=keys.map(k=>{const[y,m]=k.split('-');return new Date(y,m-1).toLocaleDateString('en-GB',{month:'short',year:'2-digit'});});
   const volByMonth={};
   const avgPriceByMonth={};
   state.sales.forEach(s=>{
@@ -1390,15 +1558,15 @@ function renderVolChart(){
   if(volChartInst)volChartInst.destroy();
   volChartInst=new Chart(document.getElementById('volChart').getContext('2d'),{
     type:'line',
-    data:{
-      labels:labels.length?labels:['No data'],
-      datasets:[
-        {label:'Articles sold',data:vols,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',tension:0.3,pointRadius:3,yAxisID:'y'},
-        {label:'Avg order value',data:avgs,borderColor:'#BA7517',backgroundColor:'rgba(186,117,23,0.08)',tension:0.3,pointRadius:3,yAxisID:'y2'}
-      ]
-    },
+    data:{labels:labels.length?labels:['No data'],datasets:[
+      {label:'Articles sold',data:vols,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',tension:0.3,pointRadius:3,yAxisID:'y'},
+      {label:'Avg order value',data:avgs,borderColor:'#BA7517',backgroundColor:'rgba(186,117,23,0.08)',tension:0.3,pointRadius:3,yAxisID:'y2'}
+    ]},
     options:{
       responsive:true,maintainAspectRatio:false,
+      onClick:(evt,elements)=>{
+        if(elements.length){const k=keys[elements[0].index];volChartDrillMonth=k;renderVolChart();}
+      },
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.dataset.yAxisID==='y2'?'£':'')+c.raw}}},
       scales:{
         x:{grid:{display:false},ticks:{font:{size:11}}},
@@ -1825,6 +1993,16 @@ function importCollectrCsv(input){
 
       if(!newCollection.length) throw new Error('No items found in CSV');
 
+      // Record per-item price snapshots
+      const snapDate=today();
+      newCollection.forEach(item=>{
+        if(!state.itemSnapshots[item.id]) state.itemSnapshots[item.id]=[];
+        // Only add if date is new for this item
+        if(!state.itemSnapshots[item.id].find(s=>s.date===snapDate)){
+          state.itemSnapshots[item.id].push({date:snapDate,value:item.marketValue,name:item.name});
+        }
+      });
+
       // Replace collection
       state.collection=newCollection;
 
@@ -1848,6 +2026,7 @@ function importCollectrCsv(input){
 
       scheduleSave('Collection');
       scheduleSave('Snapshots');
+      scheduleSave('ItemSnapshots');
       renderDashboard();
       showPage('collection');
 
