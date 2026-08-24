@@ -394,6 +394,7 @@ tr:hover td{background:var(--surface2)}
     <!-- ALL PURCHASES -->
     <div id="page-purchases" class="page">
       <div class="page-title">All purchases</div>
+      <div id="supplier-summary" style="margin-bottom:14px"></div>
       <div class="tab-row">
         <button class="tab active" onclick="showPurchaseTab('all')" id="ptab-all">All</button>
         <button class="tab" onclick="showPurchaseTab('pokemon')" id="ptab-pokemon">Pokémon</button>
@@ -919,7 +920,7 @@ function showPage(id){
   document.getElementById('nav-'+id).classList.add('active');
   if(id==='dashboard')renderDashboard();
   if(id==='sales')renderSalesTable();
-  if(id==='purchases')renderPurchasesTable(purchaseTab);
+  if(id==='purchases'){renderPurchasesTable(purchaseTab);renderSupplierSummary();}
   if(id==='collection')renderCollectionTable(collTab);
   if(id==='games'||id==='add-game') setNavMode('games',false);
   else if(id!=='settings') setNavMode('cards',false);
@@ -1689,6 +1690,94 @@ function logSale(){
   const defaults={'Thermal label':1,'Promotional sticker':1,'Team bag':1,'A6 envelope':1};
   state.packaging.forEach(p=>{const inp=document.getElementById('pkg-'+p.name.replace(/\W+/g,'_'));if(inp)inp.value=defaults[p.name]||0;});
   updateSalePreview();showPage('sales');
+}
+
+function normaliseSupplier(name){
+  return name.toLowerCase()
+    .replace(/[''`]/g,'')
+    .replace(/\./g,'')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+
+// Map of normalised name → canonical display name
+const SUPPLIER_ALIASES={
+  'rymans':'Ryman',
+  'ryman':'Ryman',
+  'cardmarket':'Cardmarket',
+  'the sub center ltd':'The Sub Center',
+  'the sub center':'The Sub Center',
+  'dicce cavern':'Dice Cavern',
+  'dice cavern':'Dice Cavern',
+  'tg jones':'TG Jones',
+  't g jones':'TG Jones',
+  'pendulum gaming':'Pendulum Gaming',
+  'pendulum':'Pendulum Gaming',
+  'sainsburys':'Sainsbury\'s',
+  'sainsburys garage':'Sainsbury\'s Garage',
+};
+
+function canonicalSupplier(raw){
+  if(!raw||!raw.trim()) return 'Unknown';
+  const norm=normaliseSupplier(raw);
+  if(SUPPLIER_ALIASES[norm]) return SUPPLIER_ALIASES[norm];
+  // Capitalise first letter of each word as fallback
+  return raw.trim().replace(/\b\w/g,c=>c.toUpperCase());
+}
+
+function renderSupplierSummary(){
+  const el=document.getElementById('supplier-summary');
+  if(!el) return;
+  const suppliers={};
+  state.purchases.forEach(p=>{
+    const s=canonicalSupplier((p.supplier||'').trim());
+    if(!suppliers[s]) suppliers[s]={orders:0,total:0};
+    suppliers[s].orders++;
+    suppliers[s].total+=parseFloat(p.amount)||0;
+  });
+
+  const known=Object.entries(suppliers).filter(([n])=>n!=='Unknown').sort((a,b)=>b[1].total-a[1].total);
+  const unknown=suppliers['Unknown']||null;
+  const all=[...known,...(unknown?[['Unknown',unknown]]:[])];
+  if(!all.length){el.innerHTML='';return;}
+
+  const maxTotal=known.length?known[0][1].total:1;
+  const top10=known.slice(0,10);
+
+  el.innerHTML=`<div class="card" style="margin-bottom:14px">
+    <div style="display:flex;gap:24px;flex-wrap:wrap">
+      <div style="flex:1;min-width:260px">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Spend by supplier</div>
+        <table style="font-size:12px;width:100%">
+          <thead><tr><th>Supplier</th><th>Orders</th><th style="text-align:right">Total</th></tr></thead>
+          <tbody>
+            ${known.map(([name,s])=>`<tr>
+              <td style="padding:4px 0;font-weight:500">${name}</td>
+              <td style="color:var(--muted)">${s.orders}</td>
+              <td style="text-align:right">${fm(s.total)}</td>
+            </tr>`).join('')}
+            ${unknown?`<tr style="border-top:1px solid var(--border);color:var(--muted)">
+              <td style="padding:6px 0 4px;font-style:italic">Unknown (no supplier entered)</td>
+              <td>${unknown.orders}</td>
+              <td style="text-align:right">${fm(unknown.total)}</td>
+            </tr>`:''}
+          </tbody>
+        </table>
+      </div>
+      <div style="flex:1;min-width:220px">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Top suppliers</div>
+        ${top10.map(([name,s])=>`
+          <div style="margin-bottom:6px">
+            <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">
+              <span>${name}</span><span style="color:var(--muted)">${fm(s.total)}</span>
+            </div>
+            <div style="background:var(--surface2);border-radius:2px;height:6px;overflow:hidden">
+              <div style="height:100%;width:${Math.round((s.total/maxTotal)*100)}%;background:#185FA5;border-radius:2px;transition:width 0.3s"></div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
 }
 
 // ---- PURCHASES ----
