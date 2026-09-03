@@ -341,6 +341,7 @@ tr:hover td{background:var(--surface2)}
           <div class="pkg-item gq-panel" onclick="gqIncrement('gq-onepiece')" style="cursor:pointer"><label style="pointer-events:none">One Piece</label><input type="number" min="0" value="0" id="gq-onepiece" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
           <div class="pkg-item gq-panel" onclick="gqIncrement('gq-dbz')" style="cursor:pointer"><label style="pointer-events:none">Dragon Ball Z</label><input type="number" min="0" value="0" id="gq-dbz" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
           <div class="pkg-item gq-panel" onclick="gqIncrement('gq-riftbound')" style="cursor:pointer"><label style="pointer-events:none">Riftbound</label><input type="number" min="0" value="0" id="gq-riftbound" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
+          <div class="pkg-item gq-panel" onclick="gqIncrement('gq-yugioh')" style="cursor:pointer"><label style="pointer-events:none">Yu-Gi-Oh!</label><input type="number" min="0" value="0" id="gq-yugioh" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
           <div class="pkg-item gq-panel" onclick="gqIncrement('gq-other')" style="cursor:pointer"><label style="pointer-events:none">Other</label><input type="number" min="0" value="0" id="gq-other" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
         </div>
         <div class="section-divider">Standard packaging</div>
@@ -1132,9 +1133,9 @@ let gameBreakdownDetailed=false;
 let gameBreakdownChartInst=null;
 
 function renderGameBreakdown(){
-  const GAME_LABELS={pokemon:'Pokémon',mtg:'MTG (incl. Hobbit)',onepiece:'One Piece',other:'Other',dbz:'Dragon Ball Z',riftbound:'Riftbound'};
-  const GAME_COLORS={pokemon:'#185FA5',mtg:'#534AB7',onepiece:'#D85A30',other:'#BA7517',dbz:'#DC2626',riftbound:'#0BC4C4'};
-  const games=['pokemon','mtg','onepiece','dbz','riftbound','other'];
+  const GAME_LABELS={pokemon:'Pokémon',mtg:'MTG (incl. Hobbit)',onepiece:'One Piece',yugioh:'Yu-Gi-Oh!',other:'Other',dbz:'Dragon Ball Z',riftbound:'Riftbound'};
+  const GAME_COLORS={pokemon:'#185FA5',mtg:'#534AB7',onepiece:'#D85A30',yugioh:'#8B5CF6',other:'#BA7517',dbz:'#DC2626',riftbound:'#0BC4C4'};
+  const games=['pokemon','mtg','onepiece','yugioh','dbz','riftbound','other'];
 
   const stats={};
   games.forEach(g=>{stats[g]={cards:0,revenue:0,profit:0,byMonth:{}};});
@@ -1148,6 +1149,7 @@ function renderGameBreakdown(){
       onepiece:gq.onepiece||0,
       dbz:gq.dbz||0,
       riftbound:gq.riftbound||0,
+      yugioh:gq.yugioh||0,
       other:gq.other||0
     };
     const total=Object.values(merged).reduce((a,b)=>a+b,0);
@@ -1719,6 +1721,7 @@ function logSale(){
     onepiece:parseInt(document.getElementById('gq-onepiece')?.value)||0,
     dbz:parseInt(document.getElementById('gq-dbz')?.value)||0,
     riftbound:parseInt(document.getElementById('gq-riftbound')?.value)||0,
+    yugioh:parseInt(document.getElementById('gq-yugioh')?.value)||0,
     other:parseInt(document.getElementById('gq-other')?.value)||0
   };
   state.sales.push({date,platform,item,price,shippingCharged:shipping,postageCost:post?post.cost:0,packaging,articleCount,actualCommission:null,promotedFee,gameQty,username:buyerUsername});
@@ -1727,7 +1730,7 @@ function logSale(){
   document.getElementById('s-item').value='';document.getElementById('s-price').value='';document.getElementById('s-shipping').value='1.17';document.getElementById('s-article-count').value='';const sp=document.getElementById('s-promoted');if(sp)sp.value='';
   const su=document.getElementById('s-username');if(su)su.value='';
   const va=document.getElementById('s-vip-alert');if(va)va.style.display='none';
-  ['gq-pokemon','gq-mtg','gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_marvel','gq-mtg_strixhaven','gq-mtg_ff','gq-mtg_hobbit','gq-onepiece','gq-dbz','gq-riftbound','gq-other'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=0;});
+  ['gq-pokemon','gq-mtg','gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_marvel','gq-mtg_strixhaven','gq-mtg_ff','gq-mtg_hobbit','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-other'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=0;});
   const defaults={'Thermal label':1,'Promotional sticker':1,'Team bag':1,'A6 envelope':1};
   state.packaging.forEach(p=>{const inp=document.getElementById('pkg-'+p.name.replace(/\W+/g,'_'));if(inp)inp.value=defaults[p.name]||0;});
   updateSalePreview();showPage('sales');
@@ -1913,7 +1916,7 @@ function gqIncrement(id){
 }
 
 function getTotalGameQty(){
-  const ids=['gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_strixhaven','gq-mtg_marvel','gq-mtg_ff','gq-mtg_hobbit','gq-mtg','gq-pokemon','gq-onepiece','gq-dbz','gq-riftbound','gq-other'];
+  const ids=['gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_strixhaven','gq-mtg_marvel','gq-mtg_ff','gq-mtg_hobbit','gq-mtg','gq-pokemon','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-other'];
   return ids.reduce((a,id)=>{const el=document.getElementById(id);return a+(parseInt(el?.value)||0);},0);
 }
 
