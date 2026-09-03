@@ -1764,29 +1764,31 @@ function renderSupplierSummary(){
   const maxTotal=known.length?known[0][1].total:1;
   const top10=known.slice(0,10);
 
-  el.innerHTML=`<div class="card" style="margin-bottom:14px">
+  el.innerHTML=`<div class="card">
     <div style="display:flex;gap:24px;flex-wrap:wrap">
       <div style="flex:1;min-width:260px">
         <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Spend by supplier</div>
-        <table style="font-size:12px;width:100%">
-          <thead><tr><th>Supplier</th><th>Orders</th><th style="text-align:right">Total</th></tr></thead>
-          <tbody>
-            ${known.map(([name,s])=>`<tr>
-              <td style="padding:4px 0;font-weight:500">${name}</td>
-              <td style="color:var(--muted)">${s.orders}</td>
-              <td style="text-align:right">${fm(s.total)}</td>
-            </tr>`).join('')}
-            ${unknown?`<tr style="border-top:1px solid var(--border);color:var(--muted)">
-              <td style="padding:6px 0 4px;font-style:italic">Unknown (no supplier entered)</td>
-              <td>${unknown.orders}</td>
-              <td style="text-align:right">${fm(unknown.total)}</td>
-            </tr>`:''}
-          </tbody>
-        </table>
+        <div style="max-height:180px;overflow-y:auto">
+          <table style="font-size:12px;width:100%">
+            <thead><tr><th>Supplier</th><th>Orders</th><th style="text-align:right">Total</th></tr></thead>
+            <tbody>
+              ${known.map(([name,s])=>`<tr>
+                <td style="padding:4px 0;font-weight:500">${name}</td>
+                <td style="color:var(--muted)">${s.orders}</td>
+                <td style="text-align:right">${fm(s.total)}</td>
+              </tr>`).join('')}
+              ${unknown?`<tr style="border-top:1px solid var(--border);color:var(--muted)">
+                <td style="padding:6px 0 4px;font-style:italic">Unknown (no supplier entered)</td>
+                <td>${unknown.orders}</td>
+                <td style="text-align:right">${fm(unknown.total)}</td>
+              </tr>`:''}
+            </tbody>
+          </table>
+        </div>
       </div>
       <div style="flex:1;min-width:220px">
         <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Top suppliers</div>
-        ${top10.map(([name,s])=>`
+        ${top10.slice(0,5).map(([name,s])=>`
           <div style="margin-bottom:6px">
             <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">
               <span>${name}</span><span style="color:var(--muted)">${fm(s.total)}</span>
@@ -1891,20 +1893,30 @@ function getTotalGameQty(){
 function renderRecentPurchases(){
   const el=document.getElementById('recent-purchases-panel');
   if(!el) return;
-  const recent=[...state.purchases].sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,10);
-  if(!recent.length){el.innerHTML='';return;}
+  const periodStart=getCurrentPayPeriodStart();
+  const periodStartStr=periodStart.toISOString().slice(0,10);
+  const since=[...state.purchases]
+    .filter(p=>p.date&&p.date.slice(0,10)>=periodStartStr)
+    .sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  if(!since.length){el.innerHTML='';return;}
+  const total=since.reduce((a,p)=>a+(parseFloat(p.amount)||0),0);
   el.innerHTML=`<div class="card" style="padding:0">
-    <div style="padding:8px 12px;border-bottom:1px solid var(--border);font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">Recent purchases</div>
-    <table style="font-size:12px">
-      <tbody>${recent.map((p,i)=>`<tr>
-        <td style="color:var(--muted);white-space:nowrap">${fd(p.date)}</td>
-        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.description}</td>
-        <td style="color:var(--muted)">${CAT_LABELS[p.category]||p.category}</td>
-        <td style="color:var(--muted)">${p.supplier||'—'}</td>
-        <td style="font-weight:600;white-space:nowrap">${fm(p.amount)}</td>
-        <td><button class="btn sm danger" onclick="deletePurchase(${state.purchases.indexOf(p)})"><i class="ti ti-trash"></i></button></td>
-      </tr>`).join('')}</tbody>
-    </table>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">Purchases since payday · ${since.length} orders</div>
+      <div style="font-size:12px;font-weight:600">${fm(total)}</div>
+    </div>
+    <div style="max-height:280px;overflow-y:auto">
+      <table style="font-size:12px;width:100%">
+        <tbody>${since.map((p,i)=>`<tr>
+          <td style="color:var(--muted);white-space:nowrap;padding:5px 10px">${fd(p.date)}</td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:5px 4px">${p.description}</td>
+          <td style="color:var(--muted);padding:5px 4px">${CAT_LABELS[p.category]||p.category}</td>
+          <td style="color:var(--muted);padding:5px 4px">${p.supplier||'—'}</td>
+          <td style="font-weight:600;white-space:nowrap;padding:5px 10px">${fm(p.amount)}</td>
+          <td style="padding:5px 10px"><button class="btn sm danger" onclick="deletePurchase(${state.purchases.indexOf(p)})"><i class="ti ti-trash"></i></button></td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
   </div>`;
 }
 
