@@ -1026,6 +1026,16 @@ function renderDashboard(){
   const inventoryPct=stockNeeded&&inventoryValue>0?(stockNeeded/inventoryValue*100):null;
 
   // Net position tile — merged with sellthrough and projection
+  const periodStart=getCurrentPayPeriodStart();
+  const periodStartStr=periodStart.toISOString().slice(0,10);
+  const budgetSpend=state.purchases
+    .filter(p=>p.date&&p.date.slice(0,10)>=periodStartStr&&canonicalSupplier((p.supplier||'').trim())!=='Cardmarket')
+    .reduce((a,p)=>a+(parseFloat(p.amount)||0),0);
+  const budgetPct=Math.min((budgetSpend/MONTHLY_BUDGET)*100,100);
+  const budgetOver=budgetSpend>MONTHLY_BUDGET;
+  const budgetNear=budgetSpend>MONTHLY_BUDGET*0.8;
+  const budgetColor=budgetOver?'var(--red)':budgetNear?'#f59e0b':'var(--green)';
+
   document.getElementById('dash-net-position').innerHTML=`
     <div class="net-tile" style="border-color:${netPosition>=0?'var(--green)':'var(--red)'}">
       <div style="flex:1">
@@ -1035,6 +1045,15 @@ function renderDashboard(){
           <span>${netPosition>=0?'Overall you are in profit':fm(Math.abs(netPosition))+' needed to break even'}</span>
           ${stockNeeded?`<span style="color:var(--muted)">·</span><span>Sell ${fm(stockNeeded)} of inventory${inventoryPct!==null?' ('+inventoryPct.toFixed(0)+'% of stock)':''}</span>`:''}
           <button onclick="toggleFinDetails()" id="fin-toggle-btn" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0;text-decoration:underline">show details</button>
+        </div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font-size:11px;color:var(--muted)">Monthly budget · since ${periodStart.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} · excl. Cardmarket</span>
+            <span style="font-size:12px;font-weight:600;color:${budgetColor}">${fm(budgetSpend)} <span style="font-weight:400;color:var(--muted)">/ ${fm(MONTHLY_BUDGET)}</span>${budgetOver?' · <span style="color:var(--red)">over by '+fm(budgetSpend-MONTHLY_BUDGET)+'</span>':' · '+fm(MONTHLY_BUDGET-budgetSpend)+' left'}</span>
+          </div>
+          <div style="background:var(--surface2);border-radius:3px;height:5px;overflow:hidden">
+            <div style="height:100%;width:${budgetPct}%;background:${budgetColor};border-radius:3px"></div>
+          </div>
         </div>
       </div>
       ${projection?`<div style="text-align:right;padding-left:24px;border-left:1px solid var(--border);min-width:180px">
@@ -1850,7 +1869,7 @@ function renderMonthlyBudget(){
   const periodStart=getCurrentPayPeriodStart();
   const periodStartStr=periodStart.toISOString().slice(0,10);
   const monthSpend=state.purchases
-    .filter(p=>p.date&&p.date.slice(0,10)>=periodStartStr)
+    .filter(p=>p.date&&p.date.slice(0,10)>=periodStartStr&&canonicalSupplier((p.supplier||'').trim())!=='Cardmarket')
     .reduce((a,p)=>a+(parseFloat(p.amount)||0),0);
   const pct=Math.min((monthSpend/MONTHLY_BUDGET)*100,100);
   const over=monthSpend>MONTHLY_BUDGET;
@@ -1860,7 +1879,7 @@ function renderMonthlyBudget(){
   el.innerHTML=`<div class="card" style="padding:12px 16px;border-color:${color}">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div>
-        <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">${periodLabel}</div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">${periodLabel} · excl. Cardmarket</div>
         <div style="font-size:22px;font-weight:700;color:${color}">${fm(monthSpend)} <span style="font-size:13px;font-weight:400;color:var(--muted)">of ${fm(MONTHLY_BUDGET)} budget</span></div>
       </div>
       <div style="text-align:right">
@@ -1905,13 +1924,13 @@ function renderRecentPurchases(){
   const periodStart=getCurrentPayPeriodStart();
   const periodStartStr=periodStart.toISOString().slice(0,10);
   const since=[...state.purchases]
-    .filter(p=>p.date&&p.date.slice(0,10)>=periodStartStr)
+    .filter(p=>p.date&&p.date.slice(0,10)>=periodStartStr&&canonicalSupplier((p.supplier||'').trim())!=='Cardmarket')
     .sort((a,b)=>String(b.date).localeCompare(String(a.date)));
   if(!since.length){el.innerHTML='';return;}
   const total=since.reduce((a,p)=>a+(parseFloat(p.amount)||0),0);
   el.innerHTML=`<div class="card" style="padding:0">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">Purchases since payday · ${since.length} orders</div>
+      <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">Purchases since payday · excl. Cardmarket · ${since.length} orders</div>
       <div style="font-size:12px;font-weight:600">${fm(total)}</div>
     </div>
     <div style="max-height:280px;overflow-y:auto">
