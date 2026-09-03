@@ -373,7 +373,7 @@ tr:hover td{background:var(--surface2)}
             <select id="p-category">
               <option value="pokemon">Pokémon</option><option value="mtg">MTG</option>
               <option value="onepiece">One Piece</option><option value="dbz">Dragon Ball Z</option>
-              <option value="riftbound">Riftbound</option><option value="marvel">Marvel</option>
+              <option value="riftbound">Riftbound</option><option value="yugioh">Yu-Gi-Oh!</option><option value="marvel">Marvel</option>
               <option value="supplies">Supplies</option><option value="equipment">Equipment</option>
               <option value="other">Other</option>
             </select>
@@ -402,6 +402,7 @@ tr:hover td{background:var(--surface2)}
         <button class="tab" onclick="showPurchaseTab('onepiece')" id="ptab-onepiece">One Piece</button>
         <button class="tab" onclick="showPurchaseTab('dbz')" id="ptab-dbz">Dragon Ball Z</button>
         <button class="tab" onclick="showPurchaseTab('riftbound')" id="ptab-riftbound">Riftbound</button>
+        <button class="tab" onclick="showPurchaseTab('yugioh')" id="ptab-yugioh">Yu-Gi-Oh!</button>
         <button class="tab" onclick="showPurchaseTab('marvel')" id="ptab-marvel">Marvel</button>
         <button class="tab" onclick="showPurchaseTab('supplies')" id="ptab-supplies">Supplies</button>
         <button class="tab" onclick="showPurchaseTab('equipment')" id="ptab-equipment">Equipment</button>
@@ -452,7 +453,7 @@ tr:hover td{background:var(--surface2)}
             <select id="ci-game">
               <option value="pokemon">Pokémon</option><option value="mtg">MTG</option>
               <option value="onepiece">One Piece</option><option value="dbz">Dragon Ball Z</option>
-              <option value="riftbound">Riftbound</option><option value="marvel">Marvel</option>
+              <option value="riftbound">Riftbound</option><option value="yugioh">Yu-Gi-Oh!</option><option value="marvel">Marvel</option>
               <option value="other">Other</option>
             </select>
           </div>
@@ -578,7 +579,7 @@ tr:hover td{background:var(--surface2)}
 
 <script>
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbych_44YhqvkW1U3YGqR6MTSzf-H4mbacany9X2xHr233vKXFw7k2WpARmhl56gTlje/exec';
-const CAT_LABELS = {pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',marvel:'Marvel',supplies:'Supplies',equipment:'Equipment',other:'Other'};
+const CAT_LABELS = {pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',marvel:'Marvel',supplies:'Supplies',equipment:'Equipment',other:'Other'};
 const CAT_COLORS = {pokemon:'#185FA5',mtg:'#534AB7',onepiece:'#D85A30',marvel:'#A32D2D',supplies:'#1D9E75',equipment:'#7a7874',other:'#BA7517'};
 const GAME_LABELS = {pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',marvel:'Marvel',other:'Other'};
 
