@@ -144,7 +144,9 @@ tr:hover td{background:var(--surface2)}
 .net-tile-label{font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
 .net-tile-value{font-size:32px;font-weight:700}
 .net-tile-sub{font-size:12px;color:var(--muted);margin-top:4px}
-.nav-btn-action{color:var(--text)!important;font-weight:500}
+.gq-panel{transition:background 0.1s,transform 0.1s;user-select:none}
+.gq-panel:hover{background:var(--surface2)}
+.gq-panel:active{transform:translateY(1px);filter:brightness(0.85)}
 .nav-btn:active,.nav-btn-action:active{transform:translateY(1px);box-shadow:inset 0 2px 4px rgba(0,0,0,0.5);filter:brightness(0.75);transition:none}
 .tip{position:relative;display:inline-flex;align-items:center;gap:4px}
 .tip-icon{width:14px;height:14px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);font-size:9px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);cursor:help;flex-shrink:0}
@@ -327,19 +329,19 @@ tr:hover td{background:var(--surface2)}
           <span id="s-vip-msg"></span>
         </div>
         <div class="section-divider">Game breakdown</div>
-        <div class="pkg-grid" style="grid-template-columns:repeat(4,1fr)">
-          <div class="pkg-item"><label>Avatar TLA</label><input type="number" min="0" value="0" id="gq-mtg_avatar_tla" oninput="updateSalePreview()"></div>
-          <div class="pkg-item"><label>Avatar TLE</label><input type="number" min="0" value="0" id="gq-mtg_avatar_tle" oninput="updateSalePreview()"></div>
-          <div class="pkg-item"><label>Strixhaven</label><input type="number" min="0" value="0" id="gq-mtg_strixhaven" oninput="updateSalePreview()"></div>
-          <div class="pkg-item"><label>Marvel MTG</label><input type="number" min="0" value="0" id="gq-mtg_marvel" oninput="updateSalePreview()"></div>
-          <div class="pkg-item"><label>Final Fantasy</label><input type="number" min="0" value="0" id="gq-mtg_ff" oninput="updateSalePreview()"></div>
-          <div class="pkg-item"><label>MTG Hobbit</label><input type="number" min="0" value="0" id="gq-mtg_hobbit" oninput="updateSalePreview()"></div>
-          <div class="pkg-item"><label>MTG Other</label><input type="number" min="0" value="0" id="gq-mtg" oninput="updateSalePreview()"></div>
-          <div class="pkg-item"><label>Pokémon</label><input type="number" min="0" value="0" id="gq-pokemon" oninput="updateSalePreview()"></div>
-          <div class="pkg-item"><label>One Piece</label><input type="number" min="0" value="0" id="gq-onepiece" oninput="updateSalePreview()"></div>
-          <div class="pkg-item"><label>Dragon Ball Z</label><input type="number" min="0" value="0" id="gq-dbz" oninput="updateSalePreview()"></div>
-          <div class="pkg-item"><label>Riftbound</label><input type="number" min="0" value="0" id="gq-riftbound" oninput="updateSalePreview()"></div>
-          <div class="pkg-item"><label>Other</label><input type="number" min="0" value="0" id="gq-other" oninput="updateSalePreview()"></div>
+        <div id="game-breakdown-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px">
+          <div class="pkg-item gq-panel" onclick="gqIncrement('gq-mtg_avatar_tla')" style="cursor:pointer"><label style="pointer-events:none">Avatar TLA</label><input type="number" min="0" value="0" id="gq-mtg_avatar_tla" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
+          <div class="pkg-item gq-panel" onclick="gqIncrement('gq-mtg_avatar_tle')" style="cursor:pointer"><label style="pointer-events:none">Avatar TLE</label><input type="number" min="0" value="0" id="gq-mtg_avatar_tle" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
+          <div class="pkg-item gq-panel" onclick="gqIncrement('gq-mtg_strixhaven')" style="cursor:pointer"><label style="pointer-events:none">Strixhaven</label><input type="number" min="0" value="0" id="gq-mtg_strixhaven" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
+          <div class="pkg-item gq-panel" onclick="gqIncrement('gq-mtg_marvel')" style="cursor:pointer"><label style="pointer-events:none">Marvel MTG</label><input type="number" min="0" value="0" id="gq-mtg_marvel" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
+          <div class="pkg-item gq-panel" onclick="gqIncrement('gq-mtg_ff')" style="cursor:pointer"><label style="pointer-events:none">Final Fantasy</label><input type="number" min="0" value="0" id="gq-mtg_ff" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
+          <div class="pkg-item gq-panel" onclick="gqIncrement('gq-mtg_hobbit')" style="cursor:pointer"><label style="pointer-events:none">MTG Hobbit</label><input type="number" min="0" value="0" id="gq-mtg_hobbit" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
+          <div class="pkg-item gq-panel" onclick="gqIncrement('gq-mtg')" style="cursor:pointer"><label style="pointer-events:none">MTG Other</label><input type="number" min="0" value="0" id="gq-mtg" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
+          <div class="pkg-item gq-panel" onclick="gqIncrement('gq-pokemon')" style="cursor:pointer"><label style="pointer-events:none">Pokémon</label><input type="number" min="0" value="0" id="gq-pokemon" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
+          <div class="pkg-item gq-panel" onclick="gqIncrement('gq-onepiece')" style="cursor:pointer"><label style="pointer-events:none">One Piece</label><input type="number" min="0" value="0" id="gq-onepiece" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
+          <div class="pkg-item gq-panel" onclick="gqIncrement('gq-dbz')" style="cursor:pointer"><label style="pointer-events:none">Dragon Ball Z</label><input type="number" min="0" value="0" id="gq-dbz" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
+          <div class="pkg-item gq-panel" onclick="gqIncrement('gq-riftbound')" style="cursor:pointer"><label style="pointer-events:none">Riftbound</label><input type="number" min="0" value="0" id="gq-riftbound" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
+          <div class="pkg-item gq-panel" onclick="gqIncrement('gq-other')" style="cursor:pointer"><label style="pointer-events:none">Other</label><input type="number" min="0" value="0" id="gq-other" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
         </div>
         <div class="section-divider">Standard packaging</div>
         <div class="pkg-grid" id="pkg-inputs-standard"></div>
@@ -394,6 +396,8 @@ tr:hover td{background:var(--surface2)}
     <!-- ALL PURCHASES -->
     <div id="page-purchases" class="page">
       <div class="page-title">All purchases</div>
+      <div id="monthly-budget-banner" style="margin-bottom:14px"></div>
+      <div id="recent-purchases-panel" style="margin-bottom:14px"></div>
       <div id="supplier-summary" style="margin-bottom:14px"></div>
       <div class="tab-row">
         <button class="tab active" onclick="showPurchaseTab('all')" id="ptab-all">All</button>
@@ -921,7 +925,7 @@ function showPage(id){
   document.getElementById('nav-'+id).classList.add('active');
   if(id==='dashboard')renderDashboard();
   if(id==='sales')renderSalesTable();
-  if(id==='purchases'){renderPurchasesTable(purchaseTab);renderSupplierSummary();}
+  if(id==='purchases'){renderPurchasesTable(purchaseTab);renderSupplierSummary();renderMonthlyBudget();renderRecentPurchases();}
   if(id==='collection')renderCollectionTable(collTab);
   if(id==='games'||id==='add-game') setNavMode('games',false);
   else if(id!=='settings') setNavMode('cards',false);
@@ -1310,11 +1314,14 @@ function renderCollectionDashboard(bestColl,unrealisedPct){
     const el=document.getElementById(elId);
     if(!el) return;
     const items=coll
-      .filter(c=>c.type===type&&(parseFloat(c.cost)||0)>0)
-      .map(c=>({...c,gain:(parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0),gainPct:((parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0))/(parseFloat(c.cost)||1)*100}))
+      .filter(c=>c.type===type)
+      .map(c=>({...c,
+        gain:(parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0),
+        gainPct:(parseFloat(c.cost)||0)>0?((parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0))/(parseFloat(c.cost))*100:null
+      }))
       .sort((a,b)=>b.gain-a.gain)
       .slice(0,5);
-    if(!items.length){el.innerHTML=`<div class="empty">No ${label} with cost data yet</div>`;return;}
+    if(!items.length){el.innerHTML=`<div class="empty">No ${label} yet</div>`;return;}
 
     el.innerHTML=items.map(c=>{
       const history=state.itemSnapshots[c.id]||[];
@@ -1331,7 +1338,7 @@ function renderCollectionDashboard(bestColl,unrealisedPct){
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
           ${sparkline}
           <span class="${c.gain>=0?'profit-pos':'profit-neg'}" style="white-space:nowrap">${c.gain>=0?'+':''}${fm(c.gain)}</span>
-          <span style="color:var(--muted);font-size:11px">${c.gainPct>=0?'+':''}${c.gainPct.toFixed(0)}%</span>
+          ${c.gainPct!==null?`<span style="color:var(--muted);font-size:11px">${c.gainPct>=0?'+':''}${c.gainPct.toFixed(0)}%</span>`:''}
         </div>
       </div>`;
     }).join('');
@@ -1555,14 +1562,23 @@ function renderVolChart(){
 
   document.getElementById('vol-legend').innerHTML=`
     <span><span class="lsq" style="background:#534AB7"></span>Articles sold</span>
-    <span><span class="lsq" style="background:#BA7517"></span>Avg order value (£)</span>`;
+    <span><span class="lsq" style="background:#BA7517"></span>Avg order value (£)</span>
+    <span><span class="lsq" style="background:#1D9E75"></span>Orders</span>`;
+
+  const ordersByMonth={};
+  state.sales.forEach(s=>{
+    const key=parseToYYYYMM(s.date);
+    if(!key) return;
+    ordersByMonth[key]=(ordersByMonth[key]||0)+1;
+  });
 
   if(volChartInst)volChartInst.destroy();
   volChartInst=new Chart(document.getElementById('volChart').getContext('2d'),{
     type:'line',
     data:{labels:labels.length?labels:['No data'],datasets:[
       {label:'Articles sold',data:vols,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',tension:0.3,pointRadius:3,yAxisID:'y'},
-      {label:'Avg order value',data:avgs,borderColor:'#BA7517',backgroundColor:'rgba(186,117,23,0.08)',tension:0.3,pointRadius:3,yAxisID:'y2'}
+      {label:'Avg order value',data:avgs,borderColor:'#BA7517',backgroundColor:'rgba(186,117,23,0.08)',tension:0.3,pointRadius:3,yAxisID:'y2'},
+      {label:'Orders',data:keys.map(k=>ordersByMonth[k]||0),borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',tension:0.3,pointRadius:3,borderDash:[4,3],yAxisID:'y'}
     ]},
     options:{
       responsive:true,maintainAspectRatio:false,
@@ -1662,10 +1678,13 @@ function updateSalePreview(){
   if(el)el.innerHTML=`<div class="breakdown"><span>Sale: ${fm(price)}</span><span>+ Shipping: ${fm(shipping)}</span><span>− Postage: ${fm(pc)}</span><span>− Supplies: ${fm(sc)}</span><span>− Fee: ${fm(fee)}</span><span><strong style="color:${profit>=0?'var(--green)':'var(--red)'}">= Profit: ${fm(profit)}</strong></span></div>`;
 }
 function logSale(){
-  const date=document.getElementById('s-date').value,platform=document.getElementById('s-platform').value,item=document.getElementById('s-item').value.trim(),price=parseFloat(document.getElementById('s-price').value)||0,shipping=parseFloat(document.getElementById('s-shipping').value)||0,articleCount=parseInt(document.getElementById('s-article-count').value)||1,promotedFee=parseFloat(document.getElementById('s-promoted')?.value)||0,postName=document.getElementById('s-postage').value,post=state.postage.find(p=>p.name===postName);
+  const date=document.getElementById('s-date').value,platform=document.getElementById('s-platform').value,item=document.getElementById('s-item').value.trim(),price=parseFloat(document.getElementById('s-price').value)||0,shipping=parseFloat(document.getElementById('s-shipping').value)||0,promotedFee=parseFloat(document.getElementById('s-promoted')?.value)||0,postName=document.getElementById('s-postage').value,post=state.postage.find(p=>p.name===postName);
   const buyerUsername=document.getElementById('s-username')?.value.trim()||'';
   if(!item){alert('Please enter a Sale ID.');return;}
   if(!price){alert('Please enter a price.');return;}
+  const totalGQ=getTotalGameQty();
+  const articleCount=parseInt(document.getElementById('s-article-count').value)||totalGQ||0;
+  if(!articleCount){alert('Please enter article count or add at least one card in the game breakdown.');return;}
   const packaging=state.packaging.map(p=>({name:p.name,qty:parseInt(document.getElementById('pkg-'+p.name.replace(/\W+/g,'_'))?.value||0)})).filter(p=>p.qty>0);
   const gameQty={
     pokemon:parseInt(document.getElementById('gq-pokemon')?.value)||0,
@@ -1781,6 +1800,83 @@ function renderSupplierSummary(){
   </div>`;
 }
 
+const MONTHLY_BUDGET=656;
+
+function gqIncrement(id){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.value=(parseInt(el.value)||0)+1;
+  // Sync article count to total game qty
+  const total=getTotalGameQty();
+  const artEl=document.getElementById('s-article-count');
+  if(artEl&&(!artEl.value||parseInt(artEl.value)===0)) artEl.value=total;
+  else if(artEl) artEl.value=total;
+  updateSalePreview();
+}
+
+function getTotalGameQty(){
+  const ids=['gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_strixhaven','gq-mtg_marvel','gq-mtg_ff','gq-mtg_hobbit','gq-mtg','gq-pokemon','gq-onepiece','gq-dbz','gq-riftbound','gq-other'];
+  return ids.reduce((a,id)=>{const el=document.getElementById(id);return a+(parseInt(el?.value)||0);},0);
+}
+
+function renderMonthlyBudget(){
+  const el=document.getElementById('monthly-budget-banner');
+  if(!el) return;
+  const now=new Date();
+  const ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const monthSpend=state.purchases
+    .filter(p=>p.date&&p.date.slice(0,7)===ym)
+    .reduce((a,p)=>a+(parseFloat(p.amount)||0),0);
+  const pct=Math.min((monthSpend/MONTHLY_BUDGET)*100,100);
+  const over=monthSpend>MONTHLY_BUDGET;
+  const nearLimit=monthSpend>MONTHLY_BUDGET*0.8;
+  const color=over?'var(--red)':nearLimit?'#f59e0b':'var(--green)';
+  el.innerHTML=`<div class="card" style="padding:12px 16px;border-color:${color}">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">This month's spend</div>
+        <div style="font-size:22px;font-weight:700;color:${color}">${fm(monthSpend)} <span style="font-size:13px;font-weight:400;color:var(--muted)">of ${fm(MONTHLY_BUDGET)} budget</span></div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;font-weight:600;color:${color}">${over?'Over budget by '+fm(monthSpend-MONTHLY_BUDGET):fm(MONTHLY_BUDGET-monthSpend)+' remaining'}</div>
+        <div style="font-size:11px;color:var(--muted)">${now.toLocaleDateString('en-GB',{month:'long',year:'numeric'})}</div>
+      </div>
+    </div>
+    <div style="background:var(--surface2);border-radius:4px;height:8px;overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:${color};border-radius:4px;transition:width 0.3s"></div>
+    </div>
+  </div>`;
+}
+
+function renderRecentPurchases(){
+  const el=document.getElementById('recent-purchases-panel');
+  if(!el) return;
+  const recent=[...state.purchases].sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,10);
+  if(!recent.length){el.innerHTML='';return;}
+  el.innerHTML=`<div class="card" style="padding:0">
+    <div style="padding:8px 12px;border-bottom:1px solid var(--border);font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">Recent purchases</div>
+    <table style="font-size:12px">
+      <tbody>${recent.map((p,i)=>`<tr>
+        <td style="color:var(--muted);white-space:nowrap">${fd(p.date)}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.description}</td>
+        <td style="color:var(--muted)">${CAT_LABELS[p.category]||p.category}</td>
+        <td style="color:var(--muted)">${p.supplier||'—'}</td>
+        <td style="font-weight:600;white-space:nowrap">${fm(p.amount)}</td>
+        <td><button class="btn sm danger" onclick="deletePurchase(${state.purchases.indexOf(p)})"><i class="ti ti-trash"></i></button></td>
+      </tr>`).join('')}</tbody>
+    </table>
+  </div>`;
+}
+
+function deletePurchase(idx){
+  if(!confirm('Remove this purchase?')) return;
+  state.purchases.splice(idx,1);
+  scheduleSave('Purchases');
+  renderRecentPurchases();
+  renderMonthlyBudget();
+  renderSupplierSummary();
+}
+
 // ---- PURCHASES ----
 function showPurchaseTab(cat){purchaseTab=cat;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('ptab-'+cat).classList.add('active');renderPurchasesTable(cat);}
 function renderPurchasesTable(cat){
@@ -1795,6 +1891,7 @@ function logPurchase(){
   if(!amount){alert('Please enter an amount.');return;}
   state.purchases.push({date,category,description,amount,supplier,set});
   scheduleSave('Purchases');
+  renderMonthlyBudget();
   document.getElementById('p-desc').value='';document.getElementById('p-amount').value='';document.getElementById('p-supplier').value='';
   const ps=document.getElementById('p-set');if(ps)ps.value='';
   showPage('purchases');
