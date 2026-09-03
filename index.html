@@ -585,7 +585,7 @@ tr:hover td{background:var(--surface2)}
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbych_44YhqvkW1U3YGqR6MTSzf-H4mbacany9X2xHr233vKXFw7k2WpARmhl56gTlje/exec';
 const CAT_LABELS = {pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',marvel:'Marvel',supplies:'Supplies',equipment:'Equipment',other:'Other'};
 const CAT_COLORS = {pokemon:'#185FA5',mtg:'#534AB7',onepiece:'#D85A30',marvel:'#A32D2D',supplies:'#1D9E75',equipment:'#7a7874',other:'#BA7517'};
-const GAME_LABELS = {pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',marvel:'Marvel',other:'Other'};
+const GAME_LABELS = {pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',marvel:'Marvel',other:'Other'};;
 
 const DEFAULTS = {
   sales:[],purchases:[],collection:[],buyers:[],sets:[],snapshots:[],games:[],gameSnapshots:[],itemSnapshots:{},
@@ -1801,6 +1801,74 @@ function renderSupplierSummary(){
 }
 
 const MONTHLY_BUDGET=656;
+const PAYDAY=28;
+let ukBankHolidays=new Set();
+
+async function loadBankHolidays(){
+  try{
+    const res=await fetch('https://www.gov.uk/bank-holidays.json');
+    const data=await res.json();
+    const events=data['england-and-wales']?.events||[];
+    events.forEach(e=>ukBankHolidays.add(e.date));
+  }catch(e){
+    // Fail silently — will treat all days as working days
+  }
+}
+
+function getPayday(year, month){
+  // Returns the actual payday date for a given year/month
+  // Payday is 28th, or last working day before if 28th falls on weekend/bank holiday
+  let d=new Date(year, month-1, PAYDAY);
+  while(true){
+    const day=d.getDay(); // 0=Sun, 6=Sat
+    const dateStr=d.toISOString().slice(0,10);
+    if(day!==0&&day!==6&&!ukBankHolidays.has(dateStr)) return new Date(d);
+    d.setDate(d.getDate()-1);
+  }
+}
+
+function getCurrentPayPeriodStart(){
+  const now=new Date();
+  const y=now.getFullYear();
+  const m=now.getMonth()+1;
+  // Payday this month
+  const thisPayday=getPayday(y,m);
+  if(now>=thisPayday) return thisPayday;
+  // We're before this month's payday — use last month's
+  const prevMonth=m===1?12:m-1;
+  const prevYear=m===1?y-1:y;
+  return getPayday(prevYear,prevMonth);
+}
+
+function renderMonthlyBudget(){
+  const el=document.getElementById('monthly-budget-banner');
+  if(!el) return;
+  const periodStart=getCurrentPayPeriodStart();
+  const periodStartStr=periodStart.toISOString().slice(0,10);
+  const monthSpend=state.purchases
+    .filter(p=>p.date&&p.date.slice(0,10)>=periodStartStr)
+    .reduce((a,p)=>a+(parseFloat(p.amount)||0),0);
+  const pct=Math.min((monthSpend/MONTHLY_BUDGET)*100,100);
+  const over=monthSpend>MONTHLY_BUDGET;
+  const nearLimit=monthSpend>MONTHLY_BUDGET*0.8;
+  const color=over?'var(--red)':nearLimit?'#f59e0b':'var(--green)';
+  const periodLabel=`Since ${periodStart.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} (payday)`;
+  el.innerHTML=`<div class="card" style="padding:12px 16px;border-color:${color}">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">${periodLabel}</div>
+        <div style="font-size:22px;font-weight:700;color:${color}">${fm(monthSpend)} <span style="font-size:13px;font-weight:400;color:var(--muted)">of ${fm(MONTHLY_BUDGET)} budget</span></div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;font-weight:600;color:${color}">${over?'Over budget by '+fm(monthSpend-MONTHLY_BUDGET):fm(MONTHLY_BUDGET-monthSpend)+' remaining'}</div>
+        <div style="font-size:11px;color:var(--muted)">Resets ~28th each month</div>
+      </div>
+    </div>
+    <div style="background:var(--surface2);border-radius:4px;height:8px;overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:${color};border-radius:4px;transition:width 0.3s"></div>
+    </div>
+  </div>`;
+}
 
 function gqIncrement(id){
   const el=document.getElementById(id);
@@ -1819,34 +1887,6 @@ function getTotalGameQty(){
   return ids.reduce((a,id)=>{const el=document.getElementById(id);return a+(parseInt(el?.value)||0);},0);
 }
 
-function renderMonthlyBudget(){
-  const el=document.getElementById('monthly-budget-banner');
-  if(!el) return;
-  const now=new Date();
-  const ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const monthSpend=state.purchases
-    .filter(p=>p.date&&p.date.slice(0,7)===ym)
-    .reduce((a,p)=>a+(parseFloat(p.amount)||0),0);
-  const pct=Math.min((monthSpend/MONTHLY_BUDGET)*100,100);
-  const over=monthSpend>MONTHLY_BUDGET;
-  const nearLimit=monthSpend>MONTHLY_BUDGET*0.8;
-  const color=over?'var(--red)':nearLimit?'#f59e0b':'var(--green)';
-  el.innerHTML=`<div class="card" style="padding:12px 16px;border-color:${color}">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div>
-        <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">This month's spend</div>
-        <div style="font-size:22px;font-weight:700;color:${color}">${fm(monthSpend)} <span style="font-size:13px;font-weight:400;color:var(--muted)">of ${fm(MONTHLY_BUDGET)} budget</span></div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:13px;font-weight:600;color:${color}">${over?'Over budget by '+fm(monthSpend-MONTHLY_BUDGET):fm(MONTHLY_BUDGET-monthSpend)+' remaining'}</div>
-        <div style="font-size:11px;color:var(--muted)">${now.toLocaleDateString('en-GB',{month:'long',year:'numeric'})}</div>
-      </div>
-    </div>
-    <div style="background:var(--surface2);border-radius:4px;height:8px;overflow:hidden">
-      <div style="height:100%;width:${pct}%;background:${color};border-radius:4px;transition:width 0.3s"></div>
-    </div>
-  </div>`;
-}
 
 function renderRecentPurchases(){
   const el=document.getElementById('recent-purchases-panel');
@@ -2371,7 +2411,7 @@ function renderGamesPage(){
 }
 
 // ---- INIT ----
-async function init(){await loadFromSheets();document.getElementById('loading-overlay').style.display='none';renderDashboard();}
+async function init(){loadBankHolidays();await loadFromSheets();document.getElementById('loading-overlay').style.display='none';renderDashboard();}
 init();
 </script>
 </body>
