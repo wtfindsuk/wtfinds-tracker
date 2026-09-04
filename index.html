@@ -331,7 +331,16 @@ tr:hover td{background:var(--surface2)}
           </div>
           <!-- RIGHT: this week's sales -->
           <div>
-            <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">This week's sales</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">Sales by week</div>
+              <div style="display:flex;align-items:center;gap:4px">
+                <button class="btn sm" onclick="weekNavJump(-4)" title="Back 1 month">«</button>
+                <button class="btn sm" onclick="weekNavStep(-1)">‹</button>
+                <span id="week-nav-label" style="font-size:11px;color:var(--muted);min-width:90px;text-align:center"></span>
+                <button class="btn sm" onclick="weekNavStep(1)" id="week-nav-fwd">›</button>
+                <button class="btn sm" onclick="weekNavJump(4)" id="week-nav-fwd-month">»</button>
+              </div>
+            </div>
             <div id="log-sale-week-summary" style="display:flex;gap:16px;margin-bottom:8px;font-size:12px"></div>
             <div style="position:relative;height:110px"><canvas id="logSaleWeekChart"></canvas></div>
           </div>
@@ -1705,6 +1714,7 @@ function initSaleForm(){
     extEl.innerHTML=html;
   }
 
+  logSaleWeekOffset=0;
   // Render this week's sales chart
   renderLogSaleWeekChart();
 
@@ -1937,17 +1947,61 @@ function gqIncrement(id){
 }
 
 let logSaleWeekChartInst=null;
+let logSaleWeekOffset=0; // 0 = current week, -1 = last week, etc.
+
+function weekNavStep(delta){
+  const minWeek=getMinWeekOffset();
+  logSaleWeekOffset=Math.max(minWeek,Math.min(0,logSaleWeekOffset+delta));
+  renderLogSaleWeekChart();
+}
+
+function weekNavJump(delta){
+  const minWeek=getMinWeekOffset();
+  logSaleWeekOffset=Math.max(minWeek,Math.min(0,logSaleWeekOffset+(delta)));
+  renderLogSaleWeekChart();
+}
+
+function getMinWeekOffset(){
+  if(!state.sales.length) return -52;
+  const oldest=state.sales.reduce((min,s)=>{
+    if(!s.date) return min;
+    const d=new Date(s.date.slice(0,10)+'T12:00:00');
+    return d<min?d:min;
+  },new Date());
+  const now=new Date();
+  const msPerWeek=7*24*60*60*1000;
+  return -Math.ceil((now-oldest)/msPerWeek)-1;
+}
 
 function renderLogSaleWeekChart(){
   const summaryEl=document.getElementById('log-sale-week-summary');
   const canvas=document.getElementById('logSaleWeekChart');
+  const labelEl=document.getElementById('week-nav-label');
+  const fwdBtn=document.getElementById('week-nav-fwd');
+  const fwdMonthBtn=document.getElementById('week-nav-fwd-month');
   if(!summaryEl||!canvas) return;
 
   const now=new Date();
-  const dayOfWeek=now.getDay(); // 0=Sun
-  const weekStart=new Date(now);
-  weekStart.setDate(now.getDate()-(dayOfWeek===0?6:dayOfWeek-1)); // Mon
-  weekStart.setHours(0,0,0,0);
+  const todayDayOfWeek=now.getDay();
+  // Get Monday of current week
+  const currentMonday=new Date(now);
+  currentMonday.setDate(now.getDate()-(todayDayOfWeek===0?6:todayDayOfWeek-1));
+  currentMonday.setHours(0,0,0,0);
+
+  // Apply offset
+  const weekStart=new Date(currentMonday);
+  weekStart.setDate(weekStart.getDate()+logSaleWeekOffset*7);
+  const weekEnd=new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate()+6);
+  weekEnd.setHours(23,59,59,999);
+
+  // Update nav label
+  const isCurrentWeek=logSaleWeekOffset===0;
+  const startStr=weekStart.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  const endStr=weekEnd.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  if(labelEl) labelEl.textContent=isCurrentWeek?'This week':`${startStr} – ${endStr}`;
+  if(fwdBtn) fwdBtn.disabled=isCurrentWeek;
+  if(fwdMonthBtn) fwdMonthBtn.disabled=isCurrentWeek;
 
   const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const dayData={};
@@ -1956,7 +2010,7 @@ function renderLogSaleWeekChart(){
   state.sales.forEach(s=>{
     if(!s.date) return;
     const d=new Date(s.date.slice(0,10)+'T12:00:00');
-    if(d<weekStart) return;
+    if(d<weekStart||d>weekEnd) return;
     const dayIdx=d.getDay()===0?6:d.getDay()-1;
     const dayName=days[dayIdx];
     dayData[dayName].revenue+=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);
@@ -1973,8 +2027,8 @@ function renderLogSaleWeekChart(){
     <span><span style="font-weight:600;color:#1D9E75">${fm(totalProfit)}</span> <span style="color:var(--muted)">profit</span></span>
     <span><span style="font-weight:600;color:var(--text)">${totalOrders}</span> <span style="color:var(--muted)">orders</span></span>`;
 
-  const todayIdx=now.getDay()===0?6:now.getDay()-1;
-  const labels=days.map((d,i)=>i===todayIdx?d+'*':d);
+  const todayIdx=isCurrentWeek?(now.getDay()===0?6:now.getDay()-1):-1;
+  const labels=days.map((d,i)=>i===todayIdx?d+'·':d);
   const revenues=days.map(d=>+dayData[d].revenue.toFixed(2));
   const profits=days.map(d=>+dayData[d].profit.toFixed(2));
 
