@@ -307,18 +307,18 @@ tr:hover td{background:var(--surface2)}
     <div id="page-log-sale" class="page">
       <div class="page-title">Log a sale</div>
       <div class="card">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:10px">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-bottom:10px">
           <!-- LEFT: compact form fields -->
-          <div style="display:flex;flex-direction:column;gap:6px">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px">
               <div class="form-group"><label>Sale ID</label><input type="text" id="s-item" style="width:100%"></div>
               <div class="form-group"><label>Buyer username</label><input type="text" id="s-username" placeholder="username" oninput="checkBuyerVIP()" style="width:100%"></div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px">
               <div class="form-group"><label>Price sold (£)</label><input type="number" id="s-price" step="0.01" min="0" placeholder="0.00" oninput="updateSalePreview()" style="width:100%"></div>
               <div class="form-group"><label>Date</label><input type="date" id="s-date" style="width:100%"></div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:6px">
               <div class="form-group"><label>Platform</label>
                 <select id="s-platform" onchange="updateSalePreview();togglePromotedField()" style="width:100%">
                   <option>Cardmarket</option><option>eBay</option><option>Other</option>
@@ -342,7 +342,7 @@ tr:hover td{background:var(--surface2)}
               </div>
             </div>
             <div id="log-sale-week-summary" style="display:flex;gap:16px;margin-bottom:8px;font-size:12px"></div>
-            <div style="position:relative;height:110px"><canvas id="logSaleWeekChart"></canvas></div>
+            <div style="position:relative;height:110px;min-height:110px;max-height:110px;overflow:hidden"><canvas id="logSaleWeekChart" style="max-height:110px"></canvas></div>
           </div>
         </div>
         <div id="s-vip-alert" style="display:none;align-items:center;gap:8px;padding:8px 12px;background:#fef3c7;border:1px solid #f59e0b;border-radius:var(--radius-sm);font-size:13px;color:#92400e;margin-bottom:10px">
@@ -2041,6 +2041,7 @@ function renderLogSaleWeekChart(){
     ]},
     options:{
       responsive:true,maintainAspectRatio:false,
+      onResize:(chart,size)=>{if(size.height>110)chart.canvas.parentNode.style.height='110px';},
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},
       scales:{
         x:{grid:{display:false},ticks:{font:{size:10}}},
