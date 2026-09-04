@@ -1699,7 +1699,20 @@ function initSaleForm(){
   const accEl=document.getElementById('pkg-inputs-accessories');
   const extEl=document.getElementById('pkg-inputs-extra');
 
-  if(stdEl) stdEl.innerHTML=PKG_GROUPS[0].names.map(n=>state.packaging.find(p=>p.name===n)).filter(Boolean).map(pkgItem).join('');
+  const PKG_FREQ_GROUPS=[
+    {names:['Toploader'],label:''},
+    {names:['Team bag','Sealable Penny Sleeve','Penny sleeve'],label:''},
+    {names:['A6 envelope'],label:''},
+    {names:['Thermal label','Promotional sticker'],label:''},
+  ];
+
+  if(stdEl){
+    stdEl.innerHTML=PKG_FREQ_GROUPS.map(group=>{
+      const items=group.names.map(n=>state.packaging.find(p=>p.name===n)).filter(Boolean);
+      if(!items.length) return '';
+      return`<div style="display:grid;grid-template-columns:repeat(${Math.min(items.length,4)},1fr);gap:6px;margin-bottom:6px">${items.map(pkgItem).join('')}</div>`;
+    }).join('');
+  }
   if(accEl) accEl.innerHTML=ACCESSORIES.map(n=>state.packaging.find(p=>p.name===n)).filter(Boolean).map(pkgItem).join('');
 
   if(extEl){
