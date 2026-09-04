@@ -1710,7 +1710,12 @@ function initSaleForm(){
     stdEl.innerHTML=PKG_FREQ_GROUPS.map(group=>{
       const items=group.names.map(n=>state.packaging.find(p=>p.name===n)).filter(Boolean);
       if(!items.length) return '';
-      return`<div style="display:grid;grid-template-columns:repeat(${Math.min(items.length,4)},1fr);gap:6px;margin-bottom:6px">${items.map(pkgItem).join('')}</div>`;
+      const cols=Math.min(items.length,4);
+      // For single items, restrict to 1/3 width to match multi-item rows visually
+      const style=cols===1
+        ?'display:grid;grid-template-columns:1fr;max-width:33.33%;margin-bottom:6px'
+        :`display:grid;grid-template-columns:repeat(${cols},1fr);gap:6px;margin-bottom:6px`;
+      return`<div style="${style}">${items.map(pkgItem).join('')}</div>`;
     }).join('');
   }
   if(accEl) accEl.innerHTML=ACCESSORIES.map(n=>state.packaging.find(p=>p.name===n)).filter(Boolean).map(pkgItem).join('');
