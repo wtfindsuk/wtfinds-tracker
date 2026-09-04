@@ -1674,7 +1674,7 @@ function initSaleForm(){
   const accEl=document.getElementById('pkg-inputs-accessories');
   const extEl=document.getElementById('pkg-inputs-extra');
 
-  if(stdEl) stdEl.innerHTML=PKG_GROUPS[0].names.map(pkgItem).join('');
+  if(stdEl) stdEl.innerHTML=PKG_GROUPS[0].names.map(n=>state.packaging.find(p=>p.name===n)).filter(Boolean).map(pkgItem).join('');
   if(accEl) accEl.innerHTML=ACCESSORIES.map(n=>state.packaging.find(p=>p.name===n)).filter(Boolean).map(pkgItem).join('');
 
   if(extEl){
