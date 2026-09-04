@@ -1671,17 +1671,26 @@ function initSaleForm(){
   const defaults={'Thermal label':1,'Promotional sticker':1,'A6 envelope':1};
 
   const PKG_GROUPS=[
-    {label:'Standard packaging', names:['Team bag','Sealable Penny Sleeve','Penny sleeve','Toploader','Thermal label','Promotional sticker','A6 envelope']},
+    {label:'Standard packaging', names:['Toploader','Team bag','Sealable Penny Sleeve','Penny sleeve','A6 envelope','Thermal label','Promotional sticker']},
     {label:'Envelopes & mailers — Letter', names:['C7/A7 envelope','A6 bubble mailer']},
     {label:'Envelopes & mailers — Large letter', names:['A5 envelope','A5/C5 PIP envelope','A5 bubble mailer','C6/A6 box']},
     {label:'Accessories', names:['A4 label','Foam insert','Card Cocoon']},
     {label:'Boxes — Small parcel', names:['M4 envelope','10x8x4 box']},
   ];
 
+  const PKG_FREQ={
+    'Toploader':'high','Team bag':'high','Sealable Penny Sleeve':'high','Penny sleeve':'high',
+    'A6 envelope':'mid',
+    'Thermal label':'low','Promotional sticker':'low'
+  };
+  const PKG_FREQ_BG={high:'rgba(255,255,255,0.07)',mid:'rgba(255,255,255,0.04)',low:'rgba(255,255,255,0.015)'};
+
   function pkgItem(p){
     const def=defaults[p.name]||0;
     const pid=`pkg-${p.name.replace(/\W+/g,'_')}`;
-    return`<div class="pkg-item gq-panel" style="cursor:pointer" onclick="pkgIncrement('${pid}')"><label title="${p.name}" style="flex:1;pointer-events:none"><span style="font-size:12px">${p.name}</span><span style="font-size:10px;color:var(--muted);display:block">£${p.cost.toFixed(2)}</span></label><input type="number" min="0" value="${def}" id="${pid}" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>`;
+    const freq=PKG_FREQ[p.name]||'mid';
+    const bg=PKG_FREQ_BG[freq];
+    return`<div class="pkg-item gq-panel" style="cursor:pointer;background:${bg}" onclick="pkgIncrement('${pid}')"><label title="${p.name}" style="flex:1;pointer-events:none"><span style="font-size:12px">${p.name}</span><span style="font-size:10px;color:var(--muted);display:block">£${p.cost.toFixed(2)}</span></label><input type="number" min="0" value="${def}" id="${pid}" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>`;
   }
 
   const ACCESSORIES=['A4 label','Foam insert','Card Cocoon'];
