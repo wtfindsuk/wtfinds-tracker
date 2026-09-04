@@ -2238,8 +2238,8 @@ function importCollectrCsv(input){
         const cols=parseCSVLine(lines[i]);
         if(!cols[nameIdx]) continue;
         const qty=parseInt(cols[qtyIdx])||1;
-        const market=parseFloat(cols[marketIdx])||0;
-        const cost=parseFloat(cols[costIdx])||0;
+        const market=parseFloat(String(cols[marketIdx]||0).replace(/,/g,''))||0;
+        const cost=parseFloat(String(cols[costIdx]||0).replace(/,/g,''))||0;
         const portfolio=cols[portfolioIdx]||'';
         const short=PORTFOLIO_MAP[portfolio]||portfolio;
         const grade=cols[gradeIdx]||'';
@@ -2277,7 +2277,7 @@ function importCollectrCsv(input){
       state.collection=newCollection;
 
       // Build snapshot row
-      const PORTFOLIOS=['Avatar TLA','Avatar TLE','Avatar ART','Singles One Piece','Singles DBZ','Singles Pokemon','Singles MTG SOS','Singles MTG','Sealed'];
+      const PORTFOLIOS=['Avatar TLA','Avatar TLE','Avatar ART','Hobbit ART','Singles One Piece','Singles DBZ','Singles Pokemon','Singles MTG SOS','Singles MTG','Sealed'];
       const snapObj={Date:today(),TotalMarket:round2(totalMarket),TotalCost:round2(totalCost),UnrealisedGain:round2(totalMarket-totalCost)};
       PORTFOLIOS.forEach(p=>{snapObj['Portfolio_'+p.replace(/ /g,'_')]=round2(portfolioTotals[p]||0);});
       snapObj.Type_Sealed=round2(typeTotals.sealed);
