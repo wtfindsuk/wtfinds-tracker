@@ -1640,8 +1640,8 @@ function initSaleForm(){
   const sh=document.getElementById('s-shipping');if(sh&&!sh.value)sh.value='1.17';
   document.getElementById('s-postage').innerHTML=state.postage.map(p=>`<option value="${p.name}">${p.name} (£${p.cost.toFixed(2)})</option>`).join('');
 
-  const STANDARD_PKG=['Thermal label','Penny sleeve','Toploader','Team bag','Promotional sticker','A6 envelope'];
-  const defaults={'Thermal label':1,'Promotional sticker':1,'Team bag':1,'A6 envelope':1};
+  const STANDARD_PKG=['Thermal label','Penny sleeve','Toploader','Team bag','Sealable Penny Sleeve','Promotional sticker','A6 envelope'];
+  const defaults={'Thermal label':1,'Promotional sticker':1,'A6 envelope':1};
 
   const PKG_GROUPS=[
     {label:'Standard packaging', names:['Thermal label','Penny sleeve','Toploader','Team bag','Promotional sticker','A6 envelope']},
@@ -1731,7 +1731,7 @@ function logSale(){
   const su=document.getElementById('s-username');if(su)su.value='';
   const va=document.getElementById('s-vip-alert');if(va)va.style.display='none';
   ['gq-pokemon','gq-mtg','gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_marvel','gq-mtg_strixhaven','gq-mtg_ff','gq-mtg_hobbit','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-other'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=0;});
-  const defaults={'Thermal label':1,'Promotional sticker':1,'Team bag':1,'A6 envelope':1};
+  const defaults={'Thermal label':1,'Promotional sticker':1,'A6 envelope':1};
   state.packaging.forEach(p=>{const inp=document.getElementById('pkg-'+p.name.replace(/\W+/g,'_'));if(inp)inp.value=defaults[p.name]||0;});
   updateSalePreview();showPage('sales');
 }
