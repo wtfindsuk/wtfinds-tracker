@@ -243,6 +243,18 @@ tr:hover td{background:var(--surface2)}
       </div>
       <div class="card" style="margin-bottom:6px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div class="card-title" style="margin-bottom:0" id="dash-month-title">This month</div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <button class="btn sm" onclick="dashMonthNavStep(-1)">‹</button>
+            <span id="dash-month-nav-label" style="font-size:11px;color:var(--muted);min-width:80px;text-align:center"></span>
+            <button class="btn sm" onclick="dashMonthNavStep(1)" id="dash-month-nav-fwd">›</button>
+          </div>
+        </div>
+        <div id="dash-month-summary" style="display:flex;gap:16px;margin-bottom:8px;font-size:12px"></div>
+        <div style="position:relative;height:120px"><canvas id="dashMonthChart"></canvas></div>
+      </div>
+      <div class="card" style="margin-bottom:6px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <div class="card-title" style="margin-bottom:0">Revenue, profit &amp; spend by month</div>
           <div style="display:flex;gap:6px;align-items:center">
             <span id="main-chart-month-label" style="font-size:11px;color:var(--muted)"></span>
@@ -1108,6 +1120,7 @@ function renderDashboard(){
   renderMainChart();
   renderVolChart();
   renderDashWeekChart();
+  renderDashMonthChart();
   renderGameBreakdown();
   renderSetPerformance();
   renderTopBuyers();
@@ -2044,7 +2057,7 @@ function renderDashWeekChart(){
 
   const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const dayData={};
-  days.forEach(d=>dayData[d]={revenue:0,profit:0,orders:0});
+  days.forEach(d=>dayData[d]={revenue:0,profit:0,orders:0,cards:0});
 
   state.sales.forEach(s=>{
     if(!s.date) return;
@@ -2054,16 +2067,19 @@ function renderDashWeekChart(){
     dayData[days[dayIdx]].revenue+=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);
     dayData[days[dayIdx]].profit+=calcSaleProfit(s);
     dayData[days[dayIdx]].orders++;
+    dayData[days[dayIdx]].cards+=parseInt(s.articleCount)||1;
   });
 
   const totalRev=Object.values(dayData).reduce((a,d)=>a+d.revenue,0);
   const totalProfit=Object.values(dayData).reduce((a,d)=>a+d.profit,0);
   const totalOrders=Object.values(dayData).reduce((a,d)=>a+d.orders,0);
+  const totalCards=Object.values(dayData).reduce((a,d)=>a+d.cards,0);
 
   summaryEl.innerHTML=`
     <span><span style="font-weight:600;color:var(--text)">${fm(totalRev)}</span> <span style="color:var(--muted)">revenue</span></span>
     <span><span style="font-weight:600;color:#1D9E75">${fm(totalProfit)}</span> <span style="color:var(--muted)">profit</span></span>
-    <span><span style="font-weight:600;color:var(--text)">${totalOrders}</span> <span style="color:var(--muted)">orders</span></span>`;
+    <span><span style="font-weight:600;color:var(--text)">${totalOrders}</span> <span style="color:var(--muted)">orders</span></span>
+    <span><span style="font-weight:600;color:#534AB7">${totalCards}</span> <span style="color:var(--muted)">cards</span></span>`;
 
   const todayIdx=isCurrentWeek?(now.getDay()===0?6:now.getDay()-1):-1;
   const labels=days.map((d,i)=>i===todayIdx?d+'·':d);
@@ -2072,15 +2088,94 @@ function renderDashWeekChart(){
   dashWeekChartInst=new Chart(canvas.getContext('2d'),{
     type:'bar',
     data:{labels,datasets:[
-      {label:'Revenue',data:days.map(d=>+dayData[d].revenue.toFixed(2)),backgroundColor:'#185FA5',borderRadius:3},
-      {label:'Profit',data:days.map(d=>+dayData[d].profit.toFixed(2)),backgroundColor:'#1D9E75',borderRadius:3}
+      {label:'Revenue',data:days.map(d=>+dayData[d].revenue.toFixed(2)),backgroundColor:'#185FA5',borderRadius:3,yAxisID:'y'},
+      {label:'Profit',data:days.map(d=>+dayData[d].profit.toFixed(2)),backgroundColor:'#1D9E75',borderRadius:3,yAxisID:'y'},
+      {label:'Cards',data:days.map(d=>dayData[d].cards),backgroundColor:'#534AB7',borderRadius:3,yAxisID:'y2',type:'line',pointRadius:3,tension:0.3,borderColor:'#534AB7',fill:false}
     ]},
     options:{
       responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label===('Cards')?`Cards: ${c.raw}`:`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},
       scales:{
         x:{grid:{display:false},ticks:{font:{size:11}}},
-        y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:11}}}
+        y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:11}}},
+        y2:{position:'right',grid:{display:false},ticks:{font:{size:11}},title:{display:true,text:'Cards',font:{size:10},color:'var(--muted)'}}
+      }
+    }
+  });
+}
+
+let dashMonthChartInst=null;
+let dashMonthOffset=0; // 0=current month, -1=last month
+
+function dashMonthNavStep(delta){
+  const now=new Date();
+  const minOffset=-(now.getFullYear()-2020)*12-now.getMonth();
+  dashMonthOffset=Math.max(minOffset,Math.min(0,dashMonthOffset+delta));
+  renderDashMonthChart();
+}
+
+function renderDashMonthChart(){
+  const summaryEl=document.getElementById('dash-month-summary');
+  const canvas=document.getElementById('dashMonthChart');
+  const labelEl=document.getElementById('dash-month-nav-label');
+  const fwdBtn=document.getElementById('dash-month-nav-fwd');
+  if(!summaryEl||!canvas) return;
+
+  const now=new Date();
+  const targetDate=new Date(now.getFullYear(),now.getMonth()+dashMonthOffset,1);
+  const year=targetDate.getFullYear();
+  const month=targetDate.getMonth();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const isCurrentMonth=dashMonthOffset===0;
+
+  if(labelEl) labelEl.textContent=targetDate.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  if(fwdBtn) fwdBtn.disabled=isCurrentMonth;
+
+  const dayData={};
+  for(let i=1;i<=daysInMonth;i++) dayData[i]={revenue:0,profit:0,orders:0,cards:0};
+
+  state.sales.forEach(s=>{
+    if(!s.date) return;
+    const d=new Date(s.date.slice(0,10)+'T12:00:00');
+    if(d.getFullYear()!==year||d.getMonth()!==month) return;
+    const day=d.getDate();
+    dayData[day].revenue+=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);
+    dayData[day].profit+=calcSaleProfit(s);
+    dayData[day].orders++;
+    dayData[day].cards+=parseInt(s.articleCount)||1;
+  });
+
+  const totalRev=Object.values(dayData).reduce((a,d)=>a+d.revenue,0);
+  const totalProfit=Object.values(dayData).reduce((a,d)=>a+d.profit,0);
+  const totalOrders=Object.values(dayData).reduce((a,d)=>a+d.orders,0);
+  const totalCards=Object.values(dayData).reduce((a,d)=>a+d.cards,0);
+
+  summaryEl.innerHTML=`
+    <span><span style="font-weight:600;color:var(--text)">${fm(totalRev)}</span> <span style="color:var(--muted)">revenue</span></span>
+    <span><span style="font-weight:600;color:#1D9E75">${fm(totalProfit)}</span> <span style="color:var(--muted)">profit</span></span>
+    <span><span style="font-weight:600;color:var(--text)">${totalOrders}</span> <span style="color:var(--muted)">orders</span></span>
+    <span><span style="font-weight:600;color:#534AB7">${totalCards}</span> <span style="color:var(--muted)">cards</span></span>`;
+
+  const labels=Object.keys(dayData).map(d=>+d%5===0||+d===1?String(d):'');
+  const revenues=Object.values(dayData).map(d=>+d.revenue.toFixed(2));
+  const profits=Object.values(dayData).map(d=>+d.profit.toFixed(2));
+  const cards=Object.values(dayData).map(d=>d.cards);
+
+  if(dashMonthChartInst) dashMonthChartInst.destroy();
+  dashMonthChartInst=new Chart(canvas.getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Revenue',data:revenues,backgroundColor:'#185FA5',borderRadius:2,yAxisID:'y'},
+      {label:'Profit',data:profits,backgroundColor:'#1D9E75',borderRadius:2,yAxisID:'y'},
+      {label:'Cards',data:cards,backgroundColor:'#534AB7',borderRadius:2,type:'line',pointRadius:2,tension:0.3,borderColor:'#534AB7',fill:false,yAxisID:'y2'}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Cards'?`Cards: ${c.raw}`:`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:10}}},
+        y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:10}}},
+        y2:{position:'right',grid:{display:false},ticks:{font:{size:10}},title:{display:true,text:'Cards',font:{size:9},color:'var(--muted)'}}
       }
     }
   });
@@ -2145,7 +2240,7 @@ function renderLogSaleWeekChart(){
 
   const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const dayData={};
-  days.forEach(d=>dayData[d]={revenue:0,profit:0,orders:0});
+  days.forEach(d=>dayData[d]={revenue:0,profit:0,orders:0,cards:0});
 
   state.sales.forEach(s=>{
     if(!s.date) return;
@@ -2156,36 +2251,42 @@ function renderLogSaleWeekChart(){
     dayData[dayName].revenue+=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);
     dayData[dayName].profit+=calcSaleProfit(s);
     dayData[dayName].orders++;
+    dayData[dayName].cards+=parseInt(s.articleCount)||1;
   });
 
   const totalRev=Object.values(dayData).reduce((a,d)=>a+d.revenue,0);
   const totalProfit=Object.values(dayData).reduce((a,d)=>a+d.profit,0);
   const totalOrders=Object.values(dayData).reduce((a,d)=>a+d.orders,0);
+  const totalCards=Object.values(dayData).reduce((a,d)=>a+d.cards,0);
 
   summaryEl.innerHTML=`
     <span><span style="font-weight:600;color:var(--text)">${fm(totalRev)}</span> <span style="color:var(--muted)">revenue</span></span>
     <span><span style="font-weight:600;color:#1D9E75">${fm(totalProfit)}</span> <span style="color:var(--muted)">profit</span></span>
-    <span><span style="font-weight:600;color:var(--text)">${totalOrders}</span> <span style="color:var(--muted)">orders</span></span>`;
+    <span><span style="font-weight:600;color:var(--text)">${totalOrders}</span> <span style="color:var(--muted)">orders</span></span>
+    <span><span style="font-weight:600;color:#534AB7">${totalCards}</span> <span style="color:var(--muted)">cards</span></span>`;
 
   const todayIdx=isCurrentWeek?(now.getDay()===0?6:now.getDay()-1):-1;
   const labels=days.map((d,i)=>i===todayIdx?d+'·':d);
   const revenues=days.map(d=>+dayData[d].revenue.toFixed(2));
   const profits=days.map(d=>+dayData[d].profit.toFixed(2));
+  const cards=days.map(d=>dayData[d].cards);
 
   if(logSaleWeekChartInst) logSaleWeekChartInst.destroy();
   logSaleWeekChartInst=new Chart(canvas.getContext('2d'),{
     type:'bar',
     data:{labels,datasets:[
-      {label:'Revenue',data:revenues,backgroundColor:'#185FA5',borderRadius:3},
-      {label:'Profit',data:profits,backgroundColor:'#1D9E75',borderRadius:3}
+      {label:'Revenue',data:revenues,backgroundColor:'#185FA5',borderRadius:3,yAxisID:'y'},
+      {label:'Profit',data:profits,backgroundColor:'#1D9E75',borderRadius:3,yAxisID:'y'},
+      {label:'Cards',data:cards,type:'line',pointRadius:3,tension:0.3,borderColor:'#534AB7',backgroundColor:'#534AB7',fill:false,yAxisID:'y2'}
     ]},
     options:{
       responsive:true,maintainAspectRatio:false,
       onResize:(chart,size)=>{if(size.height>110)chart.canvas.parentNode.style.height='110px';},
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Cards'?`Cards: ${c.raw}`:`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},
       scales:{
         x:{grid:{display:false},ticks:{font:{size:10}}},
-        y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:10}}}
+        y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:10}}},
+        y2:{position:'right',grid:{display:false},ticks:{font:{size:10}},title:{display:true,text:'Cards',font:{size:9},color:'var(--muted)'}}
       }
     }
   });
