@@ -1519,9 +1519,12 @@ function parseToYYYYMM(dateVal){
 function parseDateToObj(dateVal){
   if(!dateVal) return null;
   const s=String(dateVal).trim();
-  // YYYY-MM-DD
-  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  // YYYY-MM-DD (plain date, no time — treat as local)
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if(m) return new Date(+m[1],+m[2]-1,+m[3],12,0,0);
+  // ISO timestamp (e.g. 2026-09-06T23:00:00.000Z) — convert to local date
+  m=s.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+  if(m){const d=new Date(s);return isNaN(d)?null:new Date(d.getFullYear(),d.getMonth(),d.getDate(),12,0,0);}
   // DD/MM/YYYY
   m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
   if(m) return new Date(+m[3],+m[2]-1,+m[1],12,0,0);
@@ -1529,7 +1532,7 @@ function parseDateToObj(dateVal){
   m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if(m) return new Date(+m[3],+m[1]-1,+m[2],12,0,0);
   const d=new Date(dateVal);
-  return isNaN(d)?null:d;
+  return isNaN(d)?null:new Date(d.getFullYear(),d.getMonth(),d.getDate(),12,0,0);
 }
 
 function getMonthlyData(){
@@ -2084,10 +2087,6 @@ function renderDashWeekChart(){
   if(labelEl) labelEl.textContent=isCurrentWeek?'This week':`${startStr} – ${endStr}`;
   if(fwdBtn) fwdBtn.disabled=isCurrentWeek;
   if(fwdMonthBtn) fwdMonthBtn.disabled=isCurrentWeek;
-
-  const sample=state.sales.slice(-3).map(s=>({raw:s.date,parsed:parseDateToObj(s.date)?.toDateString()}));
-  console.log('Date samples:', JSON.stringify(sample));
-  console.log('weekStart:', weekStart.toDateString(), 'weekEnd:', weekEnd.toDateString());
 
   const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const dayData={};
