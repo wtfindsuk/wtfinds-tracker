@@ -2069,20 +2069,10 @@ function renderDashWeekChart(){
     dayData[days[dayIdx]].orders++;
     dayData[days[dayIdx]].cards+=parseInt(s.articleCount)||1;
   });
-
-  const totalRev=Object.values(dayData).reduce((a,d)=>a+d.revenue,0);
-  const totalProfit=Object.values(dayData).reduce((a,d)=>a+d.profit,0);
-  const totalOrders=Object.values(dayData).reduce((a,d)=>a+d.orders,0);
-  const totalCards=Object.values(dayData).reduce((a,d)=>a+d.cards,0);
-
-  summaryEl.innerHTML=`
-    <span><span style="font-weight:600;color:var(--text)">${fm(totalRev)}</span> <span style="color:var(--muted)">revenue</span></span>
-    <span><span style="font-weight:600;color:#1D9E75">${fm(totalProfit)}</span> <span style="color:var(--muted)">profit</span></span>
-    <span><span style="font-weight:600;color:var(--text)">${totalOrders}</span> <span style="color:var(--muted)">orders</span></span>
-    <span><span style="font-weight:600;color:#534AB7">${totalCards}</span> <span style="color:var(--muted)">cards</span></span>`;
-
-  const todayIdx=isCurrentWeek?(now.getDay()===0?6:now.getDay()-1):-1;
-  const labels=days.map((d,i)=>i===todayIdx?d+'·':d);
+  console.log('Week chart debug — weekStart:',weekStart.toDateString(),'weekEnd:',weekEnd.toDateString());
+  console.log('Total sales in state:',state.sales.length);
+  const weekSales=state.sales.filter(s=>s.date&&new Date(s.date.slice(0,10)+'T12:00:00')>=weekStart&&new Date(s.date.slice(0,10)+'T12:00:00')<=weekEnd);
+  console.log('Sales this week:',weekSales.length, weekSales.map(s=>s.date+' £'+s.price));
 
   if(dashWeekChartInst) dashWeekChartInst.destroy();
   dashWeekChartInst=new Chart(canvas.getContext('2d'),{
