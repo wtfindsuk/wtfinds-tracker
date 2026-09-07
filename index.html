@@ -1525,6 +1525,9 @@ function parseDateToObj(dateVal){
   // DD/MM/YYYY
   m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
   if(m) return new Date(+m[3],+m[2]-1,+m[1],12,0,0);
+  // M/D/YYYY (Google Sheets US format)
+  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m) return new Date(+m[3],+m[1]-1,+m[2],12,0,0);
   const d=new Date(dateVal);
   return isNaN(d)?null:d;
 }
@@ -2082,6 +2085,10 @@ function renderDashWeekChart(){
   if(fwdBtn) fwdBtn.disabled=isCurrentWeek;
   if(fwdMonthBtn) fwdMonthBtn.disabled=isCurrentWeek;
 
+  const sample=state.sales.slice(-3).map(s=>({raw:s.date,parsed:parseDateToObj(s.date)?.toDateString()}));
+  console.log('Date samples:', JSON.stringify(sample));
+  console.log('weekStart:', weekStart.toDateString(), 'weekEnd:', weekEnd.toDateString());
+
   const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const dayData={};
   days.forEach(d=>dayData[d]={revenue:0,profit:0,orders:0,cards:0});
@@ -2096,6 +2103,7 @@ function renderDashWeekChart(){
     dayData[days[dayIdx]].orders++;
     dayData[days[dayIdx]].cards+=parseInt(s.articleCount)||1;
   });
+
   const totalRev=Object.values(dayData).reduce((a,d)=>a+d.revenue,0);
   const totalProfit=Object.values(dayData).reduce((a,d)=>a+d.profit,0);
   const totalOrders=Object.values(dayData).reduce((a,d)=>a+d.orders,0);
