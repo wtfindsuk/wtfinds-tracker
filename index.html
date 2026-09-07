@@ -147,6 +147,7 @@ tr:hover td{background:var(--surface2)}
 .gq-panel{transition:background 0.1s,transform 0.1s;user-select:none}
 .gq-panel:hover{background:var(--surface2)}
 .gq-panel:active{transform:translateY(1px);filter:brightness(0.85)}
+#toast{position:fixed;bottom:24px;right:24px;background:#1D9E75;color:#fff;padding:10px 18px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;opacity:0;transform:translateY(8px);transition:opacity 0.2s,transform 0.2s;pointer-events:none;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
 .nav-btn:active,.nav-btn-action:active{transform:translateY(1px);box-shadow:inset 0 2px 4px rgba(0,0,0,0.5);filter:brightness(0.75);transition:none}
 .tip{position:relative;display:inline-flex;align-items:center;gap:4px}
 .tip-icon{width:14px;height:14px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);font-size:9px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);cursor:help;flex-shrink:0}
@@ -155,6 +156,7 @@ tr:hover td{background:var(--surface2)}
 </style>
 </head>
 <body>
+<div id="toast"></div>
 <div id="loading-overlay" class="loading-overlay">
   <div class="loading-box"><div class="spinner"></div>Loading your data...</div>
 </div>
@@ -960,6 +962,17 @@ function renderTopBuyers(){
     <span style="color:var(--muted)"><span style="font-weight:600;color:var(--text)">${b.username}</span> · ${b.orders} orders · ${fm(b.totalSpend)}</span>`).join('')}</div>`;
 }
 
+function showToast(msg,color='#1D9E75'){
+  const t=document.getElementById('toast');
+  if(!t) return;
+  t.textContent=msg;
+  t.style.background=color;
+  t.style.opacity='1';
+  t.style.transform='translateY(0)';
+  clearTimeout(t._timer);
+  t._timer=setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(8px)';},2500);
+}
+
 function setNavMode(mode,navigate=true){
   document.getElementById('nav-cards-section').style.display=mode==='cards'?'block':'none';
   document.getElementById('nav-games-section').style.display=mode==='games'?'block':'none';
@@ -1503,6 +1516,19 @@ function parseToYYYYMM(dateVal){
   if(!isNaN(d)) return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
   return null;
 }
+function parseDateToObj(dateVal){
+  if(!dateVal) return null;
+  const s=String(dateVal).trim();
+  // YYYY-MM-DD
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return new Date(+m[1],+m[2]-1,+m[3],12,0,0);
+  // DD/MM/YYYY
+  m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if(m) return new Date(+m[3],+m[2]-1,+m[1],12,0,0);
+  const d=new Date(dateVal);
+  return isNaN(d)?null:d;
+}
+
 function getMonthlyData(){
   const months={};
   state.sales.forEach(s=>{
@@ -1835,6 +1861,7 @@ function logSale(){
   state.packaging.forEach(p=>{const inp=document.getElementById('pkg-'+p.name.replace(/\W+/g,'_'));if(inp)inp.value=defaults[p.name]||0;});
   updateSalePreview();
   renderLogSaleWeekChart();
+  showToast(`✓ Sale logged — ${fm(price)} · ${articleCount} article${articleCount===1?'':'s'}`);
   document.getElementById('page-log-sale').scrollTop=0;
   document.querySelector('.main-content')?.scrollTo(0,0);
   window.scrollTo(0,0);
@@ -2061,18 +2088,27 @@ function renderDashWeekChart(){
 
   state.sales.forEach(s=>{
     if(!s.date) return;
-    const d=new Date(s.date.slice(0,10)+'T12:00:00');
-    if(d<weekStart||d>weekEnd) return;
+    const d=parseDateToObj(s.date);
+    if(!d||d<weekStart||d>weekEnd) return;
     const dayIdx=d.getDay()===0?6:d.getDay()-1;
     dayData[days[dayIdx]].revenue+=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);
     dayData[days[dayIdx]].profit+=calcSaleProfit(s);
     dayData[days[dayIdx]].orders++;
     dayData[days[dayIdx]].cards+=parseInt(s.articleCount)||1;
   });
-  console.log('Week chart debug — weekStart:',weekStart.toDateString(),'weekEnd:',weekEnd.toDateString());
-  console.log('Total sales in state:',state.sales.length);
-  const weekSales=state.sales.filter(s=>s.date&&new Date(s.date.slice(0,10)+'T12:00:00')>=weekStart&&new Date(s.date.slice(0,10)+'T12:00:00')<=weekEnd);
-  console.log('Sales this week:',weekSales.length, weekSales.map(s=>s.date+' £'+s.price));
+  const totalRev=Object.values(dayData).reduce((a,d)=>a+d.revenue,0);
+  const totalProfit=Object.values(dayData).reduce((a,d)=>a+d.profit,0);
+  const totalOrders=Object.values(dayData).reduce((a,d)=>a+d.orders,0);
+  const totalCards=Object.values(dayData).reduce((a,d)=>a+d.cards,0);
+
+  summaryEl.innerHTML=`
+    <span><span style="font-weight:600;color:var(--text)">${fm(totalRev)}</span> <span style="color:var(--muted)">revenue</span></span>
+    <span><span style="font-weight:600;color:#1D9E75">${fm(totalProfit)}</span> <span style="color:var(--muted)">profit</span></span>
+    <span><span style="font-weight:600;color:var(--text)">${totalOrders}</span> <span style="color:var(--muted)">orders</span></span>
+    <span><span style="font-weight:600;color:#534AB7">${totalCards}</span> <span style="color:var(--muted)">cards</span></span>`;
+
+  const todayIdx=isCurrentWeek?(now.getDay()===0?6:now.getDay()-1):-1;
+  const labels=days.map((d,i)=>i===todayIdx?d+'·':d);
 
   if(dashWeekChartInst) dashWeekChartInst.destroy();
   dashWeekChartInst=new Chart(canvas.getContext('2d'),{
@@ -2126,8 +2162,8 @@ function renderDashMonthChart(){
 
   state.sales.forEach(s=>{
     if(!s.date) return;
-    const d=new Date(s.date.slice(0,10)+'T12:00:00');
-    if(d.getFullYear()!==year||d.getMonth()!==month) return;
+    const d=parseDateToObj(s.date);
+    if(!d||d.getFullYear()!==year||d.getMonth()!==month) return;
     const day=d.getDate();
     dayData[day].revenue+=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);
     dayData[day].profit+=calcSaleProfit(s);
@@ -2234,8 +2270,8 @@ function renderLogSaleWeekChart(){
 
   state.sales.forEach(s=>{
     if(!s.date) return;
-    const d=new Date(s.date.slice(0,10)+'T12:00:00');
-    if(d<weekStart||d>weekEnd) return;
+    const d=parseDateToObj(s.date);
+    if(!d||d<weekStart||d>weekEnd) return;
     const dayIdx=d.getDay()===0?6:d.getDay()-1;
     const dayName=days[dayIdx];
     dayData[dayName].revenue+=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);
