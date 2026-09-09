@@ -356,9 +356,18 @@ tr:hover td{background:var(--surface2)}
                 <label>Shipping (£)</label>
                 <input type="number" id="s-shipping" step="0.01" min="0" value="1.17" oninput="updateSalePreview()" style="width:100%">
                 <div style="display:flex;gap:3px;margin-top:4px">
-                  <button type="button" onclick="setShipping(1.17,'RM 2nd Letter (£0.91)')" style="flex:1;padding:3px 0;font-size:10px;font-weight:600;text-align:center;background:#185FA5;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;line-height:1.2">£1.17<br><span style="font-size:9px;opacity:0.8;font-weight:400">2nd</span></button>
-                  <button type="button" onclick="setShipping(1.98,'RM 2nd Large Letter (£1.55)')" style="flex:1;padding:3px 0;font-size:10px;font-weight:600;text-align:center;background:#534AB7;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;line-height:1.2">£1.98<br><span style="font-size:9px;opacity:0.8;font-weight:400">2nd (L)</span></button>
-                  <button type="button" onclick="setShipping(3.98,'Tracked 48 Large Letter (£2.85)')" style="flex:1;padding:3px 0;font-size:10px;font-weight:600;text-align:center;background:#1D9E75;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;line-height:1.2">£3.98<br><span style="font-size:9px;opacity:0.8;font-weight:400">48</span></button>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+                    <button type="button" onclick="setShipping(1.17,'RM 2nd Letter (£0.91)')" class="gq-panel" style="width:100%;padding:4px 0;font-size:10px;font-weight:600;text-align:center;background:#185FA5;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;transition:filter 0.1s,transform 0.1s">£1.17</button>
+                    <span style="font-size:9px;color:var(--muted);background:var(--surface2);border-radius:3px;padding:1px 5px;white-space:nowrap">2nd</span>
+                  </div>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+                    <button type="button" onclick="setShipping(1.98,'RM 2nd Large Letter (£1.55)')" class="gq-panel" style="width:100%;padding:4px 0;font-size:10px;font-weight:600;text-align:center;background:#534AB7;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;transition:filter 0.1s,transform 0.1s">£1.98</button>
+                    <span style="font-size:9px;color:var(--muted);background:var(--surface2);border-radius:3px;padding:1px 5px;white-space:nowrap">2nd (L)</span>
+                  </div>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+                    <button type="button" onclick="setShipping(3.98,'Tracked 48 Large Letter (£2.85)')" class="gq-panel" style="width:100%;padding:4px 0;font-size:10px;font-weight:600;text-align:center;background:#1D9E75;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;transition:filter 0.1s,transform 0.1s">£3.98</button>
+                    <span style="font-size:9px;color:var(--muted);background:var(--surface2);border-radius:3px;padding:1px 5px;white-space:nowrap">48</span>
+                  </div>
                 </div>
               </div>
               <div class="form-group"><label>Postage type</label><select id="s-postage" onchange="updateSalePreview()" style="width:100%"></select></div>
