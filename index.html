@@ -343,15 +343,7 @@ tr:hover td{background:var(--surface2)}
               <div class="form-group"><label>Buyer username</label><input type="text" id="s-username" placeholder="username" oninput="checkBuyerVIP()" style="width:100%"></div>
             </div>
             <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px">
-              <div class="form-group">
-                <label>Price sold (£)</label>
-                <input type="number" id="s-price" step="0.01" min="0" placeholder="0.00" oninput="updateSalePreview()" style="width:100%">
-                <div style="display:flex;gap:4px;margin-top:4px">
-                  <button type="button" class="btn sm" style="flex:1;font-size:10px;padding:3px 0" onclick="setShipping(1.17,'RM 2nd Letter (£0.91)')">£1.17</button>
-                  <button type="button" class="btn sm" style="flex:1;font-size:10px;padding:3px 0" onclick="setShipping(1.98,'RM 2nd Large Letter (£1.55)')">£1.98</button>
-                  <button type="button" class="btn sm" style="flex:1;font-size:10px;padding:3px 0" onclick="setShipping(3.98,'Tracked 48 Large Letter (£2.85)')">£3.98</button>
-                </div>
-              </div>
+              <div class="form-group"><label>Price sold (£)</label><input type="number" id="s-price" step="0.01" min="0" placeholder="0.00" oninput="updateSalePreview()" style="width:100%"></div>
               <div class="form-group"><label>Date</label><input type="date" id="s-date" style="width:100%"></div>
             </div>
             <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:6px">
@@ -360,7 +352,15 @@ tr:hover td{background:var(--surface2)}
                   <option>Cardmarket</option><option>eBay</option><option>Other</option>
                 </select>
               </div>
-              <div class="form-group"><label>Shipping (£)</label><input type="number" id="s-shipping" step="0.01" min="0" value="1.17" oninput="updateSalePreview()" style="width:100%"></div>
+              <div class="form-group">
+                <label>Shipping (£)</label>
+                <input type="number" id="s-shipping" step="0.01" min="0" value="1.17" oninput="updateSalePreview()" style="width:100%">
+                <div style="display:flex;gap:3px;margin-top:4px">
+                  <button type="button" onclick="setShipping(1.17,'RM 2nd Letter (£0.91)')" style="flex:1;padding:3px 0;font-size:10px;font-weight:600;text-align:center;background:#185FA5;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">£1.17</button>
+                  <button type="button" onclick="setShipping(1.98,'RM 2nd Large Letter (£1.55)')" style="flex:1;padding:3px 0;font-size:10px;font-weight:600;text-align:center;background:#534AB7;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">£1.98</button>
+                  <button type="button" onclick="setShipping(3.98,'Tracked 48 Large Letter (£2.85)')" style="flex:1;padding:3px 0;font-size:10px;font-weight:600;text-align:center;background:#1D9E75;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">£3.98</button>
+                </div>
+              </div>
               <div class="form-group"><label>Postage type</label><select id="s-postage" onchange="updateSalePreview()" style="width:100%"></select></div>
             </div>
             <div class="form-group" id="s-promoted-group" style="display:none"><label>Promoted fee (£)</label><input type="number" id="s-promoted" step="0.01" min="0" placeholder="0.00" oninput="updateSalePreview()"></div>
