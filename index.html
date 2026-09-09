@@ -356,9 +356,9 @@ tr:hover td{background:var(--surface2)}
                 <label>Shipping (£)</label>
                 <input type="number" id="s-shipping" step="0.01" min="0" value="1.17" oninput="updateSalePreview()" style="width:100%">
                 <div style="display:flex;gap:3px;margin-top:4px">
-                  <button type="button" onclick="setShipping(1.17,'RM 2nd Letter (£0.91)')" style="flex:1;padding:3px 0;font-size:10px;font-weight:600;text-align:center;background:#185FA5;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">£1.17</button>
-                  <button type="button" onclick="setShipping(1.98,'RM 2nd Large Letter (£1.55)')" style="flex:1;padding:3px 0;font-size:10px;font-weight:600;text-align:center;background:#534AB7;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">£1.98</button>
-                  <button type="button" onclick="setShipping(3.98,'Tracked 48 Large Letter (£2.85)')" style="flex:1;padding:3px 0;font-size:10px;font-weight:600;text-align:center;background:#1D9E75;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">£3.98</button>
+                  <button type="button" onclick="setShipping(1.17,'RM 2nd Letter (£0.91)')" style="flex:1;padding:3px 0;font-size:10px;font-weight:600;text-align:center;background:#185FA5;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;line-height:1.2">£1.17<br><span style="font-size:9px;opacity:0.8;font-weight:400">2nd</span></button>
+                  <button type="button" onclick="setShipping(1.98,'RM 2nd Large Letter (£1.55)')" style="flex:1;padding:3px 0;font-size:10px;font-weight:600;text-align:center;background:#534AB7;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;line-height:1.2">£1.98<br><span style="font-size:9px;opacity:0.8;font-weight:400">2nd (L)</span></button>
+                  <button type="button" onclick="setShipping(3.98,'Tracked 48 Large Letter (£2.85)')" style="flex:1;padding:3px 0;font-size:10px;font-weight:600;text-align:center;background:#1D9E75;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;line-height:1.2">£3.98<br><span style="font-size:9px;opacity:0.8;font-weight:400">48</span></button>
                 </div>
               </div>
               <div class="form-group"><label>Postage type</label><select id="s-postage" onchange="updateSalePreview()" style="width:100%"></select></div>
@@ -1781,8 +1781,8 @@ function initSaleForm(){
   const extEl=document.getElementById('pkg-inputs-extra');
 
   const PKG_FREQ_GROUPS=[
-    {names:['Toploader'],label:''},
-    {names:['Team bag','Sealable Penny Sleeve','Penny sleeve'],label:''},
+    {names:['Toploader','Penny sleeve'],label:''},
+    {names:['Team bag','Sealable Penny Sleeve'],label:''},
     {names:['A6 envelope'],label:''},
     {names:['Thermal label','Promotional sticker'],label:''},
   ];
