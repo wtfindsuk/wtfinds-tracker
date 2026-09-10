@@ -134,7 +134,7 @@ tr:hover td{background:var(--surface2)}
 .inline-input{width:70px;padding:3px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:12px;text-align:right}
 .gain-pos{color:var(--green);font-size:11px}
 .gain-neg{color:var(--red);font-size:11px}
-.metrics4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.metrics4{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:14px}
 .dash-section-title{font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
 .net-tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
 .nav-mode-bar{display:flex;gap:4px;padding:8px 10px;border-bottom:1px solid var(--border)}
@@ -229,53 +229,61 @@ tr:hover td{background:var(--surface2)}
       <!-- SALES SECTION -->
       <div class="dash-section-title" style="margin-top:18px">Sales</div>
       <div class="metrics4" id="dash-sales-metrics"></div>
-      <div class="card" style="margin-bottom:6px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div class="card-title" style="margin-bottom:0">This week</div>
-          <div style="display:flex;align-items:center;gap:4px">
-            <button class="btn sm" onclick="dashWeekNavJump(-4)" title="Back 1 month">«</button>
-            <button class="btn sm" onclick="dashWeekNavStep(-1)">‹</button>
-            <span id="dash-week-nav-label" style="font-size:11px;color:var(--muted);min-width:90px;text-align:center"></span>
-            <button class="btn sm" onclick="dashWeekNavStep(1)" id="dash-week-nav-fwd">›</button>
-            <button class="btn sm" onclick="dashWeekNavJump(4)" id="dash-week-nav-fwd-month">»</button>
+
+      <div class="grid2" style="margin-bottom:6px">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div class="card-title" style="margin-bottom:0">This week</div>
+            <div style="display:flex;align-items:center;gap:4px">
+              <button class="btn sm" onclick="dashWeekNavJump(-4)" title="Back 1 month">«</button>
+              <button class="btn sm" onclick="dashWeekNavStep(-1)">‹</button>
+              <span id="dash-week-nav-label" style="font-size:11px;color:var(--muted);min-width:70px;text-align:center"></span>
+              <button class="btn sm" onclick="dashWeekNavStep(1)" id="dash-week-nav-fwd">›</button>
+              <button class="btn sm" onclick="dashWeekNavJump(4)" id="dash-week-nav-fwd-month">»</button>
+            </div>
           </div>
+          <div id="dash-week-summary" style="display:flex;gap:12px;margin-bottom:8px;font-size:12px;flex-wrap:wrap"></div>
+          <div style="position:relative;height:140px"><canvas id="dashWeekChart"></canvas></div>
         </div>
-        <div id="dash-week-summary" style="display:flex;gap:16px;margin-bottom:8px;font-size:12px"></div>
-        <div style="position:relative;height:120px"><canvas id="dashWeekChart"></canvas></div>
-      </div>
-      <div class="card" style="margin-bottom:6px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div class="card-title" style="margin-bottom:0" id="dash-month-title">This month</div>
-          <div style="display:flex;align-items:center;gap:4px">
-            <button class="btn sm" onclick="dashMonthNavStep(-1)">‹</button>
-            <span id="dash-month-nav-label" style="font-size:11px;color:var(--muted);min-width:80px;text-align:center"></span>
-            <button class="btn sm" onclick="dashMonthNavStep(1)" id="dash-month-nav-fwd">›</button>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div class="card-title" style="margin-bottom:0" id="dash-month-title">This month</div>
+            <div style="display:flex;align-items:center;gap:4px">
+              <button class="btn sm" onclick="dashMonthNavStep(-1)">‹</button>
+              <span id="dash-month-nav-label" style="font-size:11px;color:var(--muted);min-width:80px;text-align:center"></span>
+              <button class="btn sm" onclick="dashMonthNavStep(1)" id="dash-month-nav-fwd">›</button>
+            </div>
           </div>
+          <div id="dash-month-summary" style="display:flex;gap:12px;margin-bottom:8px;font-size:12px;flex-wrap:wrap"></div>
+          <div style="position:relative;height:140px"><canvas id="dashMonthChart"></canvas></div>
         </div>
-        <div id="dash-month-summary" style="display:flex;gap:16px;margin-bottom:8px;font-size:12px"></div>
-        <div style="position:relative;height:120px"><canvas id="dashMonthChart"></canvas></div>
       </div>
-      <div class="card" style="margin-bottom:6px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div class="card-title" style="margin-bottom:0">Revenue, profit &amp; spend by month</div>
-          <div style="display:flex;gap:6px;align-items:center">
+
+      <div class="grid2" style="margin-bottom:14px">
+        <div class="card">
+          <div class="card-title">Revenue, profit &amp; spend by month</div>
+          <div class="legend" id="main-legend"></div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
             <span id="main-chart-month-label" style="font-size:11px;color:var(--muted)"></span>
             <button class="btn sm" id="main-chart-back" onclick="mainChartDrillBack()" style="display:none"><i class="ti ti-arrow-left"></i> Back</button>
           </div>
+          <div style="position:relative;height:180px"><canvas id="mainChart"></canvas></div>
         </div>
-        <div class="legend" id="main-legend"></div>
-        <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
-      </div>
-      <div class="card" style="margin-bottom:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div class="card-title" style="margin-bottom:0">Sales volume &amp; avg order value by month</div>
-          <div style="display:flex;gap:6px;align-items:center">
+        <div class="card">
+          <div class="card-title">Volume &amp; avg order by month</div>
+          <div class="legend" id="vol-legend"></div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
             <span id="vol-chart-month-label" style="font-size:11px;color:var(--muted)"></span>
             <button class="btn sm" id="vol-chart-back" onclick="volChartDrillBack()" style="display:none"><i class="ti ti-arrow-left"></i> Back</button>
           </div>
+          <div style="position:relative;height:180px"><canvas id="volChart"></canvas></div>
         </div>
-        <div class="legend" id="vol-legend"></div>
-        <div class="chart-wrap"><canvas id="volChart"></canvas></div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">Volume &amp; avg order by year</div>
+        <div class="legend" id="year-legend"></div>
+        <div style="position:relative;height:160px"><canvas id="yearChart"></canvas></div>
       </div>
 
       <!-- BY GAME -->
@@ -289,7 +297,7 @@ tr:hover td{background:var(--surface2)}
       <!-- COLLECTION SECTION -->
       <div class="dash-section-title" style="margin-top:18px">Collection</div>
       <div class="coll-summary" id="coll-summary"></div>
-      <div class="metrics4" id="dash-coll-insights" style="margin-bottom:14px"></div>
+      <div id="dash-coll-insights" style="margin-bottom:14px"></div>
       <div class="card" style="margin-bottom:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div class="card-title" style="margin-bottom:0">Collection value over time</div>
@@ -302,7 +310,7 @@ tr:hover td{background:var(--surface2)}
         <div class="legend" id="snap-legend"></div>
         <div style="position:relative;height:200px"><canvas id="snapChart"></canvas></div>
       </div>
-      <div class="grid2" style="margin-bottom:14px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="card">
           <div class="card-title">Top 5 singles by gain</div>
           <div id="dash-top-singles"></div>
@@ -315,16 +323,16 @@ tr:hover td{background:var(--surface2)}
           <div class="card-title">Top 5 graded by gain</div>
           <div id="dash-graded"></div>
         </div>
-        <div class="card" style="grid-column:span 2">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-            <div class="card-title" style="margin-bottom:0">By collection</div>
-            <div style="display:flex;gap:4px">
-              <button id="coll-view-table" onclick="setCollView('table')" class="btn sm active-snap">Table</button>
-              <button id="coll-view-chart" onclick="setCollView('chart')" class="btn sm">Chart</button>
-            </div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div class="card-title" style="margin-bottom:0">By collection</div>
+          <div style="display:flex;gap:4px">
+            <button id="coll-view-table" onclick="setCollView('table')" class="btn sm active-snap">Table</button>
+            <button id="coll-view-chart" onclick="setCollView('chart')" class="btn sm">Chart</button>
           </div>
-          <div id="dash-sealed"></div>
         </div>
+        <div id="dash-sealed"></div>
       </div>
       <!-- TOP BUYERS (compact, appended to collection) -->
       <div id="dash-top-buyers"></div>
@@ -442,10 +450,10 @@ tr:hover td{background:var(--surface2)}
     <div id="page-log-purchase" class="page">
       <div class="page-title">Log a purchase</div>
       <div class="card">
-        <div class="form-row c2">
-          <div class="form-group"><label>Date</label><input type="date" id="p-date"></div>
-          <div class="form-group"><label>Category</label>
-            <select id="p-category">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin-bottom:6px">
+          <div class="form-group"><label style="font-size:11px">Date</label><input type="date" id="p-date" style="width:100%;padding:5px 8px;font-size:13px"></div>
+          <div class="form-group"><label style="font-size:11px">Category</label>
+            <select id="p-category" style="width:100%;padding:5px 8px;font-size:13px">
               <option value="pokemon">Pokémon</option><option value="mtg">MTG</option>
               <option value="onepiece">One Piece</option><option value="dbz">Dragon Ball Z</option>
               <option value="riftbound">Riftbound</option><option value="yugioh">Yu-Gi-Oh!</option><option value="marvel">Marvel</option>
@@ -454,14 +462,12 @@ tr:hover td{background:var(--surface2)}
             </select>
           </div>
         </div>
-        <div class="form-group"><label>Description</label><input type="text" id="p-desc" placeholder="e.g. Destined Rivals booster box x3"></div>
-        <div class="form-row c2">
-          <div class="form-group"><label>Amount (£)</label><input type="number" id="p-amount" step="0.01" min="0" placeholder="0.00"></div>
-          <div class="form-group"><label>Supplier</label><input type="text" id="p-supplier" placeholder="e.g. Pendulum, Amazon..."></div>
+        <div class="form-group"><label style="font-size:11px">Description</label><input type="text" id="p-desc" placeholder="e.g. Destined Rivals booster box x3" style="padding:5px 8px;font-size:13px"></div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin-bottom:6px">
+          <div class="form-group"><label style="font-size:11px">Amount (£)</label><input type="number" id="p-amount" step="0.01" min="0" placeholder="0.00" style="width:100%;padding:5px 8px;font-size:13px"></div>
+          <div class="form-group"><label style="font-size:11px">Supplier</label><input type="text" id="p-supplier" placeholder="e.g. Pendulum, Amazon..." style="width:100%;padding:5px 8px;font-size:13px"></div>
         </div>
-        <div class="form-row c2">
-          <div class="form-group"><label>Set (optional)</label><input type="text" id="p-set" placeholder="e.g. Destined Rivals"></div>
-        </div>
+        <div class="form-group"><label style="font-size:11px">Set (optional)</label><input type="text" id="p-set" placeholder="e.g. Destined Rivals" style="padding:5px 8px;font-size:13px"></div>
         <div class="btn-row"><button class="btn primary" onclick="logPurchase()"><i class="ti ti-check"></i> Log purchase</button></div>
       </div>
     </div>
@@ -472,15 +478,17 @@ tr:hover td{background:var(--surface2)}
       <div id="monthly-budget-banner" style="margin-bottom:14px"></div>
       <div id="recent-purchases-panel" style="margin-bottom:14px"></div>
       <div id="supplier-summary" style="margin-bottom:14px"></div>
-      <div class="tab-row">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:wrap">
         <button class="tab active" onclick="showPurchaseTab('all')" id="ptab-all">All</button>
+        <div style="width:1px;height:16px;background:var(--border)"></div>
         <button class="tab" onclick="showPurchaseTab('pokemon')" id="ptab-pokemon">Pokémon</button>
         <button class="tab" onclick="showPurchaseTab('mtg')" id="ptab-mtg">MTG</button>
         <button class="tab" onclick="showPurchaseTab('onepiece')" id="ptab-onepiece">One Piece</button>
-        <button class="tab" onclick="showPurchaseTab('dbz')" id="ptab-dbz">Dragon Ball Z</button>
+        <button class="tab" onclick="showPurchaseTab('dbz')" id="ptab-dbz">DBZ</button>
         <button class="tab" onclick="showPurchaseTab('riftbound')" id="ptab-riftbound">Riftbound</button>
         <button class="tab" onclick="showPurchaseTab('yugioh')" id="ptab-yugioh">Yu-Gi-Oh!</button>
         <button class="tab" onclick="showPurchaseTab('marvel')" id="ptab-marvel">Marvel</button>
+        <div style="width:1px;height:16px;background:var(--border)"></div>
         <button class="tab" onclick="showPurchaseTab('supplies')" id="ptab-supplies">Supplies</button>
         <button class="tab" onclick="showPurchaseTab('equipment')" id="ptab-equipment">Equipment</button>
         <button class="tab" onclick="showPurchaseTab('other')" id="ptab-other">Other</button>
@@ -514,45 +522,44 @@ tr:hover td{background:var(--surface2)}
       </div>
     </div>
 
-    <!-- ADD COLLECTION ITEM -->
     <div id="page-add-item" class="page">
       <div class="page-title">Add to collection</div>
       <div class="card">
-        <div class="form-row c3">
-          <div class="form-group"><label>Type</label>
-            <select id="ci-type" onchange="toggleGradedFields()">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:6px;margin-bottom:6px">
+          <div class="form-group"><label style="font-size:11px">Type</label>
+            <select id="ci-type" onchange="toggleGradedFields()" style="width:100%;padding:5px 8px;font-size:13px">
               <option value="sealed">Sealed product</option>
               <option value="single">Single card</option>
               <option value="graded">Graded card</option>
             </select>
           </div>
-          <div class="form-group"><label>Game / category</label>
-            <select id="ci-game">
+          <div class="form-group"><label style="font-size:11px">Game / category</label>
+            <select id="ci-game" style="width:100%;padding:5px 8px;font-size:13px">
               <option value="pokemon">Pokémon</option><option value="mtg">MTG</option>
               <option value="onepiece">One Piece</option><option value="dbz">Dragon Ball Z</option>
               <option value="riftbound">Riftbound</option><option value="yugioh">Yu-Gi-Oh!</option><option value="marvel">Marvel</option>
               <option value="other">Other</option>
             </select>
           </div>
-          <div class="form-group" id="ci-status-group"><label>Status</label>
-            <select id="ci-status">
+          <div class="form-group" id="ci-status-group"><label style="font-size:11px">Status</label>
+            <select id="ci-status" style="width:100%;padding:5px 8px;font-size:13px">
               <option value="collection">In collection</option>
               <option value="psa">At PSA</option>
               <option value="pending">Pending submission</option>
             </select>
           </div>
         </div>
-        <div class="form-group"><label>Name</label><input type="text" id="ci-name" placeholder="e.g. 151 10 Pack Booster Bundle"></div>
-        <div class="form-row c2" id="ci-set-row">
-          <div class="form-group"><label>Set</label><input type="text" id="ci-set" placeholder="e.g. Scarlet & Violet 151"></div>
-          <div class="form-group"><label>Card number</label><input type="text" id="ci-cn" placeholder="e.g. 226"></div>
+        <div class="form-group"><label style="font-size:11px">Name</label><input type="text" id="ci-name" placeholder="e.g. 151 10 Pack Booster Bundle" style="padding:5px 8px;font-size:13px"></div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin-bottom:6px" id="ci-set-row">
+          <div class="form-group"><label style="font-size:11px">Set</label><input type="text" id="ci-set" placeholder="e.g. Scarlet & Violet 151" style="width:100%;padding:5px 8px;font-size:13px"></div>
+          <div class="form-group"><label style="font-size:11px">Card number</label><input type="text" id="ci-cn" placeholder="e.g. 226" style="width:100%;padding:5px 8px;font-size:13px"></div>
         </div>
-        <div class="form-row c2">
-          <div class="form-group"><label>Cost paid (£)</label><input type="number" id="ci-cost" step="0.01" min="0" placeholder="0.00"></div>
-          <div class="form-group"><label>Current market value (£)</label><input type="number" id="ci-value" step="0.01" min="0" placeholder="0.00"></div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin-bottom:6px">
+          <div class="form-group"><label style="font-size:11px">Cost paid (£)</label><input type="number" id="ci-cost" step="0.01" min="0" placeholder="0.00" style="width:100%;padding:5px 8px;font-size:13px"></div>
+          <div class="form-group"><label style="font-size:11px">Current market value (£)</label><input type="number" id="ci-value" step="0.01" min="0" placeholder="0.00" style="width:100%;padding:5px 8px;font-size:13px"></div>
         </div>
-        <div class="form-group"><label>Price tracking URL (optional)</label><input type="text" id="ci-url" placeholder="e.g. https://www.ebay.co.uk/sch/..."></div>
-        <div class="form-group"><label>Notes (optional)</label><input type="text" id="ci-notes" placeholder="e.g. PSA grade, condition notes..."></div>
+        <div class="form-group"><label style="font-size:11px">Price tracking URL (optional)</label><input type="text" id="ci-url" placeholder="e.g. https://www.ebay.co.uk/sch/..." style="padding:5px 8px;font-size:13px"></div>
+        <div class="form-group"><label style="font-size:11px">Notes (optional)</label><input type="text" id="ci-notes" placeholder="e.g. PSA grade, condition notes..." style="padding:5px 8px;font-size:13px"></div>
         <div class="btn-row"><button class="btn primary" onclick="addCollectionItem()"><i class="ti ti-check"></i> Add to collection</button></div>
       </div>
     </div>
@@ -828,16 +835,28 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 function calcSaleSupplies(sale){return(sale.packaging||[]).reduce((a,p)=>{const pkg=state.packaging.find(x=>x.name===p.name);return a+(pkg?parseFloat(pkg.cost)*(parseInt(p.qty)||0):0);},0);}
 function checkBuyerVIP(){
   const username=document.getElementById('s-username')?.value.trim().toLowerCase();
-  const alert=document.getElementById('s-vip-alert');
+  const alertEl=document.getElementById('s-vip-alert');
   const msg=document.getElementById('s-vip-msg');
-  if(!alert||!msg) return;
-  if(!username||!state.buyers.length){alert.style.display='none';return;}
-  const buyer=state.buyers.find(b=>b.username.toLowerCase()===username);
+  if(!alertEl||!msg) return;
+  if(!username){alertEl.style.display='none';return;}
+
+  // Search buyers list first
+  let buyer=state.buyers.find(b=>b.username.trim().toLowerCase()===username);
+
+  // Fallback: count directly from sales if buyer not in buyers list
+  if(!buyer){
+    const matchingSales=state.sales.filter(s=>(s.username||s.buyerUsername||'').trim().toLowerCase()===username);
+    if(matchingSales.length>=2){
+      const totalSpend=matchingSales.reduce((a,s)=>a+(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0),0);
+      buyer={username:matchingSales[0].username||matchingSales[0].buyerUsername||username,orders:matchingSales.length,totalSpend};
+    }
+  }
+
   if(buyer&&buyer.orders>=2){
-    alert.style.display='flex';
-    msg.textContent=`${buyer.username} is a repeat buyer — ${buyer.orders} orders, ${fm(buyer.totalSpend)} spent. Consider including a personal note.`;
+    alertEl.style.display='flex';
+    msg.textContent=`${buyer.username} is a repeat buyer — ${buyer.orders} orders, ${fm(buyer.totalSpend)} spent. Consider a personal note.`;
   } else {
-    alert.style.display='none';
+    alertEl.style.display='none';
   }
 }
 
@@ -1135,33 +1154,39 @@ function renderDashboard(){
 
   document.getElementById('dash-net-position').innerHTML=`
     <div class="net-tile" style="border-color:${netPosition>=0?'var(--green)':'var(--red)'}">
-      <div style="flex:1">
-        <div class="net-tile-label">Net position &nbsp;·&nbsp; profit + collection + inventory − spend</div>
-        <div class="net-tile-value ${netPosition>=0?'pos':'neg'}">${(netPosition>=0?'+':'')+fm(netPosition)}</div>
-        <div class="net-tile-sub" style="display:flex;align-items:center;gap:12px">
-          <span>${netPosition>=0?'Overall you are in profit':fm(Math.abs(netPosition))+' needed to break even'}</span>
-          ${stockNeeded?`<span style="color:var(--muted)">·</span><span>Sell ${fm(stockNeeded)} of inventory${inventoryPct!==null?' ('+inventoryPct.toFixed(0)+'% of stock)':''}</span>`:''}
-          <button onclick="toggleFinDetails()" id="fin-toggle-btn" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0;text-decoration:underline">show details</button>
-        </div>
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-            <span style="font-size:11px;color:var(--muted)">Monthly budget · since ${periodStart.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} · excl. Cardmarket</span>
-            <span style="font-size:12px;font-weight:600;color:${budgetColor}">${fm(budgetSpend)} <span style="font-weight:400;color:var(--muted)">/ ${fm(MONTHLY_BUDGET)}</span>${budgetOver?' · <span style="color:var(--red)">over by '+fm(budgetSpend-MONTHLY_BUDGET)+'</span>':' · '+fm(MONTHLY_BUDGET-budgetSpend)+' left'}</span>
+      <div style="display:flex;gap:24px;align-items:stretch;flex:1;flex-wrap:wrap">
+        <div style="min-width:160px">
+          <div class="net-tile-label">Net position</div>
+          <div class="net-tile-value ${netPosition>=0?'pos':'neg'}" style="font-size:26px">${(netPosition>=0?'+':'')+fm(netPosition)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">profit + collection + inventory − spend</div>
+          <div style="margin-top:6px;font-size:12px;color:var(--muted)">
+            ${netPosition>=0?'Overall in profit':fm(Math.abs(netPosition))+' to break even'}
+            ${stockNeeded?` · sell ${fm(stockNeeded)}${inventoryPct!==null?' ('+inventoryPct.toFixed(0)+'% of stock)':''}`:''}<br>
+            <button onclick="toggleFinDetails()" id="fin-toggle-btn" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0;text-decoration:underline;margin-top:2px">show details</button>
           </div>
-          <div style="background:var(--surface2);border-radius:3px;height:5px;overflow:hidden">
+        </div>
+        <div style="border-left:1px solid var(--border);padding-left:20px;min-width:180px;flex:1">
+          <div class="net-tile-label" style="margin-bottom:4px">Monthly budget <span style="font-weight:400;text-transform:none;letter-spacing:0">· since ${periodStart.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} · excl. Cardmarket</span></div>
+          <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px">
+            <span style="font-size:20px;font-weight:700;color:${budgetColor}">${fm(budgetSpend)}</span>
+            <span style="font-size:12px;color:var(--muted)">of ${fm(MONTHLY_BUDGET)}</span>
+            <span style="font-size:12px;font-weight:600;color:${budgetColor}">${budgetOver?'over by '+fm(budgetSpend-MONTHLY_BUDGET):fm(MONTHLY_BUDGET-budgetSpend)+' left'}</span>
+          </div>
+          <div style="background:var(--surface2);border-radius:3px;height:6px;overflow:hidden">
             <div style="height:100%;width:${budgetPct}%;background:${budgetColor};border-radius:3px"></div>
           </div>
         </div>
+        ${projection?`<div style="border-left:1px solid var(--border);padding-left:20px;min-width:140px">
+          <div class="net-tile-label">Break-even</div>
+          <div style="font-size:18px;font-weight:700;color:var(--text)">${projection.date}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">${projection.months} month${projection.months===1?'':'s'} · ${fm(projection.avgMonthly)}/mo</div>
+        </div>`:''}
       </div>
-      ${projection?`<div style="text-align:right;padding-left:24px;border-left:1px solid var(--border);min-width:180px">
-        <div class="net-tile-label">Projected break-even</div>
-        <div style="font-size:18px;font-weight:600;color:var(--text)">${projection.date}</div>
-        <div class="net-tile-sub">${projection.months} month${projection.months===1?'':'s'} · ${fm(projection.avgMonthly)}/mo avg</div>
-      </div>`:''}
     </div>`;
 
   renderMainChart();
   renderVolChart();
+  renderYearChart();
   renderDashWeekChart();
   renderDashMonthChart();
   renderGameBreakdown();
@@ -1420,9 +1445,48 @@ function renderCollectionDashboard(bestColl,unrealisedPct){
     <div class="coll-metric"><div class="coll-metric-label">Unrealised gain ${tip('The difference between market value and cost paid. "Unrealised" means it\'s on paper only — you haven\'t sold these items yet.')}</div><div class="coll-metric-value ${gain>=0?'up':'down'}">${gain>=0?'+':''}${fm(gain)}</div></div>`;
 
   const insEl=document.getElementById('dash-coll-insights');
-  if(insEl) insEl.innerHTML=`
-    <div class="metric"><div class="metric-label">Best performer ${tip('The portfolio with the highest percentage gain vs cost paid.')}</div><div class="metric-value" style="font-size:15px">${bestColl?bestColl.name:'—'}</div><div class="metric-sub">${bestColl?'+'+bestColl.pct.toFixed(1)+'% gain':''}</div></div>
-    <div class="metric"><div class="metric-label">Unrealised gain % ${tip('Total unrealised gain as a percentage of total cost paid across all your portfolios.')}</div><div class="metric-value ${unrealisedPct>=0?'pos':'neg'}">${unrealisedPct>=0?'+':''}${(unrealisedPct||0).toFixed(1)}%</div><div class="metric-sub">on cost paid</div></div>`;
+  if(insEl){
+    const withCost=coll.filter(c=>(parseFloat(c.cost)||0)>0).map(c=>({
+      name:c.name,
+      gain:(parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0),
+      gainPct:((parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0))/(parseFloat(c.cost))*100,
+      history:state.itemSnapshots[c.id]||[]
+    }));
+    const sorted=[...withCost].sort((a,b)=>b.gain-a.gain);
+    const top3=sorted.slice(0,3);
+    const bot3=[...sorted].reverse().slice(0,3);
+
+    function moverRow(m){
+      const history=m.history;
+      let sparkline='';
+      if(history.length>1){
+        const vals=history.map(h=>h.value);
+        const min=Math.min(...vals),max=Math.max(...vals),range=max-min||1;
+        const pts=vals.map((v,i)=>`${(i/(vals.length-1))*56},${9-((v-min)/range)*9}`).join(' ');
+        const trend=vals[vals.length-1]>vals[0];
+        sparkline=`<svg width="56" height="11" style="flex-shrink:0"><polyline points="${pts}" fill="none" stroke="${trend?'var(--green)':'var(--red)'}" stroke-width="1.5"/></svg>`;
+      }
+      return`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;gap:6px">
+        <div style="min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)" title="${m.name}">${m.name}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          ${sparkline}
+          <span class="${m.gain>=0?'profit-pos':'profit-neg'}" style="white-space:nowrap;font-weight:600">${m.gain>=0?'+':''}${fm(m.gain)}</span>
+          <span style="color:var(--muted);font-size:11px;min-width:38px;text-align:right">${m.gainPct>=0?'+':''}${m.gainPct.toFixed(0)}%</span>
+        </div>
+      </div>`;
+    }
+
+    insEl.innerHTML=`<div class="grid2" style="margin-bottom:0">
+      <div class="card" style="margin:0">
+        <div class="card-title" style="font-size:11px;margin-bottom:6px">Top 3 gains</div>
+        ${top3.length?top3.map(moverRow).join(''):'<div class="empty">No cost data yet</div>'}
+      </div>
+      <div class="card" style="margin:0">
+        <div class="card-title" style="font-size:11px;margin-bottom:6px">Top 3 losses</div>
+        ${bot3.length?bot3.map(moverRow).join(''):'<div class="empty">No cost data yet</div>'}
+      </div>
+    </div>`;
+  }
 
   renderSnapChart();
   renderCollByPortfolio();
@@ -1884,6 +1948,7 @@ function logSale(){
   scheduleSave('Sales');
   buildBuyersFromSales();
   document.getElementById('s-item').value='';document.getElementById('s-price').value='';document.getElementById('s-shipping').value='1.17';document.getElementById('s-article-count').value='';const sp=document.getElementById('s-promoted');if(sp)sp.value='';
+  const postEl=document.getElementById('s-postage');if(postEl)postEl.selectedIndex=0;
   const su=document.getElementById('s-username');if(su)su.value='';
   const va=document.getElementById('s-vip-alert');if(va)va.style.display='none';
   ['gq-pokemon','gq-mtg','gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_marvel','gq-mtg_strixhaven','gq-mtg_ff','gq-mtg_hobbit','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-other'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=0;});
@@ -2071,6 +2136,52 @@ function gqIncrement(id){
   el.value=(parseInt(el.value)||0)+1;
   syncArticleCount();
   updateSalePreview();
+}
+
+let yearChartInst=null;
+function renderYearChart(){
+  const canvas=document.getElementById('yearChart');
+  const legendEl=document.getElementById('year-legend');
+  if(!canvas) return;
+
+  const yearData={};
+  state.sales.forEach(s=>{
+    const d=parseDateToObj(s.date);
+    if(!d) return;
+    const y=String(d.getFullYear());
+    if(!yearData[y]) yearData[y]={vol:0,orders:0,prices:[]};
+    yearData[y].vol+=parseInt(s.articleCount)||1;
+    yearData[y].orders++;
+    yearData[y].prices.push((parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0));
+  });
+  const years=Object.keys(yearData).sort();
+  const vols=years.map(y=>yearData[y].vol);
+  const avgs=years.map(y=>{const a=yearData[y].prices;return a.length?parseFloat((a.reduce((s,v)=>s+v,0)/a.length).toFixed(2)):0;});
+  const orders=years.map(y=>yearData[y].orders);
+
+  if(legendEl) legendEl.innerHTML=`
+    <span><span class="lsq" style="background:#534AB7"></span>Articles</span>
+    <span><span class="lsq" style="background:#BA7517"></span>Avg order (£)</span>
+    <span><span class="lsq" style="background:#1D9E75"></span>Orders</span>`;
+
+  if(yearChartInst) yearChartInst.destroy();
+  yearChartInst=new Chart(canvas.getContext('2d'),{
+    type:'bar',
+    data:{labels:years,datasets:[
+      {label:'Articles',data:vols,backgroundColor:'#534AB7',borderRadius:4,yAxisID:'y'},
+      {label:'Orders',data:orders,backgroundColor:'#1D9E75',borderRadius:4,yAxisID:'y'},
+      {label:'Avg order value',data:avgs,type:'line',borderColor:'#BA7517',backgroundColor:'rgba(186,117,23,0.08)',tension:0.3,pointRadius:5,fill:false,yAxisID:'y2'}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Avg order value'?`Avg order: £${c.raw.toFixed(2)}`:c.dataset.label+': '+c.raw}}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:12}}},
+        y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{font:{size:11}},title:{display:true,text:'Count',font:{size:10},color:'var(--muted)'}},
+        y2:{position:'right',grid:{display:false},ticks:{callback:v=>'£'+v,font:{size:11}}}
+      }
+    }
+  });
 }
 
 let dashWeekChartInst=null;
