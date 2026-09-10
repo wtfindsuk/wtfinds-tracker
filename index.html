@@ -454,13 +454,13 @@ tr:hover td{background:var(--surface2)}
             </select>
             <div style="display:flex;gap:3px;margin-top:4px">
               <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
-                <button type="button" onclick="document.getElementById('p-category').value='mtg';updateSalePreview&&updateSalePreview()" class="gq-panel" style="width:100%;padding:3px 0;font-size:10px;font-weight:600;background:#534AB7;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">MTG</button>
+                <button type="button" onclick="document.getElementById('p-category').value='onepiece'" class="gq-panel" style="width:100%;padding:3px 0;font-size:10px;font-weight:600;background:#534AB7;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">One Piece</button>
               </div>
               <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
-                <button type="button" onclick="document.getElementById('p-category').value='pokemon'" class="gq-panel" style="width:100%;padding:3px 0;font-size:10px;font-weight:600;background:#185FA5;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">Pokémon</button>
+                <button type="button" onclick="document.getElementById('p-category').value='mtg'" class="gq-panel" style="width:100%;padding:3px 0;font-size:10px;font-weight:600;background:#185FA5;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">MTG</button>
               </div>
               <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
-                <button type="button" onclick="document.getElementById('p-category').value='supplies'" class="gq-panel" style="width:100%;padding:3px 0;font-size:10px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">Supplies</button>
+                <button type="button" onclick="document.getElementById('p-category').value='pokemon'" class="gq-panel" style="width:100%;padding:3px 0;font-size:10px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">Pokémon</button>
               </div>
             </div>
           </div>
@@ -476,10 +476,10 @@ tr:hover td{background:var(--surface2)}
                 <button type="button" onclick="document.getElementById('p-supplier').value='Pendulum Gaming'" class="gq-panel" style="width:100%;padding:3px 0;font-size:10px;font-weight:600;background:#185FA5;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">Pendulum</button>
               </div>
               <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
-                <button type="button" onclick="document.getElementById('p-supplier').value='Cardmarket'" class="gq-panel" style="width:100%;padding:3px 0;font-size:10px;font-weight:600;background:#534AB7;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">Cardmarket</button>
+                <button type="button" onclick="document.getElementById('p-supplier').value='Dice Cavern'" class="gq-panel" style="width:100%;padding:3px 0;font-size:10px;font-weight:600;background:#534AB7;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">Dice Cavern</button>
               </div>
               <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
-                <button type="button" onclick="document.getElementById('p-supplier').value='eBay'" class="gq-panel" style="width:100%;padding:3px 0;font-size:10px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">eBay</button>
+                <button type="button" onclick="document.getElementById('p-supplier').value='Cardmarket'" class="gq-panel" style="width:100%;padding:3px 0;font-size:10px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">Cardmarket</button>
               </div>
             </div>
           </div>
@@ -822,7 +822,7 @@ function scheduleSave(sheetName){saveQueue[sheetName]=true;clearTimeout(saveTime
 async function flushSaves(){
   const sheets=Object.keys(saveQueue);saveQueue={};
   for(const sheet of sheets){
-    if(sheet==='Sales') await saveSheetData('Sales',['Date','Item','Platform','Price','ShippingCharged','PostageCost','Packaging','ArticleCount','ActualCommission','PromotedFee','PokemonQty','MTGQty','OnePieceQty','MarvelQty','OtherQty','DBZQty','RiftboundQty','MTGHobbitQty','MTGAvatarTLAQty','MTGAvatarTLEQty','MTGStrixhavenQty','MTGMarvelQty','MTGFFQty','BuyerUsername'],state.sales.map(s=>[s.date,s.item,s.platform,s.price,s.shippingCharged||0,s.postageCost,JSON.stringify(s.packaging||[]),s.articleCount||1,s.actualCommission!==null&&s.actualCommission!==undefined?s.actualCommission:'',s.promotedFee||0,(s.gameQty?.pokemon||0),(s.gameQty?.mtg||0),(s.gameQty?.onepiece||0),(s.gameQty?.marvel||0),(s.gameQty?.other||0),(s.gameQty?.dbz||0),(s.gameQty?.riftbound||0),(s.gameQty?.mtg_hobbit||0),(s.gameQty?.mtg_avatar_tla||0),(s.gameQty?.mtg_avatar_tle||0),(s.gameQty?.mtg_strixhaven||0),(s.gameQty?.mtg_marvel||0),(s.gameQty?.mtg_ff||0),s.username||'']));
+    if(sheet==='Sales') await saveSheetData('Sales',['Date','Item','Platform','Price','ShippingCharged','PostageCost','Packaging','ArticleCount','ActualCommission','PromotedFee','PokemonQty','MTGQty','OnePieceQty','MarvelQty','OtherQty','DBZQty','RiftboundQty','MTGHobbitQty','MTGAvatarTLAQty','MTGAvatarTLEQty','MTGStrixhavenQty','MTGMarvelQty','MTGFFQty','BuyerUsername','YugiohQty','CyberpunkQty'],state.sales.map(s=>[s.date,s.item,s.platform,s.price,s.shippingCharged||0,s.postageCost,JSON.stringify(s.packaging||[]),s.articleCount||1,s.actualCommission!==null&&s.actualCommission!==undefined?s.actualCommission:'',s.promotedFee||0,(s.gameQty?.pokemon||0),(s.gameQty?.mtg||0),(s.gameQty?.onepiece||0),(s.gameQty?.marvel||0),(s.gameQty?.other||0),(s.gameQty?.dbz||0),(s.gameQty?.riftbound||0),(s.gameQty?.mtg_hobbit||0),(s.gameQty?.mtg_avatar_tla||0),(s.gameQty?.mtg_avatar_tle||0),(s.gameQty?.mtg_strixhaven||0),(s.gameQty?.mtg_marvel||0),(s.gameQty?.mtg_ff||0),s.username||'',(s.gameQty?.yugioh||0),(s.gameQty?.cyberpunk||0)]));
     if(sheet==='Purchases') await saveSheetData('Purchases',['Date','Description','Category','Amount','Supplier','Set'],state.purchases.map(p=>[p.date,p.description,p.category,p.amount,p.supplier||'',p.set||'']));
     if(sheet==='Collection') await saveSheetData('Collection',['ID','Name','Type','Game','Status','Set','CN','Cost','MarketValue','PriceUrl','Notes'],state.collection.map(c=>[c.id,c.name,c.type,c.game,c.status,c.set||'',c.cn||'',c.cost,c.marketValue,c.priceUrl||'',c.notes||'']));
     if(sheet==='Games') await saveSheetData('Games',['ID','Name','Platform','Condition','Cost','Value','Added'],state.games.map(g=>[g.id,g.name,g.platform,g.condition||'',g.cost,g.value,g.added]));
