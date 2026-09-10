@@ -259,6 +259,20 @@ tr:hover td{background:var(--surface2)}
         </div>
       </div>
 
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div class="card-title" style="margin-bottom:0">Volume &amp; avg order by year</div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <button class="btn sm" onclick="yearNavStep(-1)">‹</button>
+            <span id="year-nav-label" style="font-size:11px;color:var(--muted);min-width:50px;text-align:center"></span>
+            <button class="btn sm" onclick="yearNavStep(1)" id="year-nav-fwd">›</button>
+          </div>
+        </div>
+        <div id="year-summary" style="display:flex;gap:12px;margin-bottom:8px;font-size:12px;flex-wrap:wrap"></div>
+        <div class="legend" id="year-legend"></div>
+        <div style="position:relative;height:160px"><canvas id="yearChart"></canvas></div>
+      </div>
+
       <div class="grid2" style="margin-bottom:14px">
         <div class="card">
           <div class="card-title">Revenue, profit &amp; spend by month</div>
@@ -278,20 +292,6 @@ tr:hover td{background:var(--surface2)}
           </div>
           <div style="position:relative;height:180px"><canvas id="volChart"></canvas></div>
         </div>
-      </div>
-
-      <div class="card" style="margin-bottom:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div class="card-title" style="margin-bottom:0">Volume &amp; avg order by year</div>
-          <div style="display:flex;align-items:center;gap:4px">
-            <button class="btn sm" onclick="yearNavStep(-1)">‹</button>
-            <span id="year-nav-label" style="font-size:11px;color:var(--muted);min-width:50px;text-align:center"></span>
-            <button class="btn sm" onclick="yearNavStep(1)" id="year-nav-fwd">›</button>
-          </div>
-        </div>
-        <div id="year-summary" style="display:flex;gap:12px;margin-bottom:8px;font-size:12px;flex-wrap:wrap"></div>
-        <div class="legend" id="year-legend"></div>
-        <div style="position:relative;height:160px"><canvas id="yearChart"></canvas></div>
       </div>
 
       <!-- BY GAME -->
