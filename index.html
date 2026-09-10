@@ -1217,10 +1217,10 @@ function renderDashboard(){
             <span style="font-size:12px;color:var(--muted)">of ${fm(MONTHLY_BUDGET)}</span>
             <span style="font-size:12px;font-weight:600;color:${budgetColor}">${budgetOver?'over by '+fm(budgetSpend-MONTHLY_BUDGET):fm(MONTHLY_BUDGET-budgetSpend)+' left'}</span>
           </div>
-          <div style="background:var(--surface2);border-radius:3px;height:8px;display:flex;overflow:hidden;margin-bottom:6px">
-            <div style="height:100%;width:${greenPct}%;background:var(--green);flex-shrink:0"></div>
-            ${orangePct>0?`<div style="height:100%;width:${orangePct}%;background:#f59e0b;flex-shrink:0"></div>`:''}
-            ${redPct>0?`<div style="height:100%;width:${redPct}%;background:var(--red);flex-shrink:0"></div>`:''}
+          <div style="height:8px;display:flex;gap:2px;margin-bottom:6px">
+            <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${greenPct}%;background:var(--green)"></div></div>
+            <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${orangePct}%;background:#f59e0b"></div></div>
+            <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${redPct}%;background:var(--red)"></div></div>
           </div>
           <button onclick="showPage('purchases')" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0;text-decoration:underline">full breakdown →</button>
         </div>
@@ -2237,8 +2237,10 @@ function renderMonthlyBudget(){
         <div style="font-size:11px;color:var(--muted)">Resets ~28th each month</div>
       </div>
     </div>
-    <div style="background:var(--surface2);border-radius:4px;height:8px;overflow:hidden">
-      <div style="height:100%;width:${pct}%;background:${color};border-radius:4px;transition:width 0.3s"></div>
+    <div style="height:8px;display:flex;gap:2px">
+      <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${Math.min(monthSpend/MONTHLY_BUDGET*100,100)}%;background:var(--green)"></div></div>
+      <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${monthSpend>MONTHLY_BUDGET?Math.min((monthSpend-MONTHLY_BUDGET)/MONTHLY_BUDGET*100,100):0}%;background:#f59e0b"></div></div>
+      <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${monthSpend>MONTHLY_BUDGET*2?Math.min((monthSpend-MONTHLY_BUDGET*2)/MONTHLY_BUDGET*100,100):0}%;background:var(--red)"></div></div>
     </div>
   </div>`;
 }
