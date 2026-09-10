@@ -460,7 +460,8 @@ tr:hover td{background:var(--surface2)}
       <div class="card">
         <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin-bottom:6px">
           <div class="form-group"><label style="font-size:11px">Date</label><input type="date" id="p-date" style="width:100%;padding:5px 8px;font-size:13px"></div>
-          <div class="form-group"><label style="font-size:11px">Category</label>
+          <div class="form-group">
+            <label style="font-size:11px">Category</label>
             <select id="p-category" style="width:100%;padding:5px 8px;font-size:13px">
               <option value="pokemon">Pokémon</option><option value="mtg">MTG</option>
               <option value="onepiece">One Piece</option><option value="dbz">Dragon Ball Z</option>
@@ -468,14 +469,39 @@ tr:hover td{background:var(--surface2)}
               <option value="supplies">Supplies</option><option value="equipment">Equipment</option>
               <option value="other">Other</option>
             </select>
+            <div style="display:flex;gap:3px;margin-top:4px">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+                <button type="button" onclick="document.getElementById('p-category').value='mtg';updateSalePreview&&updateSalePreview()" class="gq-panel" style="width:100%;padding:3px 0;font-size:10px;font-weight:600;background:#534AB7;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">MTG</button>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+                <button type="button" onclick="document.getElementById('p-category').value='pokemon'" class="gq-panel" style="width:100%;padding:3px 0;font-size:10px;font-weight:600;background:#185FA5;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">Pokémon</button>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+                <button type="button" onclick="document.getElementById('p-category').value='supplies'" class="gq-panel" style="width:100%;padding:3px 0;font-size:10px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">Supplies</button>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="form-group"><label style="font-size:11px">Description</label><input type="text" id="p-desc" placeholder="e.g. Destined Rivals booster box x3" style="padding:5px 8px;font-size:13px"></div>
+        <div class="form-group"><label style="font-size:11px">Description</label><input type="text" id="p-desc" placeholder="e.g. Destined Rivals booster box x3" oninput="autoFillPurchaseSet()" style="padding:5px 8px;font-size:13px"></div>
         <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin-bottom:6px">
           <div class="form-group"><label style="font-size:11px">Amount (£)</label><input type="number" id="p-amount" step="0.01" min="0" placeholder="0.00" style="width:100%;padding:5px 8px;font-size:13px"></div>
-          <div class="form-group"><label style="font-size:11px">Supplier</label><input type="text" id="p-supplier" placeholder="e.g. Pendulum, Amazon..." style="width:100%;padding:5px 8px;font-size:13px"></div>
+          <div class="form-group">
+            <label style="font-size:11px">Supplier</label>
+            <input type="text" id="p-supplier" placeholder="e.g. Pendulum, Amazon..." style="width:100%;padding:5px 8px;font-size:13px">
+            <div style="display:flex;gap:3px;margin-top:4px">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+                <button type="button" onclick="document.getElementById('p-supplier').value='Pendulum Gaming'" class="gq-panel" style="width:100%;padding:3px 0;font-size:10px;font-weight:600;background:#185FA5;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">Pendulum</button>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+                <button type="button" onclick="document.getElementById('p-supplier').value='Cardmarket'" class="gq-panel" style="width:100%;padding:3px 0;font-size:10px;font-weight:600;background:#534AB7;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">Cardmarket</button>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+                <button type="button" onclick="document.getElementById('p-supplier').value='eBay'" class="gq-panel" style="width:100%;padding:3px 0;font-size:10px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer">eBay</button>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="form-group"><label style="font-size:11px">Set (optional)</label><input type="text" id="p-set" placeholder="e.g. Destined Rivals" style="padding:5px 8px;font-size:13px"></div>
+        <div class="form-group"><label style="font-size:11px">Set <span style="color:var(--muted);font-weight:400">(auto-fills from description)</span></label><input type="text" id="p-set" placeholder="e.g. Destined Rivals" style="padding:5px 8px;font-size:13px"></div>
         <div class="btn-row"><button class="btn primary" onclick="logPurchase()"><i class="ti ti-check"></i> Log purchase</button></div>
       </div>
     </div>
@@ -715,7 +741,31 @@ async function loadFromSheets(){
     if(!result.ok) throw new Error();
     const data=result.data;
     if(data.Sales&&data.Sales.length>1){
-      state.sales=data.Sales.slice(1).map(r=>({date:r[0],item:r[1],platform:r[2],price:parseFloat(r[3])||0,shippingCharged:parseFloat(r[4])||0,postageCost:parseFloat(r[5])||0,packaging:r[6]?JSON.parse(r[6]):[],articleCount:parseInt(r[7])||1,actualCommission:r[8]!==undefined&&r[8]!==''?parseFloat(r[8]):null,promotedFee:parseFloat(r[9])||0,gameQty:{pokemon:parseInt(r[10])||0,mtg:parseInt(r[11])||0,onepiece:parseInt(r[12])||0,marvel:parseInt(r[13])||0,other:parseInt(r[14])||0,dbz:parseInt(r[15])||0,riftbound:parseInt(r[16])||0,mtg_hobbit:parseInt(r[17])||0,mtg_avatar_tla:parseInt(r[18])||0,mtg_avatar_tle:parseInt(r[19])||0,mtg_strixhaven:parseInt(r[20])||0,mtg_marvel:parseInt(r[21])||0,mtg_ff:parseInt(r[22])||0},username:r[23]||''})).filter(s=>s.item);
+      const hdrs=data.Sales[0].map(h=>String(h).trim().toLowerCase());
+      const ci=n=>hdrs.indexOf(n.toLowerCase());
+      state.sales=data.Sales.slice(1).map(r=>{
+        const g=n=>{const i=ci(n);return i>=0?parseInt(r[i])||0:0;};
+        const f=n=>{const i=ci(n);return i>=0?parseFloat(r[i])||0:0;};
+        const s=n=>{const i=ci(n);return i>=0?String(r[i]||'').trim():'';};
+        return{
+          date:s('date'),item:s('item'),platform:s('platform'),
+          price:f('price'),shippingCharged:f('shippingcharged'),postageCost:f('postagecost'),
+          packaging:(()=>{try{const i=ci('packaging');return i>=0&&r[i]?JSON.parse(r[i]):[];}catch(e){return[];}})(),
+          articleCount:g('articlecount')||1,
+          actualCommission:(()=>{const i=ci('actualcommission');return i>=0&&r[i]!==undefined&&r[i]!==''?parseFloat(r[i]):null;})(),
+          promotedFee:f('promotedfee'),
+          gameQty:{
+            pokemon:g('pokemonqty'),mtg:g('mtgqty'),onepiece:g('onepieceqty'),
+            marvel:g('marvelqty'),other:g('otherqty'),dbz:g('dbzqty'),
+            riftbound:g('riftboundqty'),mtg_hobbit:g('mtghobbitqty'),
+            mtg_avatar_tla:g('mtgavatartlaqty'),mtg_avatar_tle:g('mtgavatartleqty'),
+            mtg_strixhaven:g('mtgstrixhavenqty'),mtg_marvel:g('mtgmarvelqty'),
+            mtg_ff:g('mtgffqty'),yugioh:g('yugiohqty')
+          },
+          username:s('buyerusername')
+        };
+      }).filter(s=>s.item);
+      buildBuyersFromSales();
     }
     if(data.Purchases&&data.Purchases.length>1){
       state.purchases=data.Purchases.slice(1).map(r=>({date:r[0],description:r[1],category:r[2],amount:parseFloat(r[3])||0,supplier:r[4]||'',set:r[5]||''})).filter(p=>p.description);
@@ -1121,8 +1171,6 @@ function renderDashboard(){
     <div class="metric"><div class="metric-label">Profit ${tip('Revenue minus all costs: postage, packaging supplies, and platform fees. This is your actual take-home per sale.')}</div><div class="metric-value ${totalProfit>=0?'pos':'neg'}">${fm(totalProfit)}</div><div class="metric-sub">after all costs</div></div>
     <div class="metric"><div class="metric-label">Profit margin ${tip('Profit as a percentage of revenue. Higher is better — a 70%+ margin on TCG singles is typical when pricing well.')}</div><div class="metric-value ${profitMargin>=0?'pos':'neg'}">${profitMargin.toFixed(1)}%</div><div class="metric-sub">of total revenue</div></div>
     <div class="metric"><div class="metric-label">Avg sale profit ${tip('Average profit per order after costs. Useful for gauging whether small orders are worth the packing effort.')}</div><div class="metric-value ${avgProfit>=0?'pos':'neg'}">${fm(avgProfit)}</div><div class="metric-sub">avg order ${fm(avgPrice)}</div></div>
-    <div class="metric"><div class="metric-label">Best day (avg) ${tip('The day of the week where your average revenue per sale is highest. Useful for timing when you list or promote cards.')}</div><div class="metric-value" style="font-size:16px">${bestDayEntry?bestDayEntry[0]:'—'}</div><div class="metric-sub">${bestDayEntry?fm(bestDayEntry[1])+'/sale'+(bestDayVsAvg!==null?' · '+(bestDayVsAvg>=0?'+':'')+bestDayVsAvg.toFixed(0)+'% vs avg':''):''}</div></div>
-    <div class="metric"><div class="metric-label">Best month ${tip('The calendar month with the most sales orders. Helps identify seasonal patterns in buyer demand.')}</div><div class="metric-value" style="font-size:16px">${bestMonth?bestMonth[0]:'—'}</div><div class="metric-sub">${bestMonth?bestMonth[1]+' sales':''}</div></div>
     <div class="metric"><div class="metric-label">Repeat buyers ${tip('Buyers who have placed more than one order with you. A higher number signals strong buyer satisfaction and loyalty.')}</div><div class="metric-value">${repeatBuyers}</div><div class="metric-sub">${state.buyers.length?'of '+state.buyers.length+' unique':'—'}</div></div>`;
 
   // Financial details (hidden)
@@ -1440,6 +1488,32 @@ function renderSnapChart(){
   });
 }
 
+const SET_KEYWORDS=[
+  ['destined rivals','Destined Rivals'],['prismatic evolutions','Prismatic Evolutions'],
+  ['surging sparks','Surging Sparks'],['stellar crown','Stellar Crown'],
+  ['twilight masquerade','Twilight Masquerade'],['shrouded fable','Shrouded Fable'],
+  ['paradise dragona','Paradise Dragona'],['wild force','Wild Force'],
+  ['temporal forces','Temporal Forces'],['paldean fates','Paldean Fates'],
+  ['paradox rift','Paradox Rift'],['obsidian flames','Obsidian Flames'],
+  ['scarlet violet','Scarlet & Violet'],['sv base','Scarlet & Violet'],
+  ['151','Pokémon 151'],
+  ['foundations','MTG Foundations'],['bloomburrow','Bloomburrow'],
+  ['duskmourn','Duskmourn'],['final fantasy','Final Fantasy'],
+  ['avatar','Avatar'],['hobbit','Hobbit'],
+  ['one piece','One Piece'],['op-','One Piece'],
+  ['dragon ball','Dragon Ball Super'],
+];
+
+function autoFillPurchaseSet(){
+  const desc=(document.getElementById('p-desc')?.value||'').toLowerCase();
+  if(!desc) return;
+  const setEl=document.getElementById('p-set');
+  if(!setEl||setEl.value) return;
+  for(const [kw,name] of SET_KEYWORDS){
+    if(desc.includes(kw)){setEl.value=name;return;}
+  }
+}
+
 function renderCollectionDashboard(bestColl,unrealisedPct){
   const coll=state.collection;
   const totalCost=coll.reduce((a,c)=>a+(parseFloat(c.cost)||0),0);
@@ -1540,30 +1614,44 @@ function renderCollectionDashboard(bestColl,unrealisedPct){
     if(!el) return;
     const items=coll
       .filter(c=>c.type===type)
-      .map(c=>({...c,
-        gain:(parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0),
-        gainPct:(parseFloat(c.cost)||0)>0?((parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0))/(parseFloat(c.cost))*100:null
-      }))
-      .sort((a,b)=>b.gain-a.gain)
+      .map(c=>{
+        const history=(state.itemSnapshots[c.id]||[]).slice().sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+        const firstTracked=history.length>0?history[0].value:null;
+        const currentVal=parseFloat(c.marketValue)||0;
+        const trackedChange=firstTracked!==null?currentVal-firstTracked:null;
+        const costGain=(parseFloat(c.cost)||0)>0?currentVal-(parseFloat(c.cost)||0):null;
+        return{...c,currentVal,firstTracked,trackedChange,costGain,history};
+      })
+      .sort((a,b)=>{
+        // Sort by tracked change if available, otherwise by current value
+        const aScore=a.trackedChange!==null?a.trackedChange:a.currentVal;
+        const bScore=b.trackedChange!==null?b.trackedChange:b.currentVal;
+        return bScore-aScore;
+      })
       .slice(0,5);
     if(!items.length){el.innerHTML=`<div class="empty">No ${label} yet</div>`;return;}
 
     el.innerHTML=items.map(c=>{
-      const history=state.itemSnapshots[c.id]||[];
+      const history=c.history;
       let sparkline='';
       if(history.length>1){
         const vals=history.map(h=>h.value);
         const min=Math.min(...vals),max=Math.max(...vals),range=max-min||1;
         const pts=vals.map((v,i)=>`${(i/(vals.length-1))*60},${10-((v-min)/range)*10}`).join(' ');
-        const trend=vals[vals.length-1]>vals[0];
+        const trend=vals[vals.length-1]>=vals[0];
         sparkline=`<svg width="60" height="12" style="flex-shrink:0;margin-left:4px"><polyline points="${pts}" fill="none" stroke="${trend?'var(--green)':'var(--red)'}" stroke-width="1.5"/></svg>`;
       }
+      const changeLabel=c.trackedChange!==null
+        ?`${c.trackedChange>=0?'+':''}${fm(c.trackedChange)} tracked`
+        :fm(c.currentVal);
       return`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;gap:6px">
         <div style="min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.name}">${c.name}</div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
           ${sparkline}
-          <span class="${c.gain>=0?'profit-pos':'profit-neg'}" style="white-space:nowrap">${c.gain>=0?'+':''}${fm(c.gain)}</span>
-          ${c.gainPct!==null?`<span style="color:var(--muted);font-size:11px">${c.gainPct>=0?'+':''}${c.gainPct.toFixed(0)}%</span>`:''}
+          <div style="text-align:right">
+            <div class="${c.trackedChange!==null?(c.trackedChange>=0?'profit-pos':'profit-neg'):''}" style="white-space:nowrap;font-weight:600">${changeLabel}</div>
+            <div style="font-size:10px;color:var(--muted)">${fm(c.currentVal)}</div>
+          </div>
         </div>
       </div>`;
     }).join('');
@@ -2687,7 +2775,19 @@ function renderBudgetBreakdown(){
       ${topSet?`<div>
         <div style="font-size:11px;color:var(--muted);margin-bottom:2px">Top set by spend</div>
         <div style="font-weight:600">${topSet[0]}</div>
-        <div style="font-size:11px;color:var(--muted)">${fm(topSet[1])}</div>
+        <div style="font-size:11px;color:var(--muted)">${fm(topSet[1])}${(()=>{
+          // Estimate return: sales where item description/id contains the set name keywords
+          const setName=topSet[0].toLowerCase();
+          let setProfit=0;
+          // Cross-ref with collection items from that set that appear in sales
+          // Best proxy: collection items tagged with this set, their market gain
+          const collItems=state.collection.filter(c=>(c.set||'').toLowerCase().includes(setName)||(c.name||'').toLowerCase().includes(setName));
+          if(collItems.length>0){
+            const gain=collItems.reduce((a,c)=>(parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0)+a,0);
+            return gain!==0?` · ${gain>=0?'+':''}${fm(gain)} unrealised gain (${collItems.length} items)`:'';
+          }
+          return '';
+        })()}</div>
       </div>`:''}
     </div>
   </div>`;
