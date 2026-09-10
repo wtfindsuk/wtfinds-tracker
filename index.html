@@ -1181,9 +1181,10 @@ function renderDashboard(){
             <span style="font-size:12px;color:var(--muted)">of ${fm(MONTHLY_BUDGET)}</span>
             <span style="font-size:12px;font-weight:600;color:${budgetColor}">${budgetOver?'over by '+fm(budgetSpend-MONTHLY_BUDGET):fm(MONTHLY_BUDGET-budgetSpend)+' left'}</span>
           </div>
-          <div style="background:var(--surface2);border-radius:3px;height:6px;overflow:hidden">
+          <div style="background:var(--surface2);border-radius:3px;height:6px;overflow:hidden;margin-bottom:6px">
             <div style="height:100%;width:${budgetPct}%;background:${budgetColor};border-radius:3px"></div>
           </div>
+          <button onclick="showPage('purchases')" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0;text-decoration:underline">full breakdown →</button>
         </div>
         ${projection?`<div style="border-left:1px solid var(--border);padding-left:20px;min-width:140px">
           <div class="net-tile-label">Break-even</div>
@@ -1455,46 +1456,79 @@ function renderCollectionDashboard(bestColl,unrealisedPct){
 
   const insEl=document.getElementById('dash-coll-insights');
   if(insEl){
-    const withCost=coll.filter(c=>(parseFloat(c.cost)||0)>0).map(c=>({
-      name:c.name,
-      gain:(parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0),
-      gainPct:((parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0))/(parseFloat(c.cost))*100,
-      history:state.itemSnapshots[c.id]||[]
-    }));
-    const sorted=[...withCost].sort((a,b)=>b.gain-a.gain);
+    // Use ALL collection items, sort by tracked value change (first snapshot vs now)
+    const withHistory=coll.map(c=>{
+      const history=(state.itemSnapshots[c.id]||[]).slice().sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+      const firstVal=history.length>0?history[0].value:null;
+      const currentVal=parseFloat(c.marketValue)||0;
+      const trackedGain=firstVal!==null?currentVal-firstVal:null;
+      return{name:c.name,id:c.id,currentVal,firstVal,trackedGain,history};
+    }).filter(c=>c.trackedGain!==null);
+
+    const sorted=[...withHistory].sort((a,b)=>b.trackedGain-a.trackedGain);
     const top3=sorted.slice(0,3);
     const bot3=[...sorted].reverse().slice(0,3);
 
-    function moverRow(m){
+    let chartCounter=0;
+    function moverCard(m, isGain){
+      const chartId=`mover-chart-${chartCounter++}`;
+      const gain=m.trackedGain;
       const history=m.history;
-      let sparkline='';
+      let chartHtml='';
       if(history.length>1){
-        const vals=history.map(h=>h.value);
-        const min=Math.min(...vals),max=Math.max(...vals),range=max-min||1;
-        const pts=vals.map((v,i)=>`${(i/(vals.length-1))*56},${9-((v-min)/range)*9}`).join(' ');
-        const trend=vals[vals.length-1]>vals[0];
-        sparkline=`<svg width="56" height="11" style="flex-shrink:0"><polyline points="${pts}" fill="none" stroke="${trend?'var(--green)':'var(--red)'}" stroke-width="1.5"/></svg>`;
+        chartHtml=`<div style="position:relative;height:60px;margin-top:6px"><canvas id="${chartId}"></canvas></div>`;
       }
-      return`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;gap:6px">
-        <div style="min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)" title="${m.name}">${m.name}</div>
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-          ${sparkline}
-          <span class="${m.gain>=0?'profit-pos':'profit-neg'}" style="white-space:nowrap;font-weight:600">${m.gain>=0?'+':''}${fm(m.gain)}</span>
-          <span style="color:var(--muted);font-size:11px;min-width:38px;text-align:right">${m.gainPct>=0?'+':''}${m.gainPct.toFixed(0)}%</span>
+      return`<div style="padding:6px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;font-size:12px">
+          <div style="min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)" title="${m.name}">${m.name}</div>
+          <div style="flex-shrink:0;text-align:right">
+            <div style="font-weight:600" class="${gain>=0?'profit-pos':'profit-neg'}">${gain>=0?'+':''}${fm(gain)}</div>
+            <div style="font-size:10px;color:var(--muted)">${m.firstVal!==null?fm(m.firstVal)+' → ':''} ${fm(m.currentVal)}</div>
+          </div>
         </div>
+        ${chartHtml}
       </div>`;
     }
 
     insEl.innerHTML=`<div class="grid2" style="margin-bottom:0">
       <div class="card" style="margin:0">
-        <div class="card-title" style="font-size:11px;margin-bottom:6px">Top 3 gains</div>
-        ${top3.length?top3.map(moverRow).join(''):'<div class="empty">No cost data yet</div>'}
+        <div class="card-title" style="font-size:11px;margin-bottom:6px">Top 3 gains since tracked</div>
+        ${top3.length?top3.map(m=>moverCard(m,true)).join(''):'<div class="empty">Import Collectr CSV to track</div>'}
       </div>
       <div class="card" style="margin:0">
-        <div class="card-title" style="font-size:11px;margin-bottom:6px">Top 3 losses</div>
-        ${bot3.length?bot3.map(moverRow).join(''):'<div class="empty">No cost data yet</div>'}
+        <div class="card-title" style="font-size:11px;margin-bottom:6px">Top 3 losses since tracked</div>
+        ${bot3.length?bot3.map(m=>moverCard(m,false)).join(''):'<div class="empty">Import Collectr CSV to track</div>'}
       </div>
     </div>`;
+
+    // Render mini charts after DOM is set
+    let idx=0;
+    [...top3,...bot3].forEach(m=>{
+      if(m.history.length<2){idx++;return;}
+      const canvasId=`mover-chart-${idx++}`;
+      const canvas=document.getElementById(canvasId);
+      if(!canvas) return;
+      const vals=m.history.map(h=>h.value);
+      const labels=m.history.map(h=>parseDateToObj(h.date)?.toLocaleDateString('en-GB',{day:'numeric',month:'short'})||h.date);
+      const isGain=vals[vals.length-1]>vals[0];
+      new Chart(canvas.getContext('2d'),{
+        type:'line',
+        data:{labels,datasets:[{
+          data:vals,
+          borderColor:isGain?'var(--green)':'var(--red)',
+          backgroundColor:isGain?'rgba(29,158,117,0.08)':'rgba(220,38,38,0.08)',
+          tension:0.3,pointRadius:2,fill:true,borderWidth:1.5
+        }]},
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`£${c.raw.toFixed(2)}`}}},
+          scales:{
+            x:{display:false},
+            y:{display:false}
+          }
+        }
+      });
+    });
   }
 
   renderSnapChart();
@@ -2175,7 +2209,7 @@ function renderYearChart(){
   if(fwdBtn) fwdBtn.disabled=isCurrent;
 
   const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const monthData=MONTHS.map(()=>({vol:0,orders:0,prices:[],cards:0}));
+  const monthData=MONTHS.map(()=>({vol:0,orders:0,prices:[],cards:0,profit:0}));
 
   state.sales.forEach(s=>{
     const d=parseDateToObj(s.date);
@@ -2185,43 +2219,46 @@ function renderYearChart(){
     monthData[m].orders++;
     monthData[m].prices.push((parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0));
     monthData[m].cards+=(parseInt(s.articleCount)||1);
+    monthData[m].profit+=calcSaleProfit(s);
   });
 
   const totalRev=monthData.reduce((a,m)=>a+m.prices.reduce((s,v)=>s+v,0),0);
+  const totalProfit=monthData.reduce((a,m)=>a+m.profit,0);
   const totalOrders=monthData.reduce((a,m)=>a+m.orders,0);
   const totalCards=monthData.reduce((a,m)=>a+m.cards,0);
   const bestMonth=monthData.reduce((best,m,i)=>m.orders>monthData[best].orders?i:best,0);
 
   if(summaryEl) summaryEl.innerHTML=`
     <span><span style="font-weight:600;color:var(--text)">£${totalRev.toFixed(2)}</span> <span style="color:var(--muted)">revenue</span></span>
+    <span><span style="font-weight:600;color:#1D9E75">£${totalProfit.toFixed(2)}</span> <span style="color:var(--muted)">profit</span></span>
     <span><span style="font-weight:600;color:var(--text)">${totalOrders}</span> <span style="color:var(--muted)">orders</span></span>
     <span><span style="font-weight:600;color:#534AB7">${totalCards}</span> <span style="color:var(--muted)">cards</span></span>
     ${totalOrders>0?`<span><span style="font-weight:600;color:#BA7517">${MONTHS[bestMonth]}</span> <span style="color:var(--muted)">best month</span></span>`:''}`;
 
-  const vols=monthData.map(m=>m.vol);
-  const orders=monthData.map(m=>m.orders);
-  const avgs=monthData.map(m=>m.prices.length?parseFloat((m.prices.reduce((a,b)=>a+b,0)/m.prices.length).toFixed(2)):0);
+  const revenues=monthData.map(m=>+m.prices.reduce((a,b)=>a+b,0).toFixed(2));
+  const profits=monthData.map(m=>+m.profit.toFixed(2));
+  const cards=monthData.map(m=>m.cards);
 
   if(legendEl) legendEl.innerHTML=`
-    <span><span class="lsq" style="background:#534AB7"></span>Articles</span>
-    <span><span class="lsq" style="background:#1D9E75"></span>Orders</span>
-    <span><span class="lsq" style="background:#BA7517"></span>Avg order (£)</span>`;
+    <span><span class="lsq" style="background:#185FA5"></span>Revenue</span>
+    <span><span class="lsq" style="background:#1D9E75"></span>Profit</span>
+    <span><span class="lsq" style="background:#534AB7"></span>Cards</span>`;
 
   if(yearChartInst) yearChartInst.destroy();
   yearChartInst=new Chart(canvas.getContext('2d'),{
     type:'bar',
     data:{labels:MONTHS,datasets:[
-      {label:'Articles',data:vols,backgroundColor:'#534AB7',borderRadius:3,yAxisID:'y'},
-      {label:'Orders',data:orders,backgroundColor:'#1D9E75',borderRadius:3,yAxisID:'y'},
-      {label:'Avg order',data:avgs,type:'line',borderColor:'#BA7517',backgroundColor:'rgba(186,117,23,0.08)',tension:0.3,pointRadius:3,fill:false,yAxisID:'y2'}
+      {label:'Revenue',data:revenues,backgroundColor:'#185FA5',borderRadius:3,yAxisID:'y'},
+      {label:'Profit',data:profits,backgroundColor:'#1D9E75',borderRadius:3,yAxisID:'y'},
+      {label:'Cards',data:cards,type:'line',borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',tension:0.3,pointRadius:3,fill:false,yAxisID:'y2'}
     ]},
     options:{
       responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Avg order'?`Avg: £${c.raw.toFixed(2)}`:c.dataset.label+': '+c.raw}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Cards'?`Cards: ${c.raw}`:`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},
       scales:{
         x:{grid:{display:false},ticks:{font:{size:11}}},
-        y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{font:{size:11}}},
-        y2:{position:'right',grid:{display:false},ticks:{callback:v=>'£'+v,font:{size:11}}}
+        y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:11}}},
+        y2:{position:'right',grid:{display:false},ticks:{font:{size:11}},title:{display:true,text:'Cards',font:{size:10},color:'var(--muted)'}}
       }
     }
   });
