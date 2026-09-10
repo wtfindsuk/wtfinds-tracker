@@ -233,44 +233,39 @@ tr:hover td{background:var(--surface2)}
       <div class="grid2" style="margin-bottom:6px">
         <div class="card">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <div class="card-title" style="margin-bottom:0">This week</div>
-            <div style="display:flex;align-items:center;gap:4px">
-              <button class="btn sm" onclick="dashWeekNavJump(-4)" title="Back 1 month">«</button>
+            <div style="display:flex;gap:4px">
+              <button class="btn sm active-snap" id="period-tab-week" onclick="setPeriodTab('week')">This week</button>
+              <button class="btn sm" id="period-tab-month" onclick="setPeriodTab('month')">This month</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px" id="period-nav-week">
+              <button class="btn sm" onclick="dashWeekNavJump(-4)">«</button>
               <button class="btn sm" onclick="dashWeekNavStep(-1)">‹</button>
               <span id="dash-week-nav-label" style="font-size:11px;color:var(--muted);min-width:70px;text-align:center"></span>
               <button class="btn sm" onclick="dashWeekNavStep(1)" id="dash-week-nav-fwd">›</button>
               <button class="btn sm" onclick="dashWeekNavJump(4)" id="dash-week-nav-fwd-month">»</button>
             </div>
-          </div>
-          <div id="dash-week-summary" style="display:flex;gap:12px;margin-bottom:8px;font-size:12px;flex-wrap:wrap"></div>
-          <div style="position:relative;height:140px"><canvas id="dashWeekChart"></canvas></div>
-        </div>
-        <div class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <div class="card-title" style="margin-bottom:0" id="dash-month-title">This month</div>
-            <div style="display:flex;align-items:center;gap:4px">
+            <div style="display:flex;align-items:center;gap:4px;display:none" id="period-nav-month">
               <button class="btn sm" onclick="dashMonthNavStep(-1)">‹</button>
               <span id="dash-month-nav-label" style="font-size:11px;color:var(--muted);min-width:80px;text-align:center"></span>
               <button class="btn sm" onclick="dashMonthNavStep(1)" id="dash-month-nav-fwd">›</button>
             </div>
           </div>
-          <div id="dash-month-summary" style="display:flex;gap:12px;margin-bottom:8px;font-size:12px;flex-wrap:wrap"></div>
-          <div style="position:relative;height:140px"><canvas id="dashMonthChart"></canvas></div>
+          <div id="dash-period-summary" style="display:flex;gap:12px;margin-bottom:8px;font-size:12px;flex-wrap:wrap"></div>
+          <div style="position:relative;height:140px"><canvas id="dashPeriodChart"></canvas></div>
         </div>
-      </div>
-
-      <div class="card" style="margin-bottom:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div class="card-title" style="margin-bottom:0">Volume &amp; avg order by year</div>
-          <div style="display:flex;align-items:center;gap:4px">
-            <button class="btn sm" onclick="yearNavStep(-1)">‹</button>
-            <span id="year-nav-label" style="font-size:11px;color:var(--muted);min-width:50px;text-align:center"></span>
-            <button class="btn sm" onclick="yearNavStep(1)" id="year-nav-fwd">›</button>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div class="card-title" style="margin-bottom:0">By year</div>
+            <div style="display:flex;align-items:center;gap:4px">
+              <button class="btn sm" onclick="yearNavStep(-1)">‹</button>
+              <span id="year-nav-label" style="font-size:11px;color:var(--muted);min-width:50px;text-align:center"></span>
+              <button class="btn sm" onclick="yearNavStep(1)" id="year-nav-fwd">›</button>
+            </div>
           </div>
+          <div id="year-summary" style="display:flex;gap:12px;margin-bottom:8px;font-size:12px;flex-wrap:wrap"></div>
+          <div class="legend" id="year-legend"></div>
+          <div style="position:relative;height:140px"><canvas id="yearChart"></canvas></div>
         </div>
-        <div id="year-summary" style="display:flex;gap:12px;margin-bottom:8px;font-size:12px;flex-wrap:wrap"></div>
-        <div class="legend" id="year-legend"></div>
-        <div style="position:relative;height:160px"><canvas id="yearChart"></canvas></div>
       </div>
 
       <div class="grid2" style="margin-bottom:14px">
@@ -294,16 +289,19 @@ tr:hover td{background:var(--surface2)}
         </div>
       </div>
 
-      <!-- BY GAME -->
+      <!-- BY GAME + BY SET -->
       <div class="dash-section-title">By game</div>
+      <div style="display:flex;gap:4px;margin-bottom:10px">
+        <button class="btn sm active-snap" id="game-tab-game" onclick="setGameTab('game')">By game</button>
+        <button class="btn sm" id="game-tab-set" onclick="setGameTab('set')">By set</button>
+      </div>
       <div id="dash-game-breakdown"></div>
-
-      <!-- BY SET -->
-      <div class="dash-section-title">By set</div>
-      <div id="dash-set-performance"></div>
+      <div id="dash-set-performance" style="display:none"></div>
 
       <!-- COLLECTION SECTION -->
       <div class="dash-section-title" style="margin-top:18px">Collection</div>
+      <!-- TOP BUYERS compact -->
+      <div id="dash-top-buyers"></div>
       <div class="coll-summary" id="coll-summary"></div>
       <div id="dash-coll-insights" style="margin-bottom:14px"></div>
       <div class="card" style="margin-bottom:14px">
@@ -318,32 +316,16 @@ tr:hover td{background:var(--surface2)}
         <div class="legend" id="snap-legend"></div>
         <div style="position:relative;height:200px"><canvas id="snapChart"></canvas></div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
-        <div class="card">
-          <div class="card-title">Top 5 singles by gain</div>
-          <div id="dash-top-singles"></div>
-        </div>
-        <div class="card">
-          <div class="card-title">Top 5 sealed by gain</div>
-          <div id="dash-top-sealed"></div>
-        </div>
-        <div class="card">
-          <div class="card-title">Top 5 graded by gain</div>
-          <div id="dash-graded"></div>
-        </div>
-      </div>
       <div class="card" style="margin-bottom:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div class="card-title" style="margin-bottom:0">By collection</div>
           <div style="display:flex;gap:4px">
-            <button id="coll-view-table" onclick="setCollView('table')" class="btn sm active-snap">Table</button>
-            <button id="coll-view-chart" onclick="setCollView('chart')" class="btn sm">Chart</button>
+            <button id="coll-view-chart" onclick="setCollView('chart')" class="btn sm active-snap">Chart</button>
+            <button id="coll-view-table" onclick="setCollView('table')" class="btn sm">Table</button>
           </div>
         </div>
         <div id="dash-sealed"></div>
       </div>
-      <!-- TOP BUYERS (compact, appended to collection) -->
-      <div id="dash-top-buyers"></div>
 
     </div>
 
@@ -981,7 +963,7 @@ function toggleInventoryInput(){
   }
 }
 
-let collView='table';
+let collView='chart';
 let collByPortfolioChartInst=null;
 
 function setCollView(view){
@@ -1206,8 +1188,13 @@ function renderDashboard(){
     .reduce((a,p)=>a+(parseFloat(p.amount)||0),0);
   const budgetPct=Math.min((budgetSpend/MONTHLY_BUDGET)*100,100);
   const budgetOver=budgetSpend>MONTHLY_BUDGET;
+  const budgetDouble=budgetSpend>MONTHLY_BUDGET*2;
   const budgetNear=budgetSpend>MONTHLY_BUDGET*0.8;
-  const budgetColor=budgetOver?'var(--red)':budgetNear?'#f59e0b':'var(--green)';
+  // Bar segments: green (up to budget), orange (budget to 2x), red (2x+)
+  const greenPct=Math.min(budgetSpend/MONTHLY_BUDGET*100,100);
+  const orangePct=budgetOver?Math.min((budgetSpend-MONTHLY_BUDGET)/MONTHLY_BUDGET*100,100):0;
+  const redPct=budgetDouble?Math.min((budgetSpend-MONTHLY_BUDGET*2)/MONTHLY_BUDGET*100,100):0;
+  const budgetColor=budgetDouble?'var(--red)':budgetOver?'#f59e0b':budgetNear?'#f59e0b':'var(--green)';
 
   document.getElementById('dash-net-position').innerHTML=`
     <div class="net-tile" style="border-color:${netPosition>=0?'var(--green)':'var(--red)'}">
@@ -1216,21 +1203,24 @@ function renderDashboard(){
           <div class="net-tile-label">Net position</div>
           <div class="net-tile-value ${netPosition>=0?'pos':'neg'}" style="font-size:26px">${(netPosition>=0?'+':'')+fm(netPosition)}</div>
           <div style="font-size:11px;color:var(--muted);margin-top:3px">profit + collection + inventory − spend</div>
-          <div style="margin-top:6px;font-size:12px;color:var(--muted)">
-            ${netPosition>=0?'Overall in profit':fm(Math.abs(netPosition))+' to break even'}
-            ${stockNeeded?` · sell ${fm(stockNeeded)}${inventoryPct!==null?' ('+inventoryPct.toFixed(0)+'% of stock)':''}`:''}<br>
-            <button onclick="toggleFinDetails()" id="fin-toggle-btn" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0;text-decoration:underline;margin-top:2px">show details</button>
+          <div style="margin-top:8px;display:flex;gap:16px;flex-wrap:wrap">
+            <div><div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:0.05em">Total spend</div><div style="font-size:13px;font-weight:600;color:#555">${fm(totalSpend)}</div></div>
+            <div><div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:0.05em">Profit</div><div style="font-size:13px;font-weight:600;color:#555">${fm(totalProfit)}</div></div>
+            <div><div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:0.05em">Break-even</div><div style="font-size:13px;font-weight:600;color:#555">${fm(standing)}</div></div>
           </div>
+          ${stockNeeded?`<div style="font-size:11px;color:var(--muted);margin-top:6px">Sell ${fm(stockNeeded)} of inventory to break even${inventoryPct!==null?' ('+inventoryPct.toFixed(0)+'% of stock)':''}</div>`:''}
         </div>
-        <div style="border-left:1px solid var(--border);padding-left:20px;min-width:180px;flex:1">
+        <div style="border-left:1px solid var(--border);padding-left:20px;min-width:200px;flex:1">
           <div class="net-tile-label" style="margin-bottom:4px">Monthly budget <span style="font-weight:400;text-transform:none;letter-spacing:0">· since ${periodStart.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} · excl. Cardmarket</span></div>
           <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px">
             <span style="font-size:20px;font-weight:700;color:${budgetColor}">${fm(budgetSpend)}</span>
             <span style="font-size:12px;color:var(--muted)">of ${fm(MONTHLY_BUDGET)}</span>
             <span style="font-size:12px;font-weight:600;color:${budgetColor}">${budgetOver?'over by '+fm(budgetSpend-MONTHLY_BUDGET):fm(MONTHLY_BUDGET-budgetSpend)+' left'}</span>
           </div>
-          <div style="background:var(--surface2);border-radius:3px;height:6px;overflow:hidden;margin-bottom:6px">
-            <div style="height:100%;width:${budgetPct}%;background:${budgetColor};border-radius:3px"></div>
+          <div style="background:var(--surface2);border-radius:3px;height:8px;display:flex;overflow:hidden;margin-bottom:6px">
+            <div style="height:100%;width:${greenPct}%;background:var(--green);flex-shrink:0"></div>
+            ${orangePct>0?`<div style="height:100%;width:${orangePct}%;background:#f59e0b;flex-shrink:0"></div>`:''}
+            ${redPct>0?`<div style="height:100%;width:${redPct}%;background:var(--red);flex-shrink:0"></div>`:''}
           </div>
           <button onclick="showPage('purchases')" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0;text-decoration:underline">full breakdown →</button>
         </div>
@@ -1245,8 +1235,7 @@ function renderDashboard(){
   renderMainChart();
   renderVolChart();
   renderYearChart();
-  renderDashWeekChart();
-  renderDashMonthChart();
+  renderDashPeriodChart();
   renderGameBreakdown();
   renderSetPerformance();
   renderTopBuyers();
@@ -2350,6 +2339,134 @@ function renderYearChart(){
       }
     }
   });
+}
+
+let periodTab='week';
+let dashPeriodChartInst=null;
+
+function setPeriodTab(tab){
+  periodTab=tab;
+  document.getElementById('period-tab-week').className='btn sm'+(tab==='week'?' active-snap':'');
+  document.getElementById('period-tab-month').className='btn sm'+(tab==='month'?' active-snap':'');
+  document.getElementById('period-nav-week').style.display=tab==='week'?'flex':'none';
+  document.getElementById('period-nav-month').style.display=tab==='month'?'flex':'none';
+  renderDashPeriodChart();
+}
+
+function dashWeekNavStep(delta){
+  const minWeek=getMinWeekOffset();
+  dashWeekOffset=Math.max(minWeek,Math.min(0,dashWeekOffset+delta));
+  renderDashPeriodChart();
+}
+function dashWeekNavJump(delta){
+  const minWeek=getMinWeekOffset();
+  dashWeekOffset=Math.max(minWeek,Math.min(0,dashWeekOffset+delta));
+  renderDashPeriodChart();
+}
+function dashMonthNavStep(delta){
+  const now=new Date();
+  const minOffset=-(now.getFullYear()-2020)*12-now.getMonth();
+  dashMonthOffset=Math.max(minOffset,Math.min(0,dashMonthOffset+delta));
+  renderDashPeriodChart();
+}
+
+function renderDashPeriodChart(){
+  if(periodTab==='week') renderDashWeekChart();
+  else renderDashMonthChart();
+}
+
+function renderDashWeekChart(){
+  const summaryEl=document.getElementById('dash-period-summary');
+  const canvas=document.getElementById('dashPeriodChart');
+  const labelEl=document.getElementById('dash-week-nav-label');
+  const fwdBtn=document.getElementById('dash-week-nav-fwd');
+  const fwdMonthBtn=document.getElementById('dash-week-nav-fwd-month');
+  if(!summaryEl||!canvas) return;
+  const now=new Date();
+  const todayDayOfWeek=now.getDay();
+  const currentMonday=new Date(now);
+  currentMonday.setDate(now.getDate()-(todayDayOfWeek===0?6:todayDayOfWeek-1));
+  currentMonday.setHours(0,0,0,0);
+  const weekStart=new Date(currentMonday);
+  weekStart.setDate(weekStart.getDate()+dashWeekOffset*7);
+  const weekEnd=new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate()+6);
+  weekEnd.setHours(23,59,59,999);
+  const isCurrentWeek=dashWeekOffset===0;
+  const startStr=weekStart.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  const endStr=weekEnd.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  if(labelEl) labelEl.textContent=isCurrentWeek?'This week':`${startStr} – ${endStr}`;
+  if(fwdBtn) fwdBtn.disabled=isCurrentWeek;
+  if(fwdMonthBtn) fwdMonthBtn.disabled=isCurrentWeek;
+  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const dayData={};
+  days.forEach(d=>dayData[d]={revenue:0,profit:0,orders:0,cards:0});
+  state.sales.forEach(s=>{
+    const d=parseDateToObj(s.date);
+    if(!d||d<weekStart||d>weekEnd) return;
+    const dayIdx=d.getDay()===0?6:d.getDay()-1;
+    dayData[days[dayIdx]].revenue+=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);
+    dayData[days[dayIdx]].profit+=calcSaleProfit(s);
+    dayData[days[dayIdx]].orders++;
+    dayData[days[dayIdx]].cards+=parseInt(s.articleCount)||1;
+  });
+  const totalRev=Object.values(dayData).reduce((a,d)=>a+d.revenue,0);
+  const totalProfit=Object.values(dayData).reduce((a,d)=>a+d.profit,0);
+  const totalOrders=Object.values(dayData).reduce((a,d)=>a+d.orders,0);
+  const totalCards=Object.values(dayData).reduce((a,d)=>a+d.cards,0);
+  summaryEl.innerHTML=`<span><span style="font-weight:600;color:var(--text)">${fm(totalRev)}</span> <span style="color:var(--muted)">revenue</span></span><span><span style="font-weight:600;color:#1D9E75">${fm(totalProfit)}</span> <span style="color:var(--muted)">profit</span></span><span><span style="font-weight:600;color:var(--text)">${totalOrders}</span> <span style="color:var(--muted)">orders</span></span><span><span style="font-weight:600;color:#534AB7">${totalCards}</span> <span style="color:var(--muted)">cards</span></span>`;
+  const todayIdx=isCurrentWeek?(now.getDay()===0?6:now.getDay()-1):-1;
+  const labels=days.map((d,i)=>i===todayIdx?d+'·':d);
+  if(dashPeriodChartInst) dashPeriodChartInst.destroy();
+  dashPeriodChartInst=new Chart(canvas.getContext('2d'),{type:'bar',data:{labels,datasets:[{label:'Revenue',data:days.map(d=>+dayData[d].revenue.toFixed(2)),backgroundColor:'#185FA5',borderRadius:3,yAxisID:'y'},{label:'Profit',data:days.map(d=>+dayData[d].profit.toFixed(2)),backgroundColor:'#1D9E75',borderRadius:3,yAxisID:'y'},{label:'Cards',data:days.map(d=>dayData[d].cards),type:'line',borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',tension:0.3,pointRadius:3,fill:false,yAxisID:'y2'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Cards'?`Cards: ${c.raw}`:`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:11}}},y2:{position:'right',grid:{display:false},ticks:{font:{size:11}}}}}});
+}
+
+function renderDashMonthChart(){
+  const summaryEl=document.getElementById('dash-period-summary');
+  const canvas=document.getElementById('dashPeriodChart');
+  const labelEl=document.getElementById('dash-month-nav-label');
+  const fwdBtn=document.getElementById('dash-month-nav-fwd');
+  if(!summaryEl||!canvas) return;
+  const now=new Date();
+  const targetDate=new Date(now.getFullYear(),now.getMonth()+dashMonthOffset,1);
+  const year=targetDate.getFullYear();
+  const month=targetDate.getMonth();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const isCurrentMonth=dashMonthOffset===0;
+  if(labelEl) labelEl.textContent=targetDate.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  if(fwdBtn) fwdBtn.disabled=isCurrentMonth;
+  const dayData={};
+  for(let i=1;i<=daysInMonth;i++) dayData[i]={revenue:0,profit:0,orders:0,cards:0};
+  state.sales.forEach(s=>{
+    const d=parseDateToObj(s.date);
+    if(!d||d.getFullYear()!==year||d.getMonth()!==month) return;
+    const day=d.getDate();
+    dayData[day].revenue+=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);
+    dayData[day].profit+=calcSaleProfit(s);
+    dayData[day].orders++;
+    dayData[day].cards+=parseInt(s.articleCount)||1;
+  });
+  const totalRev=Object.values(dayData).reduce((a,d)=>a+d.revenue,0);
+  const totalProfit=Object.values(dayData).reduce((a,d)=>a+d.profit,0);
+  const totalOrders=Object.values(dayData).reduce((a,d)=>a+d.orders,0);
+  const totalCards=Object.values(dayData).reduce((a,d)=>a+d.cards,0);
+  summaryEl.innerHTML=`<span><span style="font-weight:600;color:var(--text)">${fm(totalRev)}</span> <span style="color:var(--muted)">revenue</span></span><span><span style="font-weight:600;color:#1D9E75">${fm(totalProfit)}</span> <span style="color:var(--muted)">profit</span></span><span><span style="font-weight:600;color:var(--text)">${totalOrders}</span> <span style="color:var(--muted)">orders</span></span><span><span style="font-weight:600;color:#534AB7">${totalCards}</span> <span style="color:var(--muted)">cards</span></span>`;
+  const labels=Object.keys(dayData).map(d=>+d%5===0||+d===1?String(d):'');
+  const revenues=Object.values(dayData).map(d=>+d.revenue.toFixed(2));
+  const profits=Object.values(dayData).map(d=>+d.profit.toFixed(2));
+  const cards=Object.values(dayData).map(d=>d.cards);
+  if(dashPeriodChartInst) dashPeriodChartInst.destroy();
+  dashPeriodChartInst=new Chart(canvas.getContext('2d'),{type:'bar',data:{labels,datasets:[{label:'Revenue',data:revenues,backgroundColor:'#185FA5',borderRadius:2,yAxisID:'y'},{label:'Profit',data:profits,backgroundColor:'#1D9E75',borderRadius:2,yAxisID:'y'},{label:'Cards',data:cards,type:'line',borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',tension:0.3,pointRadius:2,fill:false,yAxisID:'y2'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Cards'?`Cards: ${c.raw}`:`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:10}}},y2:{position:'right',grid:{display:false},ticks:{font:{size:10}}}}}});
+}
+
+let gameBreakdownTab='game';
+function setGameTab(tab){
+  gameBreakdownTab=tab;
+  document.getElementById('game-tab-game').className='btn sm'+(tab==='game'?' active-snap':'');
+  document.getElementById('game-tab-set').className='btn sm'+(tab==='set'?' active-snap':'');
+  document.getElementById('dash-game-breakdown').style.display=tab==='game'?'block':'none';
+  document.getElementById('dash-set-performance').style.display=tab==='set'?'block':'none';
+  if(tab==='set') renderSetPerformance();
 }
 
 let dashWeekChartInst=null;
