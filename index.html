@@ -1520,14 +1520,6 @@ function renderCollectionDashboard(bestColl,unrealisedPct){
   const insEl=document.getElementById('dash-coll-insights');
   if(insEl){
     // Use ALL collection items, sort by tracked value change (first snapshot vs now)
-    // DEBUG: log snapshot data to console
-    const sampleIds=coll.slice(0,3).map(c=>c.id);
-    sampleIds.forEach(id=>{
-      const snaps=state.itemSnapshots[id]||[];
-      console.log('ItemSnapshot debug — id:',id,'snaps:',snaps.length,snaps.map(s=>s.date+' £'+s.value));
-    });
-    console.log('Total items with snapshots:',Object.keys(state.itemSnapshots).length);
-
     const withHistory=coll.map(c=>{
       const history=(state.itemSnapshots[c.id]||[]).slice().sort((a,b)=>{
         const da=parseDateToObj(a.date),db=parseDateToObj(b.date);
@@ -3082,8 +3074,16 @@ function importCollectrCsv(input){
       const snapDate=today();
       newCollection.forEach(item=>{
         if(!state.itemSnapshots[item.id]) state.itemSnapshots[item.id]=[];
-        // Only add if date is new for this item
-        if(!state.itemSnapshots[item.id].find(s=>s.date===snapDate)){
+        // Find existing entry for today (compare date part only, handles ISO timestamps)
+        const existingIdx=state.itemSnapshots[item.id].findIndex(s=>{
+          const d=parseDateToObj(s.date);
+          const t=parseDateToObj(snapDate);
+          return d&&t&&d.getFullYear()===t.getFullYear()&&d.getMonth()===t.getMonth()&&d.getDate()===t.getDate();
+        });
+        if(existingIdx>=0){
+          // Update today's value
+          state.itemSnapshots[item.id][existingIdx].value=item.marketValue;
+        } else {
           state.itemSnapshots[item.id].push({date:snapDate,value:item.marketValue,name:item.name});
         }
       });
