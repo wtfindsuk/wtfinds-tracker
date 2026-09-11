@@ -1198,6 +1198,39 @@ function renderDashboard(){
   const redPct=budgetDouble?Math.min((budgetSpend-MONTHLY_BUDGET*2)/MONTHLY_BUDGET*100,100):0;
   const budgetColor=budgetDouble?'var(--red)':budgetOver?'#f59e0b':budgetNear?'#f59e0b':'var(--green)';
 
+  // Period profit (sales profit since payday)
+  const periodProfit=state.sales
+    .filter(s=>s.date&&parseDateToObj(s.date)>=periodStart)
+    .reduce((a,s)=>a+calcSaleProfit(s),0);
+  const profitBarPct=Math.min(periodProfit/MONTHLY_BUDGET*100,100);
+
+  // Collection value change since payday — compare earliest snapshot in period vs current
+  let collValueChange=null;
+  const snapKeys=Object.keys(state.itemSnapshots);
+  if(snapKeys.length){
+    let periodStartVal=0, currentVal=0, hasSnap=false;
+    snapKeys.forEach(id=>{
+      const snaps=(state.itemSnapshots[id]||[]).slice().sort((a,b)=>{
+        const da=parseDateToObj(a.date),db=parseDateToObj(b.date);
+        return da&&db?da-db:0;
+      });
+      // Find earliest snap at or before period start
+      const beforePeriod=snaps.filter(s=>{const d=parseDateToObj(s.date);return d&&d<=periodStart;});
+      const baseline=beforePeriod.length?beforePeriod[beforePeriod.length-1]:snaps[0];
+      const latest=snaps[snaps.length-1];
+      if(baseline&&latest){
+        periodStartVal+=baseline.value||0;
+        currentVal+=latest.value||0;
+        hasSnap=true;
+      }
+    });
+    if(hasSnap) collValueChange=currentVal-periodStartVal;
+  }
+
+  // Period summary text
+  const periodNet=periodProfit-budgetSpend;
+  const periodSummary=`${periodNet>=0?'<span style="color:var(--green)">+'+fm(periodNet)+' ahead</span>':'<span style="color:var(--red)">'+fm(periodNet)+' behind</span>'} this period · ${fm(periodProfit)} profit vs ${fm(budgetSpend)} spend`;
+
   document.getElementById('dash-net-position').innerHTML=`
     <div class="net-tile" style="border-color:${netPosition>=0?'var(--green)':'var(--red)'}">
       <div style="display:flex;gap:24px;align-items:stretch;flex:1;flex-wrap:wrap">
@@ -1212,19 +1245,38 @@ function renderDashboard(){
           </div>
           ${stockNeeded?`<div style="font-size:11px;color:var(--muted);margin-top:6px">Sell ${fm(stockNeeded)} of inventory to break even${inventoryPct!==null?' ('+inventoryPct.toFixed(0)+'% of stock)':''}</div>`:''}
         </div>
-        <div style="border-left:1px solid var(--border);padding-left:20px;min-width:200px;flex:1">
-          <div class="net-tile-label" style="margin-bottom:4px">Monthly budget <span style="font-weight:400;text-transform:none;letter-spacing:0">· since ${periodStart.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} · excl. Cardmarket</span></div>
-          <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px">
-            <span style="font-size:20px;font-weight:700;color:${budgetColor}">${fm(budgetSpend)}</span>
-            <span style="font-size:12px;color:var(--muted)">of ${fm(MONTHLY_BUDGET)}</span>
-            <span style="font-size:12px;font-weight:600;color:${budgetColor}">${budgetOver?'over by '+fm(budgetSpend-MONTHLY_BUDGET):fm(MONTHLY_BUDGET-budgetSpend)+' left'}</span>
+        <div style="border-left:1px solid var(--border);padding-left:20px;min-width:220px;flex:1">
+          <div class="net-tile-label" style="margin-bottom:4px">This period <span style="font-weight:400;text-transform:none;letter-spacing:0">· since ${periodStart.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} · excl. Cardmarket</span></div>
+
+          <div style="display:grid;grid-template-columns:70px 1fr;gap:4px 10px;align-items:center;margin-bottom:8px;font-size:11px">
+            <div style="color:var(--muted)">Spend</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="flex:1;height:7px;display:flex;gap:2px">
+                <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${greenPct}%;background:var(--green)"></div></div>
+                <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${orangePct}%;background:#f59e0b"></div></div>
+                <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${redPct}%;background:var(--red)"></div></div>
+              </div>
+              <span style="font-weight:600;color:${budgetColor};white-space:nowrap;min-width:50px">${fm(budgetSpend)}</span>
+            </div>
+            <div style="color:var(--muted)">Profit</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="flex:1;height:7px;background:var(--surface2);border-radius:2px;overflow:hidden">
+                <div style="height:100%;width:${profitBarPct}%;background:#1D9E75"></div>
+              </div>
+              <span style="font-weight:600;color:#1D9E75;white-space:nowrap;min-width:50px">${fm(periodProfit)}</span>
+            </div>
+            ${collValueChange!==null?`<div style="color:var(--muted)">Collection</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="flex:1;height:7px;background:var(--surface2);border-radius:2px;overflow:hidden">
+                <div style="height:100%;width:${Math.min(Math.abs(collValueChange)/MONTHLY_BUDGET*100,100)}%;background:${collValueChange>=0?'#534AB7':'var(--red)'}"></div>
+              </div>
+              <span style="font-weight:600;color:${collValueChange>=0?'#534AB7':'var(--red)'};white-space:nowrap;min-width:50px">${collValueChange>=0?'+':''}${fm(collValueChange)}</span>
+            </div>`:''}
           </div>
-          <div style="height:8px;display:flex;gap:2px;margin-bottom:6px">
-            <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${greenPct}%;background:var(--green)"></div></div>
-            <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${orangePct}%;background:#f59e0b"></div></div>
-            <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${redPct}%;background:var(--red)"></div></div>
-          </div>
-          <button onclick="showPage('purchases')" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0;text-decoration:underline">full breakdown →</button>
+
+          <div style="font-size:11px;margin-bottom:6px">${periodSummary}</div>
+          ${collValueChange!==null?`<div style="font-size:11px;color:var(--muted)">Collection ${collValueChange>=0?'up':'down'} ${fm(Math.abs(collValueChange))} since payday</div>`:''}
+          <button onclick="showPage('purchases')" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0;text-decoration:underline;margin-top:4px">full breakdown →</button>
         </div>
         ${projection?`<div style="border-left:1px solid var(--border);padding-left:20px;min-width:140px">
           <div class="net-tile-label">Break-even</div>
