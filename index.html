@@ -1204,27 +1204,20 @@ function renderDashboard(){
     .reduce((a,s)=>a+calcSaleProfit(s),0);
   const profitBarPct=Math.min(periodProfit/MONTHLY_BUDGET*100,100);
 
-  // Collection value change since payday — compare earliest snapshot in period vs current
+  // Collection value change since payday — use Snapshots tab TotalMarket
   let collValueChange=null;
-  const snapKeys=Object.keys(state.itemSnapshots);
-  if(snapKeys.length){
-    let periodStartVal=0, currentVal=0, hasSnap=false;
-    snapKeys.forEach(id=>{
-      const snaps=(state.itemSnapshots[id]||[]).slice().sort((a,b)=>{
-        const da=parseDateToObj(a.date),db=parseDateToObj(b.date);
-        return da&&db?da-db:0;
-      });
-      // Find earliest snap at or before period start
-      const beforePeriod=snaps.filter(s=>{const d=parseDateToObj(s.date);return d&&d<=periodStart;});
-      const baseline=beforePeriod.length?beforePeriod[beforePeriod.length-1]:snaps[0];
-      const latest=snaps[snaps.length-1];
-      if(baseline&&latest){
-        periodStartVal+=baseline.value||0;
-        currentVal+=latest.value||0;
-        hasSnap=true;
-      }
+  if(state.snapshots&&state.snapshots.length){
+    const sorted=[...state.snapshots].sort((a,b)=>{
+      const da=parseDateToObj(a.Date||a.date),db=parseDateToObj(b.Date||b.date);
+      return da&&db?da-db:0;
     });
-    if(hasSnap) collValueChange=currentVal-periodStartVal;
+    const baseline=sorted.filter(s=>{const d=parseDateToObj(s.Date||s.date);return d&&d<=periodStart;});
+    const latest=sorted[sorted.length-1];
+    if(baseline.length&&latest){
+      const baseVal=parseFloat(baseline[baseline.length-1].TotalMarket)||0;
+      const latestVal=parseFloat(latest.TotalMarket)||0;
+      collValueChange=latestVal-baseVal;
+    }
   }
 
   // Period summary text
