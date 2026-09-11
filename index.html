@@ -1265,6 +1265,13 @@ function renderDashboard(){
               </div>
               <span style="font-weight:600;color:${collValueChange>=0?'#534AB7':'var(--red)'};white-space:nowrap;min-width:50px">${collValueChange>=0?'+':''}${fm(collValueChange)}</span>
             </div>`:''}
+            <div style="color:var(--muted);border-top:1px solid var(--border);padding-top:4px;margin-top:2px">Net</div>
+            <div style="display:flex;align-items:center;gap:8px;border-top:1px solid var(--border);padding-top:4px;margin-top:2px">
+              <div style="flex:1;height:7px;background:var(--surface2);border-radius:2px;overflow:hidden">
+                <div style="height:100%;width:${Math.min(Math.abs(periodNet)/MONTHLY_BUDGET*100,100)}%;background:${periodNet>=0?'var(--green)':'var(--red)'}"></div>
+              </div>
+              <span style="font-weight:600;color:${periodNet>=0?'var(--green)':'var(--red)'};white-space:nowrap;min-width:50px">${periodNet>=0?'+':''}${fm(periodNet)}</span>
+            </div>
           </div>
 
           <div style="font-size:11px;margin-bottom:6px">${periodSummary}</div>
