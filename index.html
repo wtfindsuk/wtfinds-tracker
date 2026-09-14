@@ -1224,7 +1224,9 @@ function renderDashboard(){
 
   // Period summary text
   const periodNet=periodProfit-budgetSpend;
-  const periodSummary=`${periodNet>=0?'<span style="color:var(--green)">+'+fm(periodNet)+' ahead</span>':'<span style="color:var(--red)">'+fm(periodNet)+' behind</span>'} this period · ${fm(periodProfit)} profit vs ${fm(budgetSpend)} spend`;
+  const periodNetStr=periodNet>=0?'+'+fm(periodNet)+' ahead':fm(periodNet)+' behind';
+  const periodNetColor=periodNet>=0?'var(--green)':'var(--red)';
+  const periodSummary='<span style="color:'+periodNetColor+'">'+periodNetStr+'</span> this period · '+fm(periodProfit)+' profit vs '+fm(budgetSpend)+' spend';
 
   document.getElementById('dash-net-position').innerHTML=`
     <div class="net-tile" style="border-color:${netPosition>=0?'var(--green)':'var(--red)'}">
@@ -1620,14 +1622,15 @@ function renderCollectionDashboard(bestColl,unrealisedPct){
 
     const sectionLabel=allHaveHistory?'since tracked':'by current value';
 
+    const emptySnap='<div class="empty">Import Collectr CSV to track</div>';
     insEl.innerHTML=`<div class="grid2" style="margin-bottom:0">
       <div class="card" style="margin:0">
         <div class="card-title" style="font-size:11px;margin-bottom:6px">Top 3 gains ${sectionLabel}</div>
-        ${top3.length?top3.map(m=>moverCard(m,true)).join(''):'<div class="empty">Import Collectr CSV to track</div>'}
+        ${top3.length?top3.map(m=>moverCard(m,true)).join(''):emptySnap}
       </div>
       <div class="card" style="margin:0">
         <div class="card-title" style="font-size:11px;margin-bottom:6px">Top 3 ${allHaveHistory?'losses '+sectionLabel:'by value'}</div>
-        ${bot3.length?bot3.map(m=>moverCard(m,false)).join(''):'<div class="empty">Import Collectr CSV to track</div>'}
+        ${bot3.length?bot3.map(m=>moverCard(m,false)).join(''):emptySnap}
       </div>
     </div>`;
 
@@ -2782,20 +2785,26 @@ function renderBudgetBreakdown(){
   });
   const topSet=Object.entries(setTotals).sort((a,b)=>b[1]-a[1])[0];
 
-      // Pre-compute top set unrealised gain
-      let topSetGainHtml='';
-      if(topSet){
-        const setName=topSet[0].toLowerCase();
-        const collItems=state.collection.filter(c=>(c.set||'').toLowerCase().includes(setName)||(c.name||'').toLowerCase().includes(setName));
-        if(collItems.length>0){
-          const gain=collItems.reduce((a,c)=>(parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0)+a,0);
-          if(gain!==0) topSetGainHtml=` · ${gain>=0?'+':''}${fm(gain)} unrealised gain (${collItems.length} items)`;
-        }
-      }
-    <span style="color:var(--muted)">Budget crossed </span><strong>${parseDateToObj(crossedDate)?.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</strong>
-    <span style="color:var(--muted)"> · triggered by </span><span style="font-style:italic">${crossedItem}</span>
-  </div>`:'';
+  // Pre-compute top set unrealised gain
+  let topSetGainHtml='';
+  if(topSet){
+    const setName=topSet[0].toLowerCase();
+    const collItems=state.collection.filter(c=>(c.set||'').toLowerCase().includes(setName)||(c.name||'').toLowerCase().includes(setName));
+    if(collItems.length>0){
+      const gain=collItems.reduce((a,c)=>(parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0)+a,0);
+      if(gain!==0) topSetGainHtml=' · '+(gain>=0?'+':'')+fm(gain)+' unrealised gain ('+collItems.length+' items)';
+    }
+  }
 
+  // Build crossed string without HTML tags inside template expressions
+  let crossedStr='';
+  if(crossedDate){
+    const crossedDateStr=parseDateToObj(crossedDate)?.toLocaleDateString('en-GB',{day:'numeric',month:'short'})||'';
+    crossedStr='<div style="font-size:12px;margin-bottom:8px;padding:6px 10px;background:var(--surface2);border-radius:var(--radius-sm);border-left:3px solid var(--red)">'
+      +'<span style="color:var(--muted)">Budget crossed </span><strong>'+crossedDateStr+'</strong>'
+      +'<span style="color:var(--muted)"> · triggered by </span><span style="font-style:italic">'+crossedItem+'</span>'
+      +'</div>';
+  }
   el.innerHTML=`<div class="card" style="padding:12px 16px">
     <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Budget breakdown</div>
     ${crossedStr}
