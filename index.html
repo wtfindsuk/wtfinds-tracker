@@ -1187,6 +1187,13 @@ function renderDashboard(){
   const budgetSpend=state.purchases
     .filter(p=>p.date&&p.date.slice(0,10)>=periodStartStr&&canonicalSupplier((p.supplier||'').trim())!=='Cardmarket')
     .reduce((a,p)=>a+(parseFloat(p.amount)||0),0);
+
+  // Period profit (sales profit since payday) — declared before remaining which uses it
+  const periodProfit=state.sales
+    .filter(s=>s.date&&parseDateToObj(s.date)>=periodStart)
+    .reduce((a,s)=>a+calcSaleProfit(s),0);
+  const profitBarPct=Math.min(periodProfit/MONTHLY_BUDGET*100,100);
+
   const remaining=MONTHLY_BUDGET+periodProfit-budgetSpend;
   const remPct=Math.min(Math.abs(remaining)/(MONTHLY_BUDGET+periodProfit)*100,100);
   const remColor=remaining>=0?'var(--green)':'var(--red)';
@@ -1194,17 +1201,10 @@ function renderDashboard(){
   const budgetOver=budgetSpend>MONTHLY_BUDGET;
   const budgetDouble=budgetSpend>MONTHLY_BUDGET*2;
   const budgetNear=budgetSpend>MONTHLY_BUDGET*0.8;
-  // Bar segments: green (up to budget), orange (budget to 2x), red (2x+)
   const greenPct=Math.min(budgetSpend/MONTHLY_BUDGET*100,100);
   const orangePct=budgetOver?Math.min((budgetSpend-MONTHLY_BUDGET)/MONTHLY_BUDGET*100,100):0;
   const redPct=budgetDouble?Math.min((budgetSpend-MONTHLY_BUDGET*2)/MONTHLY_BUDGET*100,100):0;
   const budgetColor=budgetDouble?'var(--red)':budgetOver?'#f59e0b':budgetNear?'#f59e0b':'var(--green)';
-
-  // Period profit (sales profit since payday)
-  const periodProfit=state.sales
-    .filter(s=>s.date&&parseDateToObj(s.date)>=periodStart)
-    .reduce((a,s)=>a+calcSaleProfit(s),0);
-  const profitBarPct=Math.min(periodProfit/MONTHLY_BUDGET*100,100);
 
   // Collection value change since payday — use Snapshots tab TotalMarket
   let collValueChange=null;
