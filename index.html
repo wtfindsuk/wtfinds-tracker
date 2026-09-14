@@ -229,6 +229,7 @@ tr:hover td{background:var(--surface2)}
       <!-- SALES SECTION -->
       <div class="dash-section-title" style="margin-top:18px">Sales</div>
       <div class="metrics4" id="dash-sales-metrics"></div>
+      <div id="dash-top-buyers"></div>
 
       <div class="grid2" style="margin-bottom:6px">
         <div class="card">
@@ -300,8 +301,6 @@ tr:hover td{background:var(--surface2)}
 
       <!-- COLLECTION SECTION -->
       <div class="dash-section-title" style="margin-top:18px">Collection</div>
-      <!-- TOP BUYERS compact -->
-      <div id="dash-top-buyers"></div>
       <div class="coll-summary" id="coll-summary"></div>
       <div id="dash-coll-insights" style="margin-bottom:14px"></div>
       <div class="card" style="margin-bottom:14px">
@@ -2668,7 +2667,7 @@ function syncArticleCount(){
 }
 
 function getTotalGameQty(){
-  const ids=['gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_strixhaven','gq-mtg_marvel','gq-mtg_ff','gq-mtg_hobbit','gq-mtg','gq-pokemon','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-other'];
+  const ids=['gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_strixhaven','gq-mtg_marvel','gq-mtg_ff','gq-mtg_hobbit','gq-mtg','gq-pokemon','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-cyberpunk','gq-other'];
   return ids.reduce((a,id)=>{const el=document.getElementById(id);return a+(parseInt(el?.value)||0);},0);
 }
 
