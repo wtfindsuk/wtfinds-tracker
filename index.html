@@ -1981,16 +1981,6 @@ function renderVolChart(){
   });
 }
 
-  if(volChartDrillMonth){
-    const [y,m]=volChartDrillMonth.split('-');
-    const monthName=new Date(y,m-1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
-    if(labelEl) labelEl.textContent=monthName;
-    if(backBtn) backBtn.style.display='inline-flex';
-    const dayData={};
-    state.sales.forEach(s=>{
-      if(!s.date) return;
-      const d=s.date.slice(0,10);
-      if(d.startsWith(volChartDrillMonth)){
 function renderCatChart(){
   const cats={};state.purchases.forEach(p=>{const c=p.category||'other';cats[c]=(cats[c]||0)+(parseFloat(p.amount)||0);});
   const keys=Object.keys(cats);
