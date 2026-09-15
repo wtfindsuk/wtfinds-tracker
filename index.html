@@ -147,7 +147,12 @@ tr:hover td{background:var(--surface2)}
 .gq-panel{transition:background 0.1s,transform 0.1s;user-select:none}
 .gq-panel:hover{background:var(--surface2)}
 .gq-panel:active{transform:translateY(1px);filter:brightness(0.85)}
-#toast{position:fixed;bottom:24px;right:24px;background:#1D9E75;color:#fff;padding:10px 18px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;opacity:0;transform:translateY(8px);transition:opacity 0.2s,transform 0.2s;pointer-events:none;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+#toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-60px);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:18px 22px;min-width:320px;max-width:480px;opacity:0;transition:opacity 0.25s,transform 0.25s;pointer-events:none;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.45)}
+#toast.visible{opacity:1;transform:translate(-50%,-50%);pointer-events:auto}
+#toast .toast-close{position:absolute;top:10px;right:12px;background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;line-height:1;padding:0}
+#toast .toast-title{font-size:15px;font-weight:700;margin-bottom:4px}
+#toast .toast-tips{font-size:12px;color:var(--muted);margin-top:8px;display:flex;flex-direction:column;gap:3px}
+#toast .toast-tip{display:flex;align-items:center;gap:6px}
 .nav-btn:active,.nav-btn-action:active{transform:translateY(1px);box-shadow:inset 0 2px 4px rgba(0,0,0,0.5);filter:brightness(0.75);transition:none}
 .tip{position:relative;display:inline-flex;align-items:center;gap:4px}
 .tip-icon{width:14px;height:14px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);font-size:9px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);cursor:help;flex-shrink:0}
@@ -156,7 +161,7 @@ tr:hover td{background:var(--surface2)}
 </style>
 </head>
 <body>
-<div id="toast"></div>
+<div id="toast"><button class="toast-close" onclick="dismissToast()">✕</button><div class="toast-title" id="toast-title"></div><div id="toast-sub" style="font-size:13px;color:var(--muted)"></div><div class="toast-tips" id="toast-tips"></div><div id="toast-bar" style="height:3px;background:var(--border);border-radius:2px;margin-top:12px;overflow:hidden"><div id="toast-progress" style="height:100%;background:#1D9E75;width:100%;transition:width linear"></div></div></div>
 <div id="loading-overlay" class="loading-overlay">
   <div class="loading-box"><div class="spinner"></div>Loading your data...</div>
 </div>
@@ -681,7 +686,7 @@ tr:hover td{background:var(--surface2)}
 
 <script>
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbych_44YhqvkW1U3YGqR6MTSzf-H4mbacany9X2xHr233vKXFw7k2WpARmhl56gTlje/exec';
-const CAT_LABELS = {pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',marvel:'Marvel',supplies:'Supplies',equipment:'Equipment',other:'Other'};
+const CAT_LABELS = {pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',marvel:'Marvel',supplies:'Supplies',equipment:'Equipment',other:'Other'};
 const CAT_COLORS = {pokemon:'#185FA5',mtg:'#534AB7',onepiece:'#D85A30',marvel:'#A32D2D',supplies:'#1D9E75',equipment:'#7a7874',other:'#BA7517'};
 const GAME_LABELS = {pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',marvel:'Marvel',other:'Other'};;
 
@@ -1053,15 +1058,139 @@ function setShipping(amount, postageName){
   updateSalePreview();
 }
 
-function showToast(msg,color='#1D9E75'){
+function dismissToast(){
   const t=document.getElementById('toast');
   if(!t) return;
-  t.textContent=msg;
-  t.style.background=color;
-  t.style.opacity='1';
-  t.style.transform='translateY(0)';
+  t.classList.remove('visible');
   clearTimeout(t._timer);
-  t._timer=setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(8px)';},2500);
+  clearInterval(t._prog);
+}
+
+function showSaleToast(sale, profit, articleCount){
+  const t=document.getElementById('toast');
+  const titleEl=document.getElementById('toast-title');
+  const subEl=document.getElementById('toast-sub');
+  const tipsEl=document.getElementById('toast-tips');
+  const progEl=document.getElementById('toast-progress');
+  if(!t||!titleEl) return;
+
+  // Main heading
+  const isLoss=profit<0;
+  const profitStr=(profit>=0?'+':'')+fm(profit);
+  const profitColor=isLoss?'var(--red)':'#1D9E75';
+  titleEl.innerHTML=`✓ Sale logged &nbsp;<span style="color:${profitColor}">${profitStr}</span>`;
+  subEl.textContent=`${fm((parseFloat(sale.price)||0)+(parseFloat(sale.shippingCharged)||0))} revenue · ${articleCount} article${articleCount===1?'':'s'} · ${sale.platform}`;
+
+  // Build interesting tips
+  const tips=[];
+  const today=new Date().toISOString().slice(0,10);
+
+  // Today's sales so far (including this one)
+  const todaySales=state.sales.filter(s=>s.date&&s.date.slice(0,10)===today);
+  const todayProfit=todaySales.reduce((a,s)=>a+calcSaleProfit(s),0);
+  if(todaySales.length>1) tips.push(`📦 Sale ${todaySales.length} today · ${fm(todayProfit)} profit so far`);
+
+  // Repeat buyer
+  if(sale.username){
+    const buyerSales=state.sales.filter(s=>(s.username||'').trim().toLowerCase()===(sale.username||'').trim().toLowerCase());
+    if(buyerSales.length>1) tips.push(`⭐ Repeat buyer — ${buyerSales.length} orders from ${sale.username}`);
+  }
+
+  // Game breakdown tips
+  const gq=sale.gameQty||{};
+  const GLABELS={pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',other:'Other',mtg_hobbit:'MTG Hobbit',mtg_avatar_tla:'Avatar TLA',mtg_avatar_tle:'Avatar TLE',mtg_strixhaven:'Strixhaven',mtg_marvel:'Marvel MTG',mtg_ff:'Final Fantasy'};
+  const topGame=Object.entries(gq).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])[0];
+  if(topGame){
+    const gameName=GLABELS[topGame[0]]||topGame[0];
+    // Count today's sales of this game
+    const gameSalesToday=todaySales.filter(s=>(s.gameQty||{})[topGame[0]]>0).length;
+    if(gameSalesToday>1) tips.push(`🎴 Your ${ordinal(gameSalesToday)} ${gameName} sale today`);
+  }
+
+  // Loss acknowledgement (no advice, just noted)
+  if(isLoss) tips.push(`⚠️ Loss of ${fm(Math.abs(profit))} on this sale`);
+
+  // Profit vs avg
+  const allProfits=state.sales.map(s=>calcSaleProfit(s));
+  const avgProfit=allProfits.length>1?allProfits.reduce((a,b)=>a+b,0)/allProfits.length:0;
+  if(!isLoss&&avgProfit>0){
+    if(profit>avgProfit*1.5) tips.push(`🚀 ${Math.round(profit/avgProfit*100-100)}% above your average sale profit`);
+    else if(profit<avgProfit*0.5) tips.push(`📉 Below average — typical sale nets ${fm(avgProfit)}`);
+  }
+
+  // Weekly performance vs last week
+  const now2=new Date();
+  const dayOfWeek=now2.getDay()===0?6:now2.getDay()-1;
+  const thisMonday=new Date(now2);
+  thisMonday.setDate(now2.getDate()-dayOfWeek);
+  thisMonday.setHours(0,0,0,0);
+  const lastMonday=new Date(thisMonday);
+  lastMonday.setDate(thisMonday.getDate()-7);
+  const lastSunday=new Date(thisMonday);
+  lastSunday.setMilliseconds(-1);
+
+  const thisWeekSales=state.sales.filter(s=>{const d=parseDateToObj(s.date);return d&&d>=thisMonday;});
+  const lastWeekSales=state.sales.filter(s=>{const d=parseDateToObj(s.date);return d&&d>=lastMonday&&d<=lastSunday;});
+  const thisWeekRev=thisWeekSales.reduce((a,s)=>a+(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0),0);
+  const lastWeekRev=lastWeekSales.reduce((a,s)=>a+(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0),0);
+  if(lastWeekRev>0){
+    const weekPct=Math.round((thisWeekRev/lastWeekRev)*100);
+    if(weekPct>=190) tips.push(`📈 Nearly doubled last week's revenue (${Math.round(weekPct/10)*10}% of it so far)`);
+    else if(weekPct>=150) tips.push(`📈 50%+ ahead of last week already (${fm(thisWeekRev)} vs ${fm(lastWeekRev)})`);
+    else if(weekPct>=100) tips.push(`✅ Ahead of last week (${fm(thisWeekRev)} vs ${fm(lastWeekRev)})`);
+    else if(weekPct>=70) tips.push(`🔄 Tracking close to last week (${fm(thisWeekRev)} vs ${fm(lastWeekRev)})`);
+    else tips.push(`📉 Behind last week's pace (${fm(thisWeekRev)} vs ${fm(lastWeekRev)})`);
+  }
+
+  // Monthly performance — how close to beating last month?
+  const thisMonth=new Date(now2.getFullYear(),now2.getMonth(),1);
+  const lastMonthStart=new Date(now2.getFullYear(),now2.getMonth()-1,1);
+  const lastMonthEnd=new Date(thisMonth.getTime()-1);
+  const thisMonthRev=state.sales.filter(s=>{const d=parseDateToObj(s.date);return d&&d>=thisMonth;}).reduce((a,s)=>a+(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0),0);
+  const lastMonthRev=state.sales.filter(s=>{const d=parseDateToObj(s.date);return d&&d>=lastMonthStart&&d<=lastMonthEnd;}).reduce((a,s)=>a+(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0),0);
+  if(lastMonthRev>0){
+    const remaining=lastMonthRev-thisMonthRev;
+    const pct=Math.round(thisMonthRev/lastMonthRev*100);
+    if(thisMonthRev>=lastMonthRev) tips.push(`🏆 Already beaten last month's total revenue!`);
+    else if(remaining<50) tips.push(`🎯 Only ${fm(remaining)} away from beating last month's revenue`);
+    else if(pct>=75) tips.push(`💪 ${pct}% of the way to beating last month (${fm(remaining)} to go)`);
+  }
+
+  // Today's order count milestone
+  if(todaySales.length===10) tips.push(`🎉 10 sales today — great day!`);
+  else if(todaySales.length===5) tips.push(`✌️ 5 sales today`);
+
+  tipsEl.innerHTML=tips.map(tip=>`<div class="toast-tip">${tip}</div>`).join('');
+
+  // Progress bar
+  if(progEl){
+    progEl.style.transition='none';
+    progEl.style.width='100%';
+    setTimeout(()=>{progEl.style.transition='width 10s linear';progEl.style.width='0%';},50);
+  }
+
+  t.classList.add('visible');
+  clearTimeout(t._timer);
+  clearInterval(t._prog);
+  t._timer=setTimeout(()=>dismissToast(),10000);
+}
+
+function ordinal(n){const s=['th','st','nd','rd'];const v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
+
+function showToast(msg,color='#1D9E75'){
+  // Fallback simple toast for non-sale messages
+  const t=document.getElementById('toast');
+  const titleEl=document.getElementById('toast-title');
+  const subEl=document.getElementById('toast-sub');
+  const tipsEl=document.getElementById('toast-tips');
+  if(!t||!titleEl) return;
+  titleEl.textContent=msg;
+  titleEl.style.color=color;
+  if(subEl) subEl.textContent='';
+  if(tipsEl) tipsEl.innerHTML='';
+  t.classList.add('visible');
+  clearTimeout(t._timer);
+  t._timer=setTimeout(()=>dismissToast(),3000);
 }
 
 function setNavMode(mode,navigate=true){
@@ -1356,8 +1485,8 @@ let gameBreakdownDetailed=false;
 let gameBreakdownChartInst=null;
 
 function renderGameBreakdown(){
-  const GAME_LABELS={pokemon:'Pokémon',mtg:'MTG (incl. Hobbit)',onepiece:'One Piece',yugioh:'Yu-Gi-Oh!',other:'Other',dbz:'Dragon Ball Z',riftbound:'Riftbound'};
-  const GAME_COLORS={pokemon:'#185FA5',mtg:'#534AB7',onepiece:'#D85A30',yugioh:'#8B5CF6',other:'#BA7517',dbz:'#DC2626',riftbound:'#0BC4C4'};
+  const GAME_LABELS={pokemon:'Pokémon',mtg:'MTG (incl. Hobbit)',onepiece:'One Piece',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',other:'Other',dbz:'Dragon Ball Z',riftbound:'Riftbound'};
+  const GAME_COLORS={pokemon:'#185FA5',mtg:'#534AB7',onepiece:'#D85A30',yugioh:'#8B5CF6',cyberpunk:'#E8B84B',other:'#BA7517',dbz:'#DC2626',riftbound:'#0BC4C4'};
   const games=['pokemon','mtg','onepiece','yugioh','dbz','riftbound','other'];
 
   const stats={};
@@ -1373,6 +1502,7 @@ function renderGameBreakdown(){
       dbz:gq.dbz||0,
       riftbound:gq.riftbound||0,
       yugioh:gq.yugioh||0,
+      cyberpunk:gq.cyberpunk||0,
       other:gq.other||0
     };
     const total=Object.values(merged).reduce((a,b)=>a+b,0);
@@ -2109,14 +2239,16 @@ function logSale(){
   const articleCount=parseInt(document.getElementById('s-article-count').value)||totalGQ||0;
   if(!articleCount){alert('Please enter article count or add at least one card in the game breakdown.');return;}
 
-  // Mandatory: team bag or sealable penny sleeve
-  const teamBagEl=document.getElementById('pkg-Team_bag');
-  const sealableEl=document.getElementById('pkg-Sealable_Penny_Sleeve');
-  const teamBagQty=parseInt(teamBagEl?.value)||0;
-  const sealableQty=parseInt(sealableEl?.value)||0;
-  if(teamBagQty===0&&sealableQty===0){
-    alert('Please add at least one Team bag or Sealable Penny Sleeve before logging.');
-    return;
+  // Mandatory: team bag or sealable penny sleeve (Cardmarket only — eBay items may be boxed)
+  if(platform==='Cardmarket'){
+    const teamBagEl=document.getElementById('pkg-Team_bag');
+    const sealableEl=document.getElementById('pkg-Sealable_Penny_Sleeve');
+    const teamBagQty=parseInt(teamBagEl?.value)||0;
+    const sealableQty=parseInt(sealableEl?.value)||0;
+    if(teamBagQty===0&&sealableQty===0){
+      alert('Please add at least one Team bag or Sealable Penny Sleeve before logging.');
+      return;
+    }
   }
   const packaging=state.packaging.map(p=>({name:p.name,qty:parseInt(document.getElementById('pkg-'+p.name.replace(/\W+/g,'_'))?.value||0)})).filter(p=>p.qty>0);
   const gameQty={
@@ -2134,11 +2266,15 @@ function logSale(){
     yugioh:parseInt(document.getElementById('gq-yugioh')?.value)||0,
     other:parseInt(document.getElementById('gq-other')?.value)||0
   };
-  state.sales.push({date,platform,item,price,shippingCharged:shipping,postageCost:post?post.cost:0,packaging,articleCount,actualCommission:null,promotedFee,gameQty,username:buyerUsername});
+  const saleObj={date,platform,item,price,shippingCharged:shipping,postageCost:post?post.cost:0,packaging,articleCount,actualCommission:null,promotedFee,gameQty,username:buyerUsername};
+  state.sales.push(saleObj);
+  const saleProfit=calcSaleProfit(saleObj);
   scheduleSave('Sales');
   buildBuyersFromSales();
   document.getElementById('s-item').value='';document.getElementById('s-price').value='';document.getElementById('s-shipping').value='1.17';document.getElementById('s-article-count').value='';const sp=document.getElementById('s-promoted');if(sp)sp.value='';
   const postEl=document.getElementById('s-postage');if(postEl)postEl.selectedIndex=0;
+  const platEl=document.getElementById('s-platform');if(platEl)platEl.value='Cardmarket';
+  togglePromotedField();
   const su=document.getElementById('s-username');if(su)su.value='';
   const va=document.getElementById('s-vip-alert');if(va)va.style.display='none';
   ['gq-pokemon','gq-mtg','gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_marvel','gq-mtg_strixhaven','gq-mtg_ff','gq-mtg_hobbit','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-cyberpunk','gq-other'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=0;});
@@ -2147,7 +2283,7 @@ function logSale(){
   state.packaging.forEach(p=>{const inp=document.getElementById('pkg-'+p.name.replace(/\W+/g,'_'));if(inp)inp.value=defaults[p.name]||0;});
   updateSalePreview();
   renderLogSaleWeekChart();
-  showToast(`✓ Sale logged — ${fm(price)} · ${articleCount} article${articleCount===1?'':'s'}`);
+  showSaleToast(saleObj, saleProfit, articleCount);
   document.getElementById('page-log-sale').scrollTop=0;
   document.querySelector('.main-content')?.scrollTo(0,0);
   window.scrollTo(0,0);
