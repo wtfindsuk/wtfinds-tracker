@@ -149,7 +149,9 @@ tr:hover td{background:var(--surface2)}
 .gq-panel:active{transform:translateY(1px);filter:brightness(0.85)}
 #toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-60px);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:18px 22px;min-width:320px;max-width:480px;opacity:0;transition:opacity 0.25s,transform 0.25s;pointer-events:none;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.45)}
 #toast.visible{opacity:1;transform:translate(-50%,-50%);pointer-events:auto}
-#toast .toast-close{position:absolute;top:10px;right:12px;background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;line-height:1;padding:0}
+#toast .toast-close{position:absolute;top:10px;right:12px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:13px;cursor:pointer;line-height:1;padding:4px 8px;border-radius:var(--radius-sm);transition:background 0.15s,transform 0.1s,border-color 0.15s}
+#toast .toast-close:hover{background:var(--red);border-color:var(--red);color:#fff}
+#toast .toast-close:active{transform:scale(0.88)}
 #toast .toast-title{font-size:15px;font-weight:700;margin-bottom:4px}
 #toast .toast-tips{font-size:12px;color:var(--muted);margin-top:8px;display:flex;flex-direction:column;gap:3px}
 #toast .toast-tip{display:flex;align-items:center;gap:6px}
@@ -1166,13 +1168,13 @@ function showSaleToast(sale, profit, articleCount){
   if(progEl){
     progEl.style.transition='none';
     progEl.style.width='100%';
-    setTimeout(()=>{progEl.style.transition='width 10s linear';progEl.style.width='0%';},50);
+    setTimeout(()=>{progEl.style.transition='width 20s linear';progEl.style.width='0%';},50);
   }
 
   t.classList.add('visible');
   clearTimeout(t._timer);
   clearInterval(t._prog);
-  t._timer=setTimeout(()=>dismissToast(),10000);
+  t._timer=setTimeout(()=>dismissToast(),20000);
 }
 
 function ordinal(n){const s=['th','st','nd','rd'];const v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
