@@ -3221,20 +3221,25 @@ function renderMoversPage(){
 
   const observer=new IntersectionObserver((entries)=>{
     entries.forEach(entry=>{
+      console.log('Observer fired:', entry.isIntersecting, entry.target.querySelector('canvas')?.id, 'w='+entry.target.offsetWidth, 'h='+entry.target.offsetHeight);
       if(!entry.isIntersecting) return;
       const canvas=entry.target.querySelector('canvas');
       if(!canvas) return;
       const idx=parseInt(canvas.id.replace('mover-chart-',''));
       const item=capped[idx];
+      console.log('Making chart for idx', idx, 'item=', item?.name, 'history=', item?.history?.length);
       if(item&&item.history.length>1) makeChart(canvas,item);
       observer.unobserve(entry.target);
     });
   },{threshold:0.1});
 
   setTimeout(()=>{
+    console.log('Setting up observers for', capped.length, 'items');
     capped.forEach((c,i)=>{
-      if(c.history.length<2) return;
-      const card=document.querySelector(`#mover-chart-${i}`)?.closest('.card');
+      if(c.history.length<2){console.log('Skipping', i, c.name, '- no history');return;}
+      const canvas=document.getElementById(`mover-chart-${i}`);
+      const card=canvas?.closest('.card');
+      console.log('Observing card', i, card?'found':'NOT FOUND', 'canvas=', canvas?'found':'NOT FOUND');
       if(card) observer.observe(card);
     });
   },50);
