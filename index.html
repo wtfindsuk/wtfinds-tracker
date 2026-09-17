@@ -3155,6 +3155,9 @@ function renderMoversPage(){
 
   // Sort
   filtered.sort((a,b)=>{
+    // Items with real multi-day history always come first
+    if(a.hasHistory&&!b.hasHistory) return -1;
+    if(!a.hasHistory&&b.hasHistory) return 1;
     if(moversSort==='pct'){
       if(a.pctChange!==null&&b.pctChange!==null) return Math.abs(b.pctChange)-Math.abs(a.pctChange);
       if(a.pctChange!==null) return -1;
@@ -3183,7 +3186,7 @@ function renderMoversPage(){
     const absStr=hasChange?(c.absChange>=0?'+':'')+fm(c.absChange):'—';
     const pctStr=c.pctChange!==null?(c.pctChange>=0?'+':'')+c.pctChange.toFixed(1)+'%':'—';
     const changeColor=!hasChange?'var(--muted)':c.absChange>=0?'var(--green)':'var(--red)';
-    const chartHtml=c.history.length>1
+    const chartHtml=c.hasHistory
       ?`<div style="margin-top:8px">${makeChartSVG(c.history.map(h=>h.value),c.history.map(h=>h.date.toLocaleDateString('en-GB',{day:'numeric',month:'short'})),c.history[c.history.length-1].value>=c.history[0].value)}</div>`
       :`<div style="height:30px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;margin-top:8px">No price history yet</div>`;
 
