@@ -3105,12 +3105,13 @@ function renderMoversPage(){
   }
 
   setTimeout(()=>{
-    console.log('Mover charts: rendering', filtered.length, 'items');
     filtered.forEach((c,i)=>{
       if(c.history.length<2) return;
       const canvas=document.getElementById(`mover-chart-${i}`);
-      console.log(`Chart ${i}: canvas=`, canvas, 'size=', canvas?.offsetWidth, canvas?.offsetHeight, canvas?.width, canvas?.height);
       if(!canvas) return;
+      // Destroy any existing chart on this canvas
+      const existing=Chart.getChart(canvas);
+      if(existing) existing.destroy();
       const vals=c.history.map(h=>h.value);
       const labels=c.history.map(h=>h.date.toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
       const isGain=vals[vals.length-1]>=vals[0];
