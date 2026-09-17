@@ -3104,35 +3104,38 @@ function renderMoversPage(){
     return;
   }
 
-  // Render charts after DOM is fully painted
   setTimeout(()=>{
+    console.log('Mover charts: rendering', filtered.length, 'items');
     filtered.forEach((c,i)=>{
       if(c.history.length<2) return;
       const canvas=document.getElementById(`mover-chart-${i}`);
+      console.log(`Chart ${i}: canvas=`, canvas, 'size=', canvas?.offsetWidth, canvas?.offsetHeight, canvas?.width, canvas?.height);
       if(!canvas) return;
       const vals=c.history.map(h=>h.value);
       const labels=c.history.map(h=>h.date.toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
       const isGain=vals[vals.length-1]>=vals[0];
-      moverCharts[i]=new Chart(canvas.getContext('2d'),{
+      const chart=new Chart(canvas.getContext('2d'),{
         type:'line',
         data:{labels,datasets:[{
           data:vals,
           borderColor:isGain?'var(--green)':'var(--red)',
           backgroundColor:isGain?'rgba(29,158,117,0.08)':'rgba(220,38,38,0.08)',
-          borderWidth:2,pointRadius:3,pointBackgroundColor:isGain?'var(--green)':'var(--red)',
+          borderWidth:2,pointRadius:vals.length<20?3:1,pointBackgroundColor:isGain?'var(--green)':'var(--red)',
           tension:0.3,fill:true
         }]},
         options:{
           responsive:true,maintainAspectRatio:false,
           plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`£${ctx.raw.toFixed(2)}`}}},
           scales:{
-            x:{grid:{display:false},ticks:{font:{size:9},maxRotation:0}},
+            x:{grid:{display:false},ticks:{font:{size:9},maxRotation:0,maxTicksLimit:6}},
             y:{grid:{color:'rgba(128,128,128,0.06)'},ticks:{callback:v=>'£'+v,font:{size:9}}}
           }
         }
       });
+      moverCharts[i]=chart;
+      chart.resize();
     });
-  },100);
+  },200);
 }
 
 
