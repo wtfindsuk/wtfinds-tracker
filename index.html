@@ -3168,7 +3168,7 @@ function renderMoversPage(){
     const pctStr=c.pctChange!==null?(c.pctChange>=0?'+':'')+c.pctChange.toFixed(1)+'%':'—';
     const changeColor=!hasChange?'var(--muted)':c.absChange>=0?'var(--green)':'var(--red)';
     const chartHtml=c.history.length>1
-      ?`<div style="position:relative;height:80px;margin-top:8px"><canvas id="mover-chart-${i}"></canvas></div>`
+      ?`<div style="position:relative;height:80px;margin-top:8px"><canvas id="mover-chart-${i}" style="display:block;width:100%;height:80px"></canvas></div>`
       :`<div style="height:30px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;margin-top:8px">No price history yet</div>`;
 
     return`<div class="card" style="padding:12px">
@@ -3201,10 +3201,16 @@ function renderMoversPage(){
         if(!canvas) return;
         const existing=Chart.getChart(canvas);
         if(existing) existing.destroy();
+        // Set explicit pixel dimensions from the container
+        const container=canvas.parentElement;
+        const w=container?container.offsetWidth:300;
+        const h=80;
+        canvas.width=w||300;
+        canvas.height=h;
         const vals=c.history.map(h=>h.value);
         const labels=c.history.map(h=>h.date.toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
         const isGain=vals[vals.length-1]>=vals[0];
-        const chart=new Chart(canvas.getContext('2d'),{
+        new Chart(canvas.getContext('2d'),{
           type:'line',
           data:{labels,datasets:[{
             data:vals,
@@ -3214,7 +3220,8 @@ function renderMoversPage(){
             tension:0.3,fill:true
           }]},
           options:{
-            responsive:true,maintainAspectRatio:false,
+            responsive:false,
+            animation:false,
             plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`£${ctx.raw.toFixed(2)}`}}},
             scales:{
               x:{grid:{display:false},ticks:{font:{size:9},maxRotation:0,maxTicksLimit:6}},
@@ -3222,12 +3229,11 @@ function renderMoversPage(){
             }
           }
         });
-        moverCharts[i]=chart;
       });
     },delay);
   }
-  renderCharts(capped,300);
-  renderCharts(capped,1000); // second pass catches any that missed first time
+  renderCharts(capped,50);
+  renderCharts(capped,600);
 }
 
 
