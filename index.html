@@ -3129,7 +3129,7 @@ function renderMoversPage(){
           plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`£${ctx.raw.toFixed(2)}`}}},
           scales:{
             x:{grid:{display:false},ticks:{font:{size:9},maxRotation:0,maxTicksLimit:6}},
-            y:{grid:{color:'rgba(128,128,128,0.06)'},ticks:{callback:v=>'£'+v,font:{size:9}}}
+            y:{grid:{color:'rgba(128,128,128,0.06)'},ticks:{callback:v=>'£'+parseFloat(v).toFixed(2),font:{size:9}}}
           }
         }
       });
