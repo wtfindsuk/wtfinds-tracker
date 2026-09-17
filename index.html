@@ -3193,47 +3193,51 @@ function renderMoversPage(){
     return;
   }
 
-  function renderCharts(items, delay){
-    setTimeout(()=>{
-      items.forEach((c,i)=>{
-        if(c.history.length<2) return;
-        const canvas=document.getElementById(`mover-chart-${i}`);
-        if(!canvas) return;
-        const existing=Chart.getChart(canvas);
-        if(existing) existing.destroy();
-        // Set explicit pixel dimensions from the container
-        const container=canvas.parentElement;
-        const w=container?container.offsetWidth:300;
-        const h=80;
-        canvas.width=w||300;
-        canvas.height=h;
-        const vals=c.history.map(h=>h.value);
-        const labels=c.history.map(h=>h.date.toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
-        const isGain=vals[vals.length-1]>=vals[0];
-        new Chart(canvas.getContext('2d'),{
-          type:'line',
-          data:{labels,datasets:[{
-            data:vals,
-            borderColor:isGain?'var(--green)':'var(--red)',
-            backgroundColor:isGain?'rgba(29,158,117,0.08)':'rgba(220,38,38,0.08)',
-            borderWidth:2,pointRadius:vals.length<20?3:1,pointBackgroundColor:isGain?'var(--green)':'var(--red)',
-            tension:0.3,fill:true
-          }]},
-          options:{
-            responsive:false,
-            animation:false,
-            plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`£${ctx.raw.toFixed(2)}`}}},
-            scales:{
-              x:{grid:{display:false},ticks:{font:{size:9},maxRotation:0,maxTicksLimit:6}},
-              y:{grid:{color:'rgba(128,128,128,0.06)'},ticks:{callback:v=>'£'+parseFloat(v).toFixed(2),font:{size:9}}}
-            }
-          }
-        });
-      });
-    },delay);
+  function makeChart(canvas, c){
+    const existing=Chart.getChart(canvas);
+    if(existing) existing.destroy();
+    const vals=c.history.map(h=>h.value);
+    const labels=c.history.map(h=>h.date.toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
+    const isGain=vals[vals.length-1]>=vals[0];
+    new Chart(canvas.getContext('2d'),{
+      type:'line',
+      data:{labels,datasets:[{
+        data:vals,
+        borderColor:isGain?'var(--green)':'var(--red)',
+        backgroundColor:isGain?'rgba(29,158,117,0.08)':'rgba(220,38,38,0.08)',
+        borderWidth:2,pointRadius:vals.length<20?3:1,pointBackgroundColor:isGain?'var(--green)':'var(--red)',
+        tension:0.3,fill:true
+      }]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`£${ctx.raw.toFixed(2)}`}}},
+        scales:{
+          x:{grid:{display:false},ticks:{font:{size:9},maxRotation:0,maxTicksLimit:6}},
+          y:{grid:{color:'rgba(128,128,128,0.06)'},ticks:{callback:v=>'£'+parseFloat(v).toFixed(2),font:{size:9}}}
+        }
+      }
+    });
   }
-  renderCharts(capped,50);
-  renderCharts(capped,600);
+
+  const observer=new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      if(!entry.isIntersecting) return;
+      const canvas=entry.target.querySelector('canvas');
+      if(!canvas) return;
+      const idx=parseInt(canvas.id.replace('mover-chart-',''));
+      const item=capped[idx];
+      if(item&&item.history.length>1) makeChart(canvas,item);
+      observer.unobserve(entry.target);
+    });
+  },{threshold:0.1});
+
+  setTimeout(()=>{
+    capped.forEach((c,i)=>{
+      if(c.history.length<2) return;
+      const card=document.querySelector(`#mover-chart-${i}`)?.closest('.card');
+      if(card) observer.observe(card);
+    });
+  },50);
 }
 
 
