@@ -192,6 +192,7 @@ tr:hover td{background:var(--surface2)}
       </div>
       <div class="nav-section">
         <button class="nav-btn" onclick="showPage('collection')" id="nav-collection"><i class="ti ti-stack"></i> Collection</button>
+        <button class="nav-btn" onclick="showPage('collection-movers')" id="nav-collection-movers"><i class="ti ti-trending-up"></i> Price movers</button>
         <button class="nav-btn nav-btn-action" onclick="document.getElementById('collectr-csv-input').click()"><i class="ti ti-upload"></i> Import Collectr CSV</button>
         <input type="file" id="collectr-csv-input" accept=".csv" style="display:none" onchange="importCollectrCsv(this)">
         <button class="nav-btn" onclick="toggleInventoryInput()" id="nav-inventory-btn"><i class="ti ti-building-store"></i> Inventory value</button>
@@ -547,6 +548,24 @@ tr:hover td{background:var(--surface2)}
       </div>
     </div>
 
+    <div id="page-collection-movers" class="page">
+      <div class="page-title">Price movers</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <div style="display:flex;gap:4px">
+          <button class="btn sm active-snap" id="movers-sort-pct" onclick="setMoversSort('pct')">% gain</button>
+          <button class="btn sm" id="movers-sort-abs" onclick="setMoversSort('abs')">£ gain</button>
+          <button class="btn sm" id="movers-sort-val" onclick="setMoversSort('val')">Current value</button>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button class="btn sm active-snap" id="movers-filter-all" onclick="setMoversFilter('all')">All</button>
+          <button class="btn sm" id="movers-filter-gains" onclick="setMoversFilter('gains')">Gains only</button>
+          <button class="btn sm" id="movers-filter-losses" onclick="setMoversFilter('losses')">Losses only</button>
+          <button class="btn sm" id="movers-filter-history" onclick="setMoversFilter('history')">Has history</button>
+        </div>
+        <input type="text" id="movers-search" placeholder="Search…" oninput="renderMoversPage()" style="margin-left:auto;padding:5px 10px;font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);width:180px">
+      </div>
+      <div id="movers-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
+    </div>
     <div id="page-add-item" class="page">
       <div class="page-title">Add to collection</div>
       <div class="card">
@@ -1216,6 +1235,7 @@ function showPage(id){
   if(id==='sales')renderSalesTable();
   if(id==='purchases'){renderPurchasesTable(purchaseTab);renderSupplierSummary();renderMonthlyBudget();renderRecentPurchases();renderBudgetBreakdown();}
   if(id==='collection')renderCollectionTable(collTab);
+  if(id==='collection-movers') renderMoversPage();
   if(id==='games'||id==='add-game') setNavMode('games',false);
   else if(id!=='settings') setNavMode('cards',false);
   if(id==='games')renderGamesPage();
@@ -2985,7 +3005,137 @@ function logPurchase(){
   showPage('purchases');
 }
 
-// ---- COLLECTION ----
+// ---- PRICE MOVERS ----
+let moversSort='pct';
+let moversFilter='all';
+let moverCharts={};
+
+function setMoversSort(s){
+  moversSort=s;
+  ['pct','abs','val'].forEach(k=>{
+    const el=document.getElementById('movers-sort-'+k);
+    if(el) el.className='btn sm'+(k===s?' active-snap':'');
+  });
+  renderMoversPage();
+}
+
+function setMoversFilter(f){
+  moversFilter=f;
+  ['all','gains','losses','history'].forEach(k=>{
+    const el=document.getElementById('movers-filter-'+k);
+    if(el) el.className='btn sm'+(k===f?' active-snap':'');
+  });
+  renderMoversPage();
+}
+
+function renderMoversPage(){
+  const grid=document.getElementById('movers-grid');
+  if(!grid) return;
+
+  const search=(document.getElementById('movers-search')?.value||'').toLowerCase().trim();
+
+  const items=state.collection.map(c=>{
+    const history=(state.itemSnapshots[c.id]||[])
+      .map(h=>({date:parseDateToObj(h.date),value:parseFloat(h.value)||0}))
+      .filter(h=>h.date)
+      .sort((a,b)=>a.date-b.date);
+    const uniqueDays=new Set(history.map(h=>`${h.date.getFullYear()}-${h.date.getMonth()}-${h.date.getDate()}`));
+    const hasHistory=uniqueDays.size>1;
+    const firstVal=history.length>0?history[0].value:null;
+    const currentVal=parseFloat(c.marketValue)||0;
+    const absChange=firstVal!==null?currentVal-firstVal:null;
+    const pctChange=firstVal&&firstVal>0?((currentVal-firstVal)/firstVal)*100:null;
+    return{...c,history,hasHistory,firstVal,currentVal,absChange,pctChange};
+  });
+
+  let filtered=items.filter(c=>{
+    if(search&&!c.name.toLowerCase().includes(search)) return false;
+    if(moversFilter==='gains') return c.absChange>0;
+    if(moversFilter==='losses') return c.absChange<0;
+    if(moversFilter==='history') return c.hasHistory;
+    return true;
+  });
+
+  filtered.sort((a,b)=>{
+    if(moversSort==='pct'){
+      if(a.pctChange!==null&&b.pctChange!==null) return Math.abs(b.pctChange)-Math.abs(a.pctChange);
+      if(a.pctChange!==null) return -1;
+      if(b.pctChange!==null) return 1;
+      return b.currentVal-a.currentVal;
+    }
+    if(moversSort==='abs') return (Math.abs(b.absChange)||0)-(Math.abs(a.absChange)||0);
+    return b.currentVal-a.currentVal;
+  });
+
+  // Destroy old charts
+  Object.values(moverCharts).forEach(c=>{try{c.destroy();}catch(e){}});
+  moverCharts={};
+
+  const TYPE_LABELS={sealed:'Sealed',single:'Single',graded:'Graded'};
+
+  grid.innerHTML=filtered.map((c,i)=>{
+    const hasChange=c.absChange!==null;
+    const absStr=hasChange?(c.absChange>=0?'+':'')+fm(c.absChange):'—';
+    const pctStr=c.pctChange!==null?(c.pctChange>=0?'+':'')+c.pctChange.toFixed(1)+'%':'—';
+    const changeColor=!hasChange?'var(--muted)':c.absChange>=0?'var(--green)':'var(--red)';
+    const chartHtml=c.history.length>1
+      ?`<div style="position:relative;height:80px;margin-top:8px"><canvas id="mover-chart-${i}"></canvas></div>`
+      :`<div style="height:44px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;margin-top:8px">No price history yet</div>`;
+
+    return`<div class="card" style="padding:12px">
+      <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px" title="${c.name}">${c.name}</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px">${TYPE_LABELS[c.type]||c.type}${c.set?' · '+c.set:''}</div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <div>
+          <span style="font-size:16px;font-weight:700">${fm(c.currentVal)}</span>
+          ${c.firstVal!==null?`<span style="font-size:10px;color:var(--muted);margin-left:4px">from ${fm(c.firstVal)}</span>`:''}
+        </div>
+        <div style="text-align:right">
+          <div style="font-weight:700;color:${changeColor}">${absStr}</div>
+          <div style="font-size:11px;color:${changeColor}">${pctStr}</div>
+        </div>
+      </div>
+      ${chartHtml}
+    </div>`;
+  }).join('');
+
+  if(!filtered.length){
+    grid.innerHTML=`<div style="color:var(--muted);font-size:13px;padding:20px">No items match your filter.</div>`;
+    return;
+  }
+
+  // Render charts after DOM update
+  requestAnimationFrame(()=>{
+    filtered.forEach((c,i)=>{
+      if(c.history.length<2) return;
+      const canvas=document.getElementById(`mover-chart-${i}`);
+      if(!canvas) return;
+      const vals=c.history.map(h=>h.value);
+      const labels=c.history.map(h=>h.date.toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
+      const isGain=vals[vals.length-1]>=vals[0];
+      moverCharts[i]=new Chart(canvas.getContext('2d'),{
+        type:'line',
+        data:{labels,datasets:[{
+          data:vals,
+          borderColor:isGain?'var(--green)':'var(--red)',
+          backgroundColor:isGain?'rgba(29,158,117,0.08)':'rgba(220,38,38,0.08)',
+          borderWidth:2,pointRadius:3,pointBackgroundColor:isGain?'var(--green)':'var(--red)',
+          tension:0.3,fill:true
+        }]},
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`£${c.raw.toFixed(2)}`}}},
+          scales:{
+            x:{grid:{display:false},ticks:{font:{size:9},maxRotation:0}},
+            y:{grid:{color:'rgba(128,128,128,0.06)'},ticks:{callback:v=>'£'+v,font:{size:9}}}
+          }
+        }
+      });
+    });
+  });
+}
+
+
 function toggleGradedFields(){
   const type=document.getElementById('ci-type').value;
   document.getElementById('ci-status-group').style.display=type==='graded'?'flex':'none';
