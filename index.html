@@ -3104,8 +3104,8 @@ function renderMoversPage(){
     return;
   }
 
-  // Render charts after DOM update
-  requestAnimationFrame(()=>{
+  // Render charts after DOM is fully painted
+  setTimeout(()=>{
     filtered.forEach((c,i)=>{
       if(c.history.length<2) return;
       const canvas=document.getElementById(`mover-chart-${i}`);
@@ -3132,7 +3132,7 @@ function renderMoversPage(){
         }
       });
     });
-  });
+  },100);
 }
 
 
