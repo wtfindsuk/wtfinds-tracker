@@ -3168,8 +3168,8 @@ function renderMoversPage(){
     const pctStr=c.pctChange!==null?(c.pctChange>=0?'+':'')+c.pctChange.toFixed(1)+'%':'—';
     const changeColor=!hasChange?'var(--muted)':c.absChange>=0?'var(--green)':'var(--red)';
     const chartHtml=c.history.length>1
-      ?`<div style="margin-top:8px"><canvas id="mover-chart-${i}" height="80"></canvas></div>`
-      :`<div style="height:44px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;margin-top:8px">No price history yet</div>`;
+      ?`<div style="position:relative;height:80px;margin-top:8px"><canvas id="mover-chart-${i}"></canvas></div>`
+      :`<div style="height:30px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;margin-top:8px">No price history yet</div>`;
 
     return`<div class="card" style="padding:12px">
       <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px" title="${c.name}">${c.name}</div>
@@ -3193,39 +3193,41 @@ function renderMoversPage(){
     return;
   }
 
-  setTimeout(()=>{
-    capped.forEach((c,i)=>{
-      if(c.history.length<2) return;
-      const canvas=document.getElementById(`mover-chart-${i}`);
-      if(!canvas) return;
-      // Destroy any existing chart on this canvas
-      const existing=Chart.getChart(canvas);
-      if(existing) existing.destroy();
-      const vals=c.history.map(h=>h.value);
-      const labels=c.history.map(h=>h.date.toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
-      const isGain=vals[vals.length-1]>=vals[0];
-      const chart=new Chart(canvas.getContext('2d'),{
-        type:'line',
-        data:{labels,datasets:[{
-          data:vals,
-          borderColor:isGain?'var(--green)':'var(--red)',
-          backgroundColor:isGain?'rgba(29,158,117,0.08)':'rgba(220,38,38,0.08)',
-          borderWidth:2,pointRadius:vals.length<20?3:1,pointBackgroundColor:isGain?'var(--green)':'var(--red)',
-          tension:0.3,fill:true
-        }]},
-        options:{
-          responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`£${ctx.raw.toFixed(2)}`}}},
-          scales:{
-            x:{grid:{display:false},ticks:{font:{size:9},maxRotation:0,maxTicksLimit:6}},
-            y:{grid:{color:'rgba(128,128,128,0.06)'},ticks:{callback:v=>'£'+parseFloat(v).toFixed(2),font:{size:9}}}
+  function renderCharts(items, delay){
+    setTimeout(()=>{
+      items.forEach((c,i)=>{
+        if(c.history.length<2) return;
+        const canvas=document.getElementById(`mover-chart-${i}`);
+        if(!canvas) return;
+        const existing=Chart.getChart(canvas);
+        if(existing) existing.destroy();
+        const vals=c.history.map(h=>h.value);
+        const labels=c.history.map(h=>h.date.toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
+        const isGain=vals[vals.length-1]>=vals[0];
+        const chart=new Chart(canvas.getContext('2d'),{
+          type:'line',
+          data:{labels,datasets:[{
+            data:vals,
+            borderColor:isGain?'var(--green)':'var(--red)',
+            backgroundColor:isGain?'rgba(29,158,117,0.08)':'rgba(220,38,38,0.08)',
+            borderWidth:2,pointRadius:vals.length<20?3:1,pointBackgroundColor:isGain?'var(--green)':'var(--red)',
+            tension:0.3,fill:true
+          }]},
+          options:{
+            responsive:true,maintainAspectRatio:false,
+            plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`£${ctx.raw.toFixed(2)}`}}},
+            scales:{
+              x:{grid:{display:false},ticks:{font:{size:9},maxRotation:0,maxTicksLimit:6}},
+              y:{grid:{color:'rgba(128,128,128,0.06)'},ticks:{callback:v=>'£'+parseFloat(v).toFixed(2),font:{size:9}}}
+            }
           }
-        }
+        });
+        moverCharts[i]=chart;
       });
-      moverCharts[i]=chart;
-      chart.resize();
-    });
-  },200);
+    },delay);
+  }
+  renderCharts(capped,300);
+  renderCharts(capped,1000); // second pass catches any that missed first time
 }
 
 
