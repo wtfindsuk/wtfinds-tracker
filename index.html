@@ -550,20 +550,33 @@ tr:hover td{background:var(--surface2)}
 
     <div id="page-collection-movers" class="page">
       <div class="page-title">Price movers</div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        <div style="display:flex;gap:4px">
-          <button class="btn sm active-snap" id="movers-sort-pct" onclick="setMoversSort('pct')">% gain</button>
-          <button class="btn sm" id="movers-sort-abs" onclick="setMoversSort('abs')">£ gain</button>
-          <button class="btn sm" id="movers-sort-val" onclick="setMoversSort('val')">Current value</button>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <div style="display:flex;gap:3px;flex-wrap:wrap">
+          <button class="btn sm active-snap" id="movers-tcg-all" onclick="setMoversTcg('all')">All</button>
+          <button class="btn sm" id="movers-tcg-pokemon" onclick="setMoversTcg('pokemon')">Pokémon</button>
+          <button class="btn sm" id="movers-tcg-mtg" onclick="setMoversTcg('mtg')">MTG</button>
+          <button class="btn sm" id="movers-tcg-onepiece" onclick="setMoversTcg('onepiece')">One Piece</button>
+          <button class="btn sm" id="movers-tcg-dbz" onclick="setMoversTcg('dbz')">DBZ</button>
+          <button class="btn sm" id="movers-tcg-riftbound" onclick="setMoversTcg('riftbound')">Riftbound</button>
+          <button class="btn sm" id="movers-tcg-yugioh" onclick="setMoversTcg('yugioh')">Yu-Gi-Oh!</button>
+          <button class="btn sm" id="movers-tcg-cyberpunk" onclick="setMoversTcg('cyberpunk')">Cyberpunk</button>
         </div>
-        <div style="display:flex;gap:4px">
-          <button class="btn sm active-snap" id="movers-filter-all" onclick="setMoversFilter('all')">All</button>
-          <button class="btn sm" id="movers-filter-gains" onclick="setMoversFilter('gains')">Gains only</button>
-          <button class="btn sm" id="movers-filter-losses" onclick="setMoversFilter('losses')">Losses only</button>
-          <button class="btn sm" id="movers-filter-history" onclick="setMoversFilter('history')">Has history</button>
-        </div>
-        <input type="text" id="movers-search" placeholder="Search…" oninput="renderMoversPage()" style="margin-left:auto;padding:5px 10px;font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);width:180px">
       </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <div style="display:flex;gap:3px">
+          <button class="btn sm active-snap" id="movers-filter-history" onclick="setMoversFilter('history')">Has history</button>
+          <button class="btn sm" id="movers-filter-gains" onclick="setMoversFilter('gains')">Gains</button>
+          <button class="btn sm" id="movers-filter-losses" onclick="setMoversFilter('losses')">Losses</button>
+          <button class="btn sm" id="movers-filter-all" onclick="setMoversFilter('all')">All items</button>
+        </div>
+        <div style="display:flex;gap:3px">
+          <button class="btn sm active-snap" id="movers-sort-pct" onclick="setMoversSort('pct')">% change</button>
+          <button class="btn sm" id="movers-sort-abs" onclick="setMoversSort('abs')">£ change</button>
+          <button class="btn sm" id="movers-sort-val" onclick="setMoversSort('val')">Value</button>
+        </div>
+        <input type="text" id="movers-search" placeholder="Search…" oninput="renderMoversPage()" style="margin-left:auto;padding:5px 10px;font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);width:160px">
+      </div>
+      <div id="movers-count" style="font-size:11px;color:var(--muted);margin-bottom:8px"></div>
       <div id="movers-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
     </div>
     <div id="page-add-item" class="page">
@@ -832,6 +845,7 @@ async function loadFromSheets(){
     }
     setSyncStatus('Synced with Google Sheets','ok');
     buildBuyersFromSales();
+    repairOrphanedSnapshots();
   }catch(e){
     setSyncStatus('Offline — changes saved locally','err');
     try{const raw=localStorage.getItem('cardtracker_v1');if(raw)state=JSON.parse(raw);}catch(e2){}
@@ -949,6 +963,62 @@ function getPlatformFee(platform,price,articleCount,actualCommission,promotedFee
   return p*(s.otFee/100);
 }
 function calcSaleProfit(sale){const price=parseFloat(sale.price)||0,shipping=parseFloat(sale.shippingCharged)||0,post=parseFloat(sale.postageCost)||0,supply=calcSaleSupplies(sale),fee=getPlatformFee(sale.platform,price,sale.articleCount,sale.actualCommission,sale.promotedFee||0);return(price+shipping)-post-supply-fee;}
+
+function repairOrphanedSnapshots(){
+  if(!state.collection.length||!Object.keys(state.itemSnapshots).length) return;
+
+  // Build lookup: current collection items by name+set+cn key → id
+  const collByKey={};
+  state.collection.forEach(c=>{
+    const k=`${String(c.name||'').toLowerCase().trim()}|${String(c.set||'').toLowerCase().trim()}|${String(c.cn||'').toLowerCase().trim()}`;
+    collByKey[k]=c.id;
+    // Also index by name only as fallback
+    const kName=String(c.name||'').toLowerCase().trim();
+    if(!collByKey['name:'+kName]) collByKey['name:'+kName]=c.id;
+  });
+
+  // Find snapshot IDs that don't match any current collection item
+  const currentIds=new Set(state.collection.map(c=>c.id));
+  const orphanIds=Object.keys(state.itemSnapshots).filter(id=>!currentIds.has(id));
+  if(!orphanIds.length) return;
+
+  // For each orphan, try to find the matching current item by name from snapshot data
+  let repaired=0;
+  orphanIds.forEach(orphanId=>{
+    const snaps=state.itemSnapshots[orphanId];
+    if(!snaps||!snaps.length) return;
+    // Get name from snapshot
+    const name=String(snaps[0].name||'').toLowerCase().trim();
+    if(!name) return;
+
+    // Try name-only match
+    const matchId=collByKey['name:'+name];
+    if(!matchId) return;
+
+    // Merge snapshots into the current item's history
+    if(!state.itemSnapshots[matchId]) state.itemSnapshots[matchId]=[];
+    const existingDates=new Set(state.itemSnapshots[matchId].map(s=>{
+      const d=parseDateToObj(s.date);
+      return d?`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`:'';
+    }));
+    snaps.forEach(s=>{
+      const d=parseDateToObj(s.date);
+      const dk=d?`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`:'';
+      if(!existingDates.has(dk)){
+        state.itemSnapshots[matchId].push(s);
+        existingDates.add(dk);
+      }
+    });
+    // Remove the orphan
+    delete state.itemSnapshots[orphanId];
+    repaired++;
+  });
+
+  if(repaired>0){
+    console.log(`Repaired ${repaired} orphaned snapshot IDs`);
+    scheduleSave('ItemSnapshots');
+  }
+}
 
 function buildBuyersFromSales(){
   // Build buyer stats from sales username field
@@ -3007,8 +3077,18 @@ function logPurchase(){
 
 // ---- PRICE MOVERS ----
 let moversSort='pct';
-let moversFilter='all';
+let moversFilter='history';
+let moversTcg='all';
 let moverCharts={};
+
+function setMoversTcg(t){
+  moversTcg=t;
+  ['all','pokemon','mtg','onepiece','dbz','riftbound','yugioh','cyberpunk'].forEach(k=>{
+    const el=document.getElementById('movers-tcg-'+k);
+    if(el) el.className='btn sm'+(k===t?' active-snap':'');
+  });
+  renderMoversPage();
+}
 
 function setMoversSort(s){
   moversSort=s;
@@ -3050,12 +3130,14 @@ function renderMoversPage(){
 
   let filtered=items.filter(c=>{
     if(search&&!c.name.toLowerCase().includes(search)) return false;
-    if(moversFilter==='gains') return c.absChange>0;
-    if(moversFilter==='losses') return c.absChange<0;
+    if(moversTcg!=='all'&&(c.game||'')!==moversTcg) return false;
+    if(moversFilter==='gains') return c.absChange!==null&&c.absChange>0;
+    if(moversFilter==='losses') return c.absChange!==null&&c.absChange<0;
     if(moversFilter==='history') return c.hasHistory;
     return true;
   });
 
+  // Sort
   filtered.sort((a,b)=>{
     if(moversSort==='pct'){
       if(a.pctChange!==null&&b.pctChange!==null) return Math.abs(b.pctChange)-Math.abs(a.pctChange);
@@ -3067,13 +3149,20 @@ function renderMoversPage(){
     return b.currentVal-a.currentVal;
   });
 
+  const total=filtered.length;
+  const CAP=60;
+  const capped=filtered.slice(0,CAP);
+
+  const countEl=document.getElementById('movers-count');
+  if(countEl) countEl.textContent=total===0?'No items match':`Showing ${Math.min(total,CAP)} of ${total} items`+(total>CAP?` — refine your filter to see more`:'');
+
   // Destroy old charts
   Object.values(moverCharts).forEach(c=>{try{c.destroy();}catch(e){}});
   moverCharts={};
 
   const TYPE_LABELS={sealed:'Sealed',single:'Single',graded:'Graded'};
 
-  grid.innerHTML=filtered.map((c,i)=>{
+  grid.innerHTML=capped.map((c,i)=>{
     const hasChange=c.absChange!==null;
     const absStr=hasChange?(c.absChange>=0?'+':'')+fm(c.absChange):'—';
     const pctStr=c.pctChange!==null?(c.pctChange>=0?'+':'')+c.pctChange.toFixed(1)+'%':'—';
@@ -3099,13 +3188,13 @@ function renderMoversPage(){
     </div>`;
   }).join('');
 
-  if(!filtered.length){
-    grid.innerHTML=`<div style="color:var(--muted);font-size:13px;padding:20px">No items match your filter.</div>`;
+  if(!capped.length){
+    grid.innerHTML='<div style="color:var(--muted);font-size:13px;padding:20px">No items match your filter.</div>';
     return;
   }
 
   setTimeout(()=>{
-    filtered.forEach((c,i)=>{
+    capped.forEach((c,i)=>{
       if(c.history.length<2) return;
       const canvas=document.getElementById(`mover-chart-${i}`);
       if(!canvas) return;
