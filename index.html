@@ -1413,7 +1413,9 @@ function renderDashboard(){
   const periodProfit=state.sales
     .filter(s=>s.date&&parseDateToObj(s.date)>=periodStart)
     .reduce((a,s)=>a+calcSaleProfit(s),0);
-  const profitBarPct=Math.min(periodProfit/MONTHLY_BUDGET*100,100);
+  const profitGreenPct=Math.min(periodProfit/MONTHLY_BUDGET*100,100);
+  const profitOrangePct=periodProfit>MONTHLY_BUDGET?Math.min((periodProfit-MONTHLY_BUDGET)/MONTHLY_BUDGET*100,100):0;
+  const profitRedPct=periodProfit>MONTHLY_BUDGET*2?Math.min((periodProfit-MONTHLY_BUDGET*2)/MONTHLY_BUDGET*100,100):0;
 
   const remaining=MONTHLY_BUDGET+periodProfit-budgetSpend;
   const remPct=Math.min(Math.abs(remaining)/(MONTHLY_BUDGET+periodProfit)*100,100);
@@ -1478,15 +1480,19 @@ function renderDashboard(){
             </div>
             <div style="color:var(--muted)">Profit</div>
             <div style="display:flex;align-items:center;gap:8px">
-              <div style="flex:1;height:7px;background:var(--surface2);border-radius:2px;overflow:hidden">
-                <div style="height:100%;width:${profitBarPct}%;background:#1D9E75"></div>
+              <div style="flex:1;height:7px;display:flex;gap:2px">
+                <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${profitGreenPct}%;background:#1D9E75"></div></div>
+                <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${profitOrangePct}%;background:#2ecc71"></div></div>
+                <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${profitRedPct}%;background:#27ae60"></div></div>
               </div>
               <span style="font-weight:600;color:#1D9E75;white-space:nowrap;min-width:50px">${fm(periodProfit)}</span>
             </div>
             ${collValueChange!==null?`<div style="color:var(--muted)">Collection</div>
             <div style="display:flex;align-items:center;gap:8px">
-              <div style="flex:1;height:7px;background:var(--surface2);border-radius:2px;overflow:hidden">
-                <div style="height:100%;width:${Math.min(Math.abs(collValueChange)/MONTHLY_BUDGET*100,100)}%;background:${collValueChange>=0?'#534AB7':'var(--red)'}"></div>
+              <div style="flex:1;height:7px;display:flex;gap:2px">
+                <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${Math.min(Math.abs(collValueChange)/MONTHLY_BUDGET*100,100)}%;background:${collValueChange>=0?'#534AB7':'var(--red)'}"></div></div>
+                <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${collValueChange>MONTHLY_BUDGET?Math.min((Math.abs(collValueChange)-MONTHLY_BUDGET)/MONTHLY_BUDGET*100,100):0}%;background:${collValueChange>=0?'#7C6FD4':'var(--red)'}"></div></div>
+                <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${collValueChange>MONTHLY_BUDGET*2?Math.min((Math.abs(collValueChange)-MONTHLY_BUDGET*2)/MONTHLY_BUDGET*100,100):0}%;background:${collValueChange>=0?'#A99FE8':'var(--red)'}"></div></div>
               </div>
               <span style="font-weight:600;color:${collValueChange>=0?'#534AB7':'var(--red)'};white-space:nowrap;min-width:50px">${collValueChange>=0?'+':''}${fm(collValueChange)}</span>
             </div>`:''}
