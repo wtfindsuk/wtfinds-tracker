@@ -1417,6 +1417,11 @@ function renderDashboard(){
   const profitOrangePct=periodProfit>MONTHLY_BUDGET?Math.min((periodProfit-MONTHLY_BUDGET)/MONTHLY_BUDGET*100,100):0;
   const profitRedPct=periodProfit>MONTHLY_BUDGET*2?Math.min((periodProfit-MONTHLY_BUDGET*2)/MONTHLY_BUDGET*100,100):0;
 
+  const remaining=MONTHLY_BUDGET+periodProfit-budgetSpend;
+  const remPct=Math.min(Math.abs(remaining)/(MONTHLY_BUDGET+periodProfit)*100,100);
+  const remColor=remaining>=0?'var(--green)':'var(--red)';
+  const remBarHtml=`<div style="flex:1;height:7px;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${remPct}%;background:${remColor}"></div></div><span style="font-weight:600;color:${remColor};white-space:nowrap;min-width:50px">${remaining>=0?'+':''}${fm(remaining)}</span>`;
+
   const effPct=totalSpend>0?Math.min(totalProfit/totalSpend*100,100):0;
   const effColor=totalProfit>=totalSpend?'var(--green)':totalProfit>0?'#f59e0b':'var(--red)';
   const effSeg1=Math.min(effPct,33.33)/33.33*100;
@@ -1432,9 +1437,7 @@ function renderDashboard(){
       </div>
       <span style="font-weight:600;color:${effColor};white-space:nowrap;min-width:50px">${effPctLabel}</span>
     </div>`;
-  const remPct=Math.min(Math.abs(remaining)/(MONTHLY_BUDGET+periodProfit)*100,100);
-  const remColor=remaining>=0?'var(--green)':'var(--red)';
-  const remBarHtml=`<div style="flex:1;height:7px;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${remPct}%;background:${remColor}"></div></div><span style="font-weight:600;color:${remColor};white-space:nowrap;min-width:50px">${remaining>=0?'+':''}${fm(remaining)}</span>`;
+
   const budgetOver=budgetSpend>MONTHLY_BUDGET;
   const budgetDouble=budgetSpend>MONTHLY_BUDGET*2;
   const budgetNear=budgetSpend>MONTHLY_BUDGET*0.8;
