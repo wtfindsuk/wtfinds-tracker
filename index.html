@@ -147,8 +147,8 @@ tr:hover td{background:var(--surface2)}
 .gq-panel{transition:background 0.1s,transform 0.1s;user-select:none}
 .gq-panel:hover{background:var(--surface2)}
 .gq-panel:active{transform:translateY(1px);filter:brightness(0.85)}
-#toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-60px);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:18px 22px;min-width:320px;max-width:480px;opacity:0;transition:opacity 0.25s,transform 0.25s;pointer-events:none;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.45)}
-#toast.visible{opacity:1;transform:translate(-50%,-50%);pointer-events:auto}
+#toast{position:fixed;top:16px;right:16px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:18px 22px;min-width:300px;max-width:420px;opacity:0;transition:opacity 0.25s,transform 0.25s;transform:translateY(-8px);pointer-events:none;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.45)}
+#toast.visible{opacity:1;transform:translateY(0);pointer-events:auto}
 #toast .toast-close{position:absolute;top:10px;right:12px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:13px;cursor:pointer;line-height:1;padding:4px 8px;border-radius:var(--radius-sm);transition:background 0.15s,transform 0.1s,border-color 0.15s}
 #toast .toast-close:hover{background:var(--red);border-color:var(--red);color:#fff}
 #toast .toast-close:active{transform:scale(0.88)}
@@ -1810,10 +1810,13 @@ function renderCollectionDashboard(bestColl,unrealisedPct){
   if(insEl){
     // Use ALL collection items, sort by tracked value change (first snapshot vs now)
     const withHistory=coll.map(c=>{
-      const history=(state.itemSnapshots[c.id]||[]).slice().sort((a,b)=>{
-        const da=parseDateToObj(a.date),db=parseDateToObj(b.date);
-        return da&&db?da-db:0;
-      });
+      const currentVal=parseFloat(c.marketValue)||0;
+      const history=(state.itemSnapshots[c.id]||[]).slice()
+        .filter(h=>{const v=parseFloat(h.value)||0;return v>0&&(currentVal<=0||v>=currentVal*0.05);})
+        .sort((a,b)=>{
+          const da=parseDateToObj(a.date),db=parseDateToObj(b.date);
+          return da&&db?da-db:0;
+        });
       const uniqueDates=new Set(history.map(h=>{
         const d=parseDateToObj(h.date);
         return d?`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`:h.date;
@@ -1821,7 +1824,6 @@ function renderCollectionDashboard(bestColl,unrealisedPct){
       const hasHistory=uniqueDates.size>1;
       const firstVal=history.length>0?history[0].value:null;
       const lastVal=history.length>0?history[history.length-1].value:null;
-      const currentVal=parseFloat(c.marketValue)||0;
       const trackedGain=hasHistory&&firstVal!==null?currentVal-firstVal:null;
       return{name:c.name,id:c.id,currentVal,firstVal,trackedGain,history,hasHistory};
     });
@@ -2319,6 +2321,12 @@ function initSaleForm(){
   logSaleWeekOffset=0;
   // Render this week's sales chart
   renderLogSaleWeekChart();
+
+  // Dismiss sale confirmation toast when user starts entering a new sale
+  document.querySelectorAll('#page-log-sale input, #page-log-sale select, #game-breakdown-grid .pkg-item').forEach(el=>{
+    el.addEventListener('focus', dismissToast, {once:false});
+    el.addEventListener('click', dismissToast, {once:false});
+  });
 
   // Hook all game breakdown inputs to syncArticleCount
   document.querySelectorAll('#game-breakdown-grid input').forEach(inp=>{
@@ -3145,14 +3153,16 @@ function renderMoversPage(){
   const search=(document.getElementById('movers-search')?.value||'').toLowerCase().trim();
 
   const items=state.collection.map(c=>{
+    const currentVal=parseFloat(c.marketValue)||0;
     const history=(state.itemSnapshots[c.id]||[])
       .map(h=>({date:parseDateToObj(h.date),value:parseFloat(h.value)||0}))
-      .filter(h=>h.date)
+      .filter(h=>h.date&&h.value>0)
+      // Filter out corrupted placeholder snapshots (value less than 5% of current)
+      .filter(h=>currentVal<=0||h.value>=currentVal*0.05)
       .sort((a,b)=>a.date-b.date);
     const uniqueDays=new Set(history.map(h=>`${h.date.getFullYear()}-${h.date.getMonth()}-${h.date.getDate()}`));
     const hasHistory=uniqueDays.size>1;
     const firstVal=history.length>0?history[0].value:null;
-    const currentVal=parseFloat(c.marketValue)||0;
     const absChange=firstVal!==null?currentVal-firstVal:null;
     const pctChange=firstVal&&firstVal>0?((currentVal-firstVal)/firstVal)*100:null;
     return{...c,history,hasHistory,firstVal,currentVal,absChange,pctChange};
