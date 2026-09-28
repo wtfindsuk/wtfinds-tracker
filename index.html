@@ -1372,12 +1372,14 @@ function renderDashboard(){
 
   // Sales metrics
   function tip(text){return`<span class="tip"><span class="tip-icon">?</span><span class="tip-text">${text}</span></span>`;}
+  const repeatPct=state.buyers.length?Math.round(repeatBuyers/state.buyers.length*100):0;
+  const keptPence=Math.round(profitMargin);
   document.getElementById('dash-sales-metrics').innerHTML=`
-    <div class="metric"><div class="metric-label">Revenue ${tip('Total money received from buyers — card price plus shipping charged. Does not subtract any costs.')}</div><div class="metric-value">${fm(totalRevenue)}</div><div class="metric-sub">${state.sales.length} sales</div></div>
-    <div class="metric"><div class="metric-label">Profit ${tip('Revenue minus all costs: postage, packaging supplies, and platform fees. This is your actual take-home per sale.')}</div><div class="metric-value ${totalProfit>=0?'pos':'neg'}">${fm(totalProfit)}</div><div class="metric-sub">after all costs</div></div>
-    <div class="metric"><div class="metric-label">Profit margin ${tip('Profit as a percentage of revenue. Higher is better — a 70%+ margin on TCG singles is typical when pricing well.')}</div><div class="metric-value ${profitMargin>=0?'pos':'neg'}">${profitMargin.toFixed(1)}%</div><div class="metric-sub">of total revenue</div></div>
-    <div class="metric"><div class="metric-label">Avg sale profit ${tip('Average profit per order after costs. Useful for gauging whether small orders are worth the packing effort.')}</div><div class="metric-value ${avgProfit>=0?'pos':'neg'}">${fm(avgProfit)}</div><div class="metric-sub">avg order ${fm(avgPrice)}</div></div>
-    <div class="metric"><div class="metric-label">Repeat buyers ${tip('Buyers who have placed more than one order with you. A higher number signals strong buyer satisfaction and loyalty.')}</div><div class="metric-value">${repeatBuyers}</div><div class="metric-sub">${state.buyers.length?'of '+state.buyers.length+' unique':'—'}</div></div>`;
+    <div class="metric"><div class="metric-label">Money in ${tip('Everything buyers have paid you: card prices plus the shipping you charged. Nothing taken off yet.')}</div><div class="metric-value">${fm(totalRevenue)}</div><div class="metric-sub">from ${state.sales.length} sales</div></div>
+    <div class="metric"><div class="metric-label">Kept after selling ${tip('Money in, minus the cost of sending it: postage, packaging and platform fees. It does NOT take off what you paid for the cards. For the true bottom line, see Net position above.')}</div><div class="metric-value ${totalProfit>=0?'pos':'neg'}">${fm(totalProfit)}</div><div class="metric-sub">before card costs</div></div>
+    <div class="metric"><div class="metric-label">Kept per £1 ${tip('For every £1 a buyer pays, this is how much is left after postage, packaging and fees. What you paid for the cards is not included.')}</div><div class="metric-value ${profitMargin>=0?'pos':'neg'}">${keptPence}p</div><div class="metric-sub">${100-keptPence}p goes on postage &amp; fees</div></div>
+    <div class="metric"><div class="metric-label">Kept per sale ${tip('The average amount left from one order after postage, packaging and fees. Not including what the cards cost you.')}</div><div class="metric-value ${avgProfit>=0?'pos':'neg'}">${fm(avgProfit)}</div><div class="metric-sub">avg order ${fm(avgPrice)}</div></div>
+    <div class="metric"><div class="metric-label">Repeat buyers ${tip('People who have bought from you more than once.')}</div><div class="metric-value">${repeatBuyers}</div><div class="metric-sub">${state.buyers.length?repeatPct+'% of '+state.buyers.length+' buyers':'—'}</div></div>`;
 
   // Financial details (hidden)
   document.getElementById('dash-fin-metrics').innerHTML=`
@@ -2270,7 +2272,7 @@ function initSaleForm(){
   const PKG_FREQ_BG={high:'rgba(255,255,255,0.07)',mid:'rgba(255,255,255,0.04)',low:'rgba(255,255,255,0.015)'};
 
   function pkgItem(p,extra){
-    const def=defaults[p.name]||0;
+    const def=pkgDefault(p.name);
     const pid=`pkg-${p.name.replace(/\W+/g,'_')}`;
     if(extra) return`<div class="pkg-item gq-panel" style="cursor:pointer;background:${PKG_FREQ_BG[PKG_FREQ[p.name]||'mid']}" onclick="pkgIncrement('${pid}');applyExtraPkgRule('${pid}')"><label title="${p.name}" style="flex:1;pointer-events:none"><span style="font-size:12px">${p.name}</span><span style="font-size:10px;color:var(--muted);display:block">£${p.cost.toFixed(2)}</span></label><input type="number" min="0" value="${def}" id="${pid}" oninput="if((parseInt(this.value)||0)>0)applyExtraPkgRule('${pid}');else updateSalePreview()" onclick="event.stopPropagation()"></div>`;
     const freq=PKG_FREQ[p.name]||'mid';
@@ -2279,6 +2281,8 @@ function initSaleForm(){
   }
 
   const ACCESSORIES=['A4 label','Foam insert','Card Cocoon'];
+  const pkgNorm=n=>String(n||'').toLowerCase().replace(/[^a-z0-9]/g,'').replace(/s$/,'');
+  const findPkg=n=>state.packaging.find(p=>pkgNorm(p.name)===pkgNorm(n));
 
   const stdEl=document.getElementById('pkg-inputs-standard');
   const accEl=document.getElementById('pkg-inputs-accessories');
@@ -2293,12 +2297,12 @@ function initSaleForm(){
 
   if(stdEl){
     stdEl.innerHTML=PKG_FREQ_GROUPS.map(group=>{
-      const items=group.names.map(n=>state.packaging.find(p=>p.name===n)).filter(Boolean);
+      const items=group.names.map(findPkg).filter(Boolean);
       if(!items.length) return '';
-      return`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">${items.map(pkgItem).join('')}</div>`;
+      return`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">${items.map(p=>pkgItem(p)).join('')}</div>`;
     }).join('');
   }
-  if(accEl) accEl.innerHTML=ACCESSORIES.map(n=>state.packaging.find(p=>p.name===n)).filter(Boolean).map(pkgItem).join('');
+  if(accEl) accEl.innerHTML=ACCESSORIES.map(findPkg).filter(Boolean).map(p=>pkgItem(p)).join('');
 
   if(extEl){
     extEl.style.display='flex';
@@ -2307,16 +2311,17 @@ function initSaleForm(){
     let html='';
     const skipNames=[...PKG_GROUPS[0].names,...ACCESSORIES];
     for(const group of PKG_GROUPS.slice(1)){
-      const items=group.names.filter(n=>!ACCESSORIES.includes(n)).map(n=>state.packaging.find(p=>p.name===n)).filter(Boolean);
+      const items=group.names.filter(n=>!ACCESSORIES.includes(n)).map(findPkg).filter(Boolean);
       if(items.length){
         html+=`<div style="font-size:10px;font-weight:600;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;padding:6px 0 2px;width:100%;border-top:1px solid var(--border);margin-top:4px">${group.label}</div>`;
         html+=items.map(p=>pkgItem(p,true)).join('');
       }
     }
-    const unlisted=state.packaging.filter(p=>!skipNames.includes(p.name)&&!PKG_GROUPS.slice(1).flatMap(g=>g.names).includes(p.name));
+    const known=[...skipNames,...PKG_GROUPS.slice(1).flatMap(g=>g.names)].map(pkgNorm);
+    const unlisted=state.packaging.filter(p=>!known.includes(pkgNorm(p.name)));
     if(unlisted.length){
       html+=`<div style="font-size:10px;font-weight:600;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;padding:6px 0 2px;grid-column:1/-1;border-top:1px solid var(--border);margin-top:4px">Other</div>`;
-      html+=unlisted.map(p=>pkgItem(p,true)).join('');
+      html+=unlisted.map(p=>pkgItem(p)).join('');
     }
     extEl.innerHTML=html;
   }
@@ -2401,7 +2406,7 @@ function logSale(){
   ['gq-pokemon','gq-mtg','gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_marvel','gq-mtg_strixhaven','gq-mtg_fra','gq-mtg_ff','gq-mtg_hobbit','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-cyberpunk','gq-other'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=0;});
   syncArticleCount();
   const defaults={'Thermal label':1,'Promotional sticker':1,'A6 envelope':1};
-  state.packaging.forEach(p=>{const inp=document.getElementById('pkg-'+p.name.replace(/\W+/g,'_'));if(inp)inp.value=defaults[p.name]||0;});
+  state.packaging.forEach(p=>{const inp=document.getElementById('pkg-'+p.name.replace(/\W+/g,'_'));if(inp)inp.value=pkgDefault(p.name);});
   updateSalePreview();
   renderLogSaleWeekChart();
   showSaleToast(saleObj, saleProfit, articleCount);
@@ -2603,12 +2608,17 @@ function renderMonthlyBudget(){
 }
 
 // Additional packaging chosen: A6 envelope drops to 0, and some options set foam insert + team bag
-const EXTRA_PKG_RULES={'pkg-C7_A7_envelope':1,'pkg-C6_A6_box':2,'pkg-A5_C5_PIP_envelope':4};
+const EXTRA_PKG_RULES={'pkg-c7_a7_envelope':1,'pkg-c6_a6_box':2,'pkg-a5_c5_pip_envelope':4};
+function pkgDefault(name){
+  const k=String(name||'').toLowerCase().replace(/[^a-z0-9]/g,'').replace(/s$/,'');
+  return {thermallabel:1,promotionalsticker:1,a6envelope:1}[k]||0;
+}
 function applyExtraPkgRule(id){
-  const set=(pid,v)=>{const el=document.getElementById(pid);if(el)el.value=v;};
-  set('pkg-A6_envelope',0);
+  const set=(pid,v)=>{const el=[...document.querySelectorAll('#page-log-sale input[id^="pkg-"]')].find(e=>e.id.toLowerCase().replace(/s$/,'')===pid);if(el)el.value=v;};
+  id=String(id).toLowerCase();
+  set('pkg-a6_envelope',0);
   const n=EXTRA_PKG_RULES[id];
-  if(n){set('pkg-Foam_insert',n);set('pkg-Team_bag',n);}
+  if(n){set('pkg-foam_insert',n);set('pkg-team_bag',n);}
   updateSalePreview();
 }
 
