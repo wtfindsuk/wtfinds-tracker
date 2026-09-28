@@ -404,6 +404,7 @@ tr:hover td{background:var(--surface2)}
           <div class="pkg-item gq-panel" onclick="gqIncrement('gq-mtg_avatar_tla')" style="cursor:pointer"><label style="pointer-events:none">Avatar TLA</label><input type="number" min="0" value="0" id="gq-mtg_avatar_tla" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
           <div class="pkg-item gq-panel" onclick="gqIncrement('gq-mtg_avatar_tle')" style="cursor:pointer"><label style="pointer-events:none">Avatar TLE</label><input type="number" min="0" value="0" id="gq-mtg_avatar_tle" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
           <div class="pkg-item gq-panel" onclick="gqIncrement('gq-mtg_strixhaven')" style="cursor:pointer"><label style="pointer-events:none">Strixhaven</label><input type="number" min="0" value="0" id="gq-mtg_strixhaven" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
+          <div class="pkg-item gq-panel" onclick="gqIncrement('gq-mtg_fra')" style="cursor:pointer"><label style="pointer-events:none">Reality Fracture</label><input type="number" min="0" value="0" id="gq-mtg_fra" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
           <div class="pkg-item gq-panel" onclick="gqIncrement('gq-mtg_marvel')" style="cursor:pointer"><label style="pointer-events:none">Marvel MTG</label><input type="number" min="0" value="0" id="gq-mtg_marvel" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
           <div class="pkg-item gq-panel" onclick="gqIncrement('gq-mtg_ff')" style="cursor:pointer"><label style="pointer-events:none">Final Fantasy</label><input type="number" min="0" value="0" id="gq-mtg_ff" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
           <div class="pkg-item gq-panel" onclick="gqIncrement('gq-mtg_hobbit')" style="cursor:pointer"><label style="pointer-events:none">MTG Hobbit</label><input type="number" min="0" value="0" id="gq-mtg_hobbit" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
@@ -781,7 +782,7 @@ async function loadFromSheets(){
             marvel:g('marvelqty'),other:g('otherqty'),dbz:g('dbzqty'),
             riftbound:g('riftboundqty'),mtg_hobbit:g('mtghobbitqty'),
             mtg_avatar_tla:g('mtgavatartlaqty'),mtg_avatar_tle:g('mtgavatartleqty'),
-            mtg_strixhaven:g('mtgstrixhavenqty'),mtg_marvel:g('mtgmarvelqty'),
+            mtg_strixhaven:g('mtgstrixhavenqty'),mtg_fra:g('mtgrealityfractureqty'),mtg_marvel:g('mtgmarvelqty'),
             mtg_ff:g('mtgffqty'),yugioh:g('yugiohqty'),cyberpunk:g('cyberpunkqty')
           },
           username:s('buyerusername')
@@ -861,7 +862,7 @@ function scheduleSave(sheetName){saveQueue[sheetName]=true;clearTimeout(saveTime
 async function flushSaves(){
   const sheets=Object.keys(saveQueue);saveQueue={};
   for(const sheet of sheets){
-    if(sheet==='Sales') await saveSheetData('Sales',['Date','Item','Platform','Price','ShippingCharged','PostageCost','Packaging','ArticleCount','ActualCommission','PromotedFee','PokemonQty','MTGQty','OnePieceQty','MarvelQty','OtherQty','DBZQty','RiftboundQty','MTGHobbitQty','MTGAvatarTLAQty','MTGAvatarTLEQty','MTGStrixhavenQty','MTGMarvelQty','MTGFFQty','BuyerUsername','YugiohQty','CyberpunkQty'],state.sales.map(s=>[s.date,s.item,s.platform,s.price,s.shippingCharged||0,s.postageCost,JSON.stringify(s.packaging||[]),s.articleCount||1,s.actualCommission!==null&&s.actualCommission!==undefined?s.actualCommission:'',s.promotedFee||0,(s.gameQty?.pokemon||0),(s.gameQty?.mtg||0),(s.gameQty?.onepiece||0),(s.gameQty?.marvel||0),(s.gameQty?.other||0),(s.gameQty?.dbz||0),(s.gameQty?.riftbound||0),(s.gameQty?.mtg_hobbit||0),(s.gameQty?.mtg_avatar_tla||0),(s.gameQty?.mtg_avatar_tle||0),(s.gameQty?.mtg_strixhaven||0),(s.gameQty?.mtg_marvel||0),(s.gameQty?.mtg_ff||0),s.username||'',(s.gameQty?.yugioh||0),(s.gameQty?.cyberpunk||0)]));
+    if(sheet==='Sales') await saveSheetData('Sales',['Date','Item','Platform','Price','ShippingCharged','PostageCost','Packaging','ArticleCount','ActualCommission','PromotedFee','PokemonQty','MTGQty','OnePieceQty','MarvelQty','OtherQty','DBZQty','RiftboundQty','MTGHobbitQty','MTGAvatarTLAQty','MTGAvatarTLEQty','MTGStrixhavenQty','MTGMarvelQty','MTGFFQty','BuyerUsername','YugiohQty','CyberpunkQty','MTGRealityFractureQty'],state.sales.map(s=>[s.date,s.item,s.platform,s.price,s.shippingCharged||0,s.postageCost,JSON.stringify(s.packaging||[]),s.articleCount||1,s.actualCommission!==null&&s.actualCommission!==undefined?s.actualCommission:'',s.promotedFee||0,(s.gameQty?.pokemon||0),(s.gameQty?.mtg||0),(s.gameQty?.onepiece||0),(s.gameQty?.marvel||0),(s.gameQty?.other||0),(s.gameQty?.dbz||0),(s.gameQty?.riftbound||0),(s.gameQty?.mtg_hobbit||0),(s.gameQty?.mtg_avatar_tla||0),(s.gameQty?.mtg_avatar_tle||0),(s.gameQty?.mtg_strixhaven||0),(s.gameQty?.mtg_marvel||0),(s.gameQty?.mtg_ff||0),s.username||'',(s.gameQty?.yugioh||0),(s.gameQty?.cyberpunk||0),(s.gameQty?.mtg_fra||0)]));
     if(sheet==='Purchases') await saveSheetData('Purchases',['Date','Description','Category','Amount','Supplier','Set'],state.purchases.map(p=>[p.date,p.description,p.category,p.amount,p.supplier||'',p.set||'']));
     if(sheet==='Collection') await saveSheetData('Collection',['ID','Name','Type','Game','Status','Set','CN','Cost','MarketValue','PriceUrl','Notes'],state.collection.map(c=>[c.id,c.name,c.type,c.game,c.status,c.set||'',c.cn||'',c.cost,c.marketValue,c.priceUrl||'',c.notes||'']));
     if(sheet==='Games') await saveSheetData('Games',['ID','Name','Platform','Condition','Cost','Value','Added'],state.games.map(g=>[g.id,g.name,g.platform,g.condition||'',g.cost,g.value,g.added]));
@@ -1189,7 +1190,7 @@ function showSaleToast(sale, profit, articleCount){
 
   // Game breakdown tips
   const gq=sale.gameQty||{};
-  const GLABELS={pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',other:'Other',mtg_hobbit:'MTG Hobbit',mtg_avatar_tla:'Avatar TLA',mtg_avatar_tle:'Avatar TLE',mtg_strixhaven:'Strixhaven',mtg_marvel:'Marvel MTG',mtg_ff:'Final Fantasy'};
+  const GLABELS={pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',other:'Other',mtg_hobbit:'MTG Hobbit',mtg_avatar_tla:'Avatar TLA',mtg_avatar_tle:'Avatar TLE',mtg_strixhaven:'Strixhaven',mtg_fra:'Reality Fracture',mtg_marvel:'Marvel MTG',mtg_ff:'Final Fantasy'};
   const topGame=Object.entries(gq).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])[0];
   if(topGame){
     const gameName=GLABELS[topGame[0]]||topGame[0];
@@ -1603,7 +1604,7 @@ function renderGameBreakdown(){
     const gq=s.gameQty||{};
     const merged={
       pokemon:gq.pokemon||0,
-      mtg:(gq.mtg||0)+(gq.marvel||0)+(gq.mtg_hobbit||0)+(gq.mtg_avatar_tla||0)+(gq.mtg_avatar_tle||0)+(gq.mtg_strixhaven||0)+(gq.mtg_ff||0),
+      mtg:(gq.mtg||0)+(gq.marvel||0)+(gq.mtg_hobbit||0)+(gq.mtg_avatar_tla||0)+(gq.mtg_avatar_tle||0)+(gq.mtg_strixhaven||0)+(gq.mtg_fra||0)+(gq.mtg_ff||0)+(gq.mtg_marvel||0),
       onepiece:gq.onepiece||0,
       dbz:gq.dbz||0,
       riftbound:gq.riftbound||0,
@@ -1777,6 +1778,7 @@ const SET_KEYWORDS=[
   ['151','Pokémon 151'],
   ['foundations','MTG Foundations'],['bloomburrow','Bloomburrow'],
   ['duskmourn','Duskmourn'],['final fantasy','Final Fantasy'],
+  ['reality fracture','Reality Fracture'],
   ['avatar','Avatar'],['hobbit','Hobbit'],
   ['one piece','One Piece'],['op-','One Piece'],
   ['dragon ball','Dragon Ball Super'],
@@ -2370,11 +2372,12 @@ function logSale(){
   const packaging=state.packaging.map(p=>({name:p.name,qty:parseInt(document.getElementById('pkg-'+p.name.replace(/\W+/g,'_'))?.value||0)})).filter(p=>p.qty>0);
   const gameQty={
     pokemon:parseInt(document.getElementById('gq-pokemon')?.value)||0,
-    mtg:(parseInt(document.getElementById('gq-mtg')?.value)||0)+(parseInt(document.getElementById('gq-mtg_avatar_tla')?.value)||0)+(parseInt(document.getElementById('gq-mtg_avatar_tle')?.value)||0)+(parseInt(document.getElementById('gq-mtg_marvel')?.value)||0)+(parseInt(document.getElementById('gq-mtg_strixhaven')?.value)||0)+(parseInt(document.getElementById('gq-mtg_ff')?.value)||0)+(parseInt(document.getElementById('gq-mtg_hobbit')?.value)||0),
+    mtg:(parseInt(document.getElementById('gq-mtg')?.value)||0)+(parseInt(document.getElementById('gq-mtg_avatar_tla')?.value)||0)+(parseInt(document.getElementById('gq-mtg_avatar_tle')?.value)||0)+(parseInt(document.getElementById('gq-mtg_marvel')?.value)||0)+(parseInt(document.getElementById('gq-mtg_strixhaven')?.value)||0)+(parseInt(document.getElementById('gq-mtg_fra')?.value)||0)+(parseInt(document.getElementById('gq-mtg_ff')?.value)||0)+(parseInt(document.getElementById('gq-mtg_hobbit')?.value)||0),
     mtg_hobbit:parseInt(document.getElementById('gq-mtg_hobbit')?.value)||0,
     mtg_avatar_tla:parseInt(document.getElementById('gq-mtg_avatar_tla')?.value)||0,
     mtg_avatar_tle:parseInt(document.getElementById('gq-mtg_avatar_tle')?.value)||0,
     mtg_strixhaven:parseInt(document.getElementById('gq-mtg_strixhaven')?.value)||0,
+    mtg_fra:parseInt(document.getElementById('gq-mtg_fra')?.value)||0,
     mtg_marvel:parseInt(document.getElementById('gq-mtg_marvel')?.value)||0,
     mtg_ff:parseInt(document.getElementById('gq-mtg_ff')?.value)||0,
     onepiece:parseInt(document.getElementById('gq-onepiece')?.value)||0,
@@ -2394,7 +2397,7 @@ function logSale(){
   togglePromotedField();
   const su=document.getElementById('s-username');if(su)su.value='';
   const va=document.getElementById('s-vip-alert');if(va)va.style.display='none';
-  ['gq-pokemon','gq-mtg','gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_marvel','gq-mtg_strixhaven','gq-mtg_ff','gq-mtg_hobbit','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-cyberpunk','gq-other'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=0;});
+  ['gq-pokemon','gq-mtg','gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_marvel','gq-mtg_strixhaven','gq-mtg_fra','gq-mtg_ff','gq-mtg_hobbit','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-cyberpunk','gq-other'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=0;});
   syncArticleCount();
   const defaults={'Thermal label':1,'Promotional sticker':1,'A6 envelope':1};
   state.packaging.forEach(p=>{const inp=document.getElementById('pkg-'+p.name.replace(/\W+/g,'_'));if(inp)inp.value=defaults[p.name]||0;});
@@ -2920,7 +2923,7 @@ function syncArticleCount(){
 }
 
 function getTotalGameQty(){
-  const ids=['gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_strixhaven','gq-mtg_marvel','gq-mtg_ff','gq-mtg_hobbit','gq-mtg','gq-pokemon','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-cyberpunk','gq-other'];
+  const ids=['gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_strixhaven','gq-mtg_fra','gq-mtg_marvel','gq-mtg_ff','gq-mtg_hobbit','gq-mtg','gq-pokemon','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-cyberpunk','gq-other'];
   return ids.reduce((a,id)=>{const el=document.getElementById(id);return a+(parseInt(el?.value)||0);},0);
 }
 
@@ -3018,7 +3021,7 @@ function renderBudgetBreakdown(){
       const total=Object.values(gq).reduce((a,b)=>a+(b||0),0);
       if(!total) return;
       let gameQty=0;
-      if(catKey==='mtg') gameQty=(gq.mtg||0)+(gq.mtg_hobbit||0)+(gq.mtg_avatar_tla||0)+(gq.mtg_avatar_tle||0)+(gq.mtg_strixhaven||0)+(gq.mtg_ff||0)+(gq.mtg_marvel||0);
+      if(catKey==='mtg') gameQty=(gq.mtg||0)+(gq.mtg_hobbit||0)+(gq.mtg_avatar_tla||0)+(gq.mtg_avatar_tle||0)+(gq.mtg_strixhaven||0)+(gq.mtg_fra||0)+(gq.mtg_ff||0)+(gq.mtg_marvel||0);
       else gameQty=gq[catKey]||0;
       if(!gameQty) return;
       profit+=calcSaleProfit(s)*(gameQty/total);
