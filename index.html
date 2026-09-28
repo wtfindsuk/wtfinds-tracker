@@ -1406,10 +1406,9 @@ function renderDashboard(){
 
   // Net position tile — merged with sellthrough and projection
   const periodStart=getCurrentPayPeriodStart();
-  const periodStartStr=periodStart.toISOString().slice(0,10);
-  const budgetSpend=state.purchases
-    .filter(p=>p.date&&p.date.slice(0,10)>=periodStartStr&&canonicalSupplier((p.supplier||'').trim())!=='Cardmarket')
-    .reduce((a,p)=>a+(parseFloat(p.amount)||0),0);
+  const budgetSpend=budgetSpendBetween(periodStart,null);
+  const budgetCarry=getBudgetCarry();
+  const SB=Math.max(MONTHLY_BUDGET-budgetCarry,0.01); // spend budget after carried overspend
 
   // Period profit (sales profit since payday) — declared before remaining which uses it
   const periodProfit=state.sales
@@ -1419,8 +1418,8 @@ function renderDashboard(){
   const profitOrangePct=periodProfit>MONTHLY_BUDGET?Math.min((periodProfit-MONTHLY_BUDGET)/MONTHLY_BUDGET*100,100):0;
   const profitRedPct=periodProfit>MONTHLY_BUDGET*2?Math.min((periodProfit-MONTHLY_BUDGET*2)/MONTHLY_BUDGET*100,100):0;
 
-  const remaining=MONTHLY_BUDGET+periodProfit-budgetSpend;
-  const remPct=Math.min(Math.abs(remaining)/(MONTHLY_BUDGET+periodProfit)*100,100);
+  const remaining=MONTHLY_BUDGET+periodProfit-budgetCarry-budgetSpend;
+  const remPct=Math.min(Math.abs(remaining)/Math.max(MONTHLY_BUDGET+periodProfit-budgetCarry,1)*100,100);
   const remColor=remaining>=0?'var(--green)':'var(--red)';
   const remBarHtml=`<div style="flex:1;height:7px;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${remPct}%;background:${remColor}"></div></div><span style="font-weight:600;color:${remColor};white-space:nowrap;min-width:50px">${remaining>=0?'+':''}${fm(remaining)}</span>`;
 
@@ -1440,12 +1439,12 @@ function renderDashboard(){
       <span style="font-weight:600;color:${effColor};white-space:nowrap;min-width:50px">${effPctLabel}</span>
     </div>`;
 
-  const budgetOver=budgetSpend>MONTHLY_BUDGET;
-  const budgetDouble=budgetSpend>MONTHLY_BUDGET*2;
-  const budgetNear=budgetSpend>MONTHLY_BUDGET*0.8;
-  const greenPct=Math.min(budgetSpend/MONTHLY_BUDGET*100,100);
-  const orangePct=budgetOver?Math.min((budgetSpend-MONTHLY_BUDGET)/MONTHLY_BUDGET*100,100):0;
-  const redPct=budgetDouble?Math.min((budgetSpend-MONTHLY_BUDGET*2)/MONTHLY_BUDGET*100,100):0;
+  const budgetOver=budgetSpend>SB;
+  const budgetDouble=budgetSpend>SB*2;
+  const budgetNear=budgetSpend>SB*0.8;
+  const greenPct=Math.min(budgetSpend/SB*100,100);
+  const orangePct=budgetOver?Math.min((budgetSpend-SB)/SB*100,100):0;
+  const redPct=budgetDouble?Math.min((budgetSpend-SB*2)/SB*100,100):0;
   const budgetColor=budgetDouble?'var(--red)':budgetOver?'#f59e0b':budgetNear?'#f59e0b':'var(--green)';
 
   // Collection value change since payday — use Snapshots tab TotalMarket
@@ -1468,7 +1467,7 @@ function renderDashboard(){
   const periodNet=periodProfit-budgetSpend;
   const periodNetStr=periodNet>=0?'+'+fm(periodNet)+' ahead':fm(periodNet)+' behind';
   const periodNetColor=periodNet>=0?'var(--green)':'var(--red)';
-  const periodSummary='<span style="color:'+periodNetColor+'">'+periodNetStr+'</span> this period · '+fm(periodProfit)+' profit vs '+fm(budgetSpend)+' spend';
+  const periodSummary='<span style="color:'+periodNetColor+'">'+periodNetStr+'</span> this period · '+fm(periodProfit)+' profit vs '+fm(budgetSpend)+' spend'+(budgetCarry>0?'<div style="color:var(--red);margin-top:3px">'+fm(budgetCarry)+' overspend carried from last period is taken off Remaining</div>':'');
 
   document.getElementById('dash-net-position').innerHTML=`
     <div class="net-tile" style="border-color:${netPosition>=0?'var(--green)':'var(--red)'}">
@@ -2503,6 +2502,8 @@ function renderSupplierSummary(){
 
 const MONTHLY_BUDGET=656;
 const PAYDAY=28;
+// Overspend carry-over starts from this pay period (payday Aug 2026). Underspend does not carry.
+const BUDGET_CARRY_FROM={year:2026,month:8};
 let ukBankHolidays=new Set();
 
 async function loadBankHolidays(){
@@ -2522,7 +2523,7 @@ function getPayday(year, month){
   let d=new Date(year, month-1, PAYDAY);
   while(true){
     const day=d.getDay(); // 0=Sun, 6=Sat
-    const dateStr=d.toISOString().slice(0,10);
+    const dateStr=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     if(day!==0&&day!==6&&!ukBankHolidays.has(dateStr)) return new Date(d);
     d.setDate(d.getDate()-1);
   }
@@ -2541,34 +2542,62 @@ function getCurrentPayPeriodStart(){
   return getPayday(prevYear,prevMonth);
 }
 
+function getNextPayday(periodStart){
+  const y=periodStart.getFullYear(),m=periodStart.getMonth()+1;
+  return m===12?getPayday(y+1,1):getPayday(y,m+1);
+}
+function inPeriod(dateVal,start,end){const d=parseDateToObj(dateVal);return !!d&&d>=start&&(!end||d<end);}
+function budgetSpendBetween(start,end){
+  return state.purchases
+    .filter(p=>p.date&&inPeriod(p.date,start,end)&&canonicalSupplier((p.supplier||'').trim())!=='Cardmarket')
+    .reduce((a,p)=>a+(parseFloat(p.amount)||0),0);
+}
+function salesProfitBetween(start,end){
+  return state.sales.filter(s=>s.date&&inPeriod(s.date,start,end)).reduce((a,s)=>a+calcSaleProfit(s),0);
+}
+// Overspend brought into the current period. Each past period gets £656 + its profit,
+// minus any overspend carried into it; if it ends below zero, the shortfall carries on.
+function getBudgetCarry(){
+  const current=getCurrentPayPeriodStart();
+  let start=getPayday(BUDGET_CARRY_FROM.year,BUDGET_CARRY_FROM.month);
+  let carry=0,guard=0;
+  while(start<current&&guard++<240){
+    const end=getNextPayday(start);
+    const left=MONTHLY_BUDGET+salesProfitBetween(start,end)-carry-budgetSpendBetween(start,end);
+    carry=left<0?-left:0;
+    start=end;
+  }
+  return carry;
+}
+
 function renderMonthlyBudget(){
   const el=document.getElementById('monthly-budget-banner');
   if(!el) return;
   const periodStart=getCurrentPayPeriodStart();
-  const periodStartStr=periodStart.toISOString().slice(0,10);
-  const monthSpend=state.purchases
-    .filter(p=>p.date&&p.date.slice(0,10)>=periodStartStr&&canonicalSupplier((p.supplier||'').trim())!=='Cardmarket')
-    .reduce((a,p)=>a+(parseFloat(p.amount)||0),0);
-  const pct=Math.min((monthSpend/MONTHLY_BUDGET)*100,100);
-  const over=monthSpend>MONTHLY_BUDGET;
-  const nearLimit=monthSpend>MONTHLY_BUDGET*0.8;
+  const monthSpend=budgetSpendBetween(periodStart,null);
+  const carry=getBudgetCarry();
+  const B=MONTHLY_BUDGET-carry; // budget after last period's overspend
+  const BB=Math.max(B,0.01);
+  const over=monthSpend>B;
+  const nearLimit=monthSpend>B*0.8;
   const color=over?'var(--red)':nearLimit?'#f59e0b':'var(--green)';
   const periodLabel=`Since ${periodStart.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} (payday)`;
   el.innerHTML=`<div class="card" style="padding:12px 16px;border-color:${color}">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div>
         <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">${periodLabel} · excl. Cardmarket</div>
-        <div style="font-size:22px;font-weight:700;color:${color}">${fm(monthSpend)} <span style="font-size:13px;font-weight:400;color:var(--muted)">of ${fm(MONTHLY_BUDGET)} budget</span></div>
+        <div style="font-size:22px;font-weight:700;color:${color}">${fm(monthSpend)} <span style="font-size:13px;font-weight:400;color:var(--muted)">of ${fm(B)} budget</span></div>
+        ${carry>0?`<div style="font-size:11px;color:var(--red)">${fm(MONTHLY_BUDGET)} minus ${fm(carry)} overspend carried from last period</div>`:''}
       </div>
       <div style="text-align:right">
-        <div style="font-size:13px;font-weight:600;color:${color}">${over?'Over budget by '+fm(monthSpend-MONTHLY_BUDGET):fm(MONTHLY_BUDGET-monthSpend)+' remaining'}</div>
+        <div style="font-size:13px;font-weight:600;color:${color}">${over?'Over budget by '+fm(monthSpend-B):fm(B-monthSpend)+' remaining'}</div>
         <div style="font-size:11px;color:var(--muted)">Resets ~28th each month</div>
       </div>
     </div>
     <div style="height:8px;display:flex;gap:2px">
-      <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${Math.min(monthSpend/MONTHLY_BUDGET*100,100)}%;background:var(--green)"></div></div>
-      <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${monthSpend>MONTHLY_BUDGET?Math.min((monthSpend-MONTHLY_BUDGET)/MONTHLY_BUDGET*100,100):0}%;background:#f59e0b"></div></div>
-      <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${monthSpend>MONTHLY_BUDGET*2?Math.min((monthSpend-MONTHLY_BUDGET*2)/MONTHLY_BUDGET*100,100):0}%;background:var(--red)"></div></div>
+      <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${Math.min(monthSpend/BB*100,100)}%;background:var(--green)"></div></div>
+      <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${monthSpend>BB?Math.min((monthSpend-BB)/BB*100,100):0}%;background:#f59e0b"></div></div>
+      <div style="flex:1;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${monthSpend>BB*2?Math.min((monthSpend-BB*2)/BB*100,100):0}%;background:var(--red)"></div></div>
     </div>
   </div>`;
 }
@@ -2946,7 +2975,7 @@ function renderRecentPurchases(){
   const periodStart=getCurrentPayPeriodStart();
   const periodStartStr=periodStart.toISOString().slice(0,10);
   const since=[...state.purchases]
-    .filter(p=>p.date&&p.date.slice(0,10)>=periodStartStr&&canonicalSupplier((p.supplier||'').trim())!=='Cardmarket')
+    .filter(p=>p.date&&inPeriod(p.date,periodStart,null)&&canonicalSupplier((p.supplier||'').trim())!=='Cardmarket')
     .sort((a,b)=>String(b.date).localeCompare(String(a.date)));
   if(!since.length){el.innerHTML='';return;}
   const total=since.reduce((a,p)=>a+(parseFloat(p.amount)||0),0);
@@ -2997,7 +3026,7 @@ function renderBudgetBreakdown(){
   let cumulative=0, crossedDate=null, crossedItem=null;
   for(const p of since){
     cumulative+=parseFloat(p.amount)||0;
-    if(cumulative>=MONTHLY_BUDGET&&!crossedDate){
+    if(cumulative>=MONTHLY_BUDGET-getBudgetCarry()&&!crossedDate){
       crossedDate=p.date;
       crossedItem=p.description;
     }
