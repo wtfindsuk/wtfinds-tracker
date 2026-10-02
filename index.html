@@ -218,6 +218,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 2 Oct 2026 (b)</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
     </div>
@@ -1418,7 +1419,7 @@ function renderDashboard(){
   const periodStart=getCurrentPayPeriodStart();
   const budgetSpend=budgetSpendBetween(periodStart,null);
   const budgetCarry=getBudgetCarry();
-  const SB=Math.max(MONTHLY_BUDGET-budgetCarry,0.01); // spend budget after carried overspend
+  const SB=MONTHLY_BUDGET; // Spend bar always measures against the plain monthly budget; carried overspend only affects Remaining
 
   // Period profit (sales profit since payday) — declared before remaining which uses it
   const periodProfit=state.sales
@@ -1494,6 +1495,7 @@ function renderDashboard(){
             <div><div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:0.05em">Break-even</div><div style="font-size:13px;font-weight:600;color:#555">${fm(standing)}</div></div>
           </div>
           ${stockNeeded?`<div style="font-size:11px;color:var(--muted);margin-top:6px">Sell ${fm(stockNeeded)} of inventory to break even${inventoryPct!==null?' ('+inventoryPct.toFixed(0)+'% of stock)':''}</div>`:''}
+          ${periodSpendByGameHtml(periodStart)}
         </div>
         <div style="border-left:1px solid var(--border);padding-left:20px;min-width:220px;flex:1">
           <div class="net-tile-label" style="margin-bottom:4px">This period <span style="font-weight:400;text-transform:none;letter-spacing:0">· since ${periodStart.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} · excl. Cardmarket</span></div>
@@ -1649,12 +1651,42 @@ function renderTaxYear(){
 }
 
 // ===== SPENT VS BACK, BY GAME =====
+const SVR_LBL={pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',other:'Other',untagged:'Not tagged'};
+let svrOpen=null;
+function saleGameMix(s){
+  const gq=s.gameQty||{};
+  return {pokemon:gq.pokemon||0,mtg:(gq.mtg||0)+(gq.marvel||0)+(gq.mtg_hobbit||0)+(gq.mtg_avatar_tla||0)+(gq.mtg_avatar_tle||0)+(gq.mtg_strixhaven||0)+(gq.mtg_fra||0)+(gq.mtg_ff||0)+(gq.mtg_marvel||0),
+    onepiece:gq.onepiece||0,dbz:gq.dbz||0,riftbound:gq.riftbound||0,yugioh:gq.yugioh||0,cyberpunk:gq.cyberpunk||0,other:gq.other||0};
+}
+function collGame(c){
+  const g=c.game||'other';
+  if(g!=='other') return g;
+  const t=((c.set||'')+' '+(c.name||'')+' '+(c.notes||'')).toLowerCase();
+  if(/avatar|hobbit|strixhaven|final fantasy|magic|mtg/.test(t)) return 'mtg';
+  if(/cyberpunk/.test(t)) return 'cyberpunk';
+  if(/yu-?gi-?oh/.test(t)) return 'yugioh';
+  if(/riftbound/.test(t)) return 'riftbound';
+  if(/dragon ball|\bdbz\b|\bdbs\b/.test(t)) return 'dbz';
+  return 'other';
+}
+function toggleSvr(k){svrOpen=svrOpen===k?null:k;renderSpendVsReturn();}
+function retagSale(idx,from){
+  const sel=document.getElementById('retag-'+idx);const to=sel&&sel.value;
+  const s=state.sales[idx];if(!s||!to)return;
+  const gq=s.gameQty||{};
+  const qty=from==='untagged'?(parseInt(s.articleCount)||1):(gq.other||0);
+  if(!qty)return;
+  gq[to]=(gq[to]||0)+qty;
+  if(from==='other')gq.other=0;
+  s.gameQty=gq;
+  scheduleSave('Sales');
+  renderSpendVsReturn();renderGameBreakdown();
+  showToast(`Moved ${qty} card${qty===1?'':'s'} to ${SVR_LBL[to]}`);
+}
 function renderSpendVsReturn(){
   const el=document.getElementById('dash-spend-return');if(!el)return;
-  const LBL={pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',other:'Other'};
-  const keys=Object.keys(LBL);
-  const st={};keys.forEach(k=>st[k]={spent:0,back:0,holding:0});
-  // Spent: purchases by category (Marvel counts as MTG; supplies/equipment kept aside)
+  const keys=Object.keys(SVR_LBL);
+  const st={};keys.forEach(k=>st[k]={spent:0,back:0,holding:0,cards:0,sales:[]});
   let overheads=0;
   state.purchases.forEach(p=>{
     const amt=parseFloat(p.amount)||0;let c=p.category||'other';
@@ -1662,42 +1694,52 @@ function renderSpendVsReturn(){
     if(c==='marvel')c='mtg';
     (st[c]||st.other).spent+=amt;
   });
-  // Back: money kept after selling costs, split across games by card count
-  state.sales.forEach(s=>{
-    const gq=s.gameQty||{};
-    const m={pokemon:gq.pokemon||0,mtg:(gq.mtg||0)+(gq.marvel||0)+(gq.mtg_hobbit||0)+(gq.mtg_avatar_tla||0)+(gq.mtg_avatar_tle||0)+(gq.mtg_strixhaven||0)+(gq.mtg_fra||0)+(gq.mtg_ff||0)+(gq.mtg_marvel||0),
-      onepiece:gq.onepiece||0,dbz:gq.dbz||0,riftbound:gq.riftbound||0,yugioh:gq.yugioh||0,cyberpunk:gq.cyberpunk||0,other:gq.other||0};
+  state.sales.forEach((s,idx)=>{
+    const m=saleGameMix(s);
     const tot=Object.values(m).reduce((a,b)=>a+b,0);const kept=calcSaleProfit(s);
-    if(!tot){st.other.back+=kept;return;}
-    Object.entries(m).forEach(([g,q])=>{if(q)st[g].back+=kept*q/tot;});
+    const moneyIn=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);
+    if(!tot){st.untagged.back+=kept;st.untagged.cards+=parseInt(s.articleCount)||1;st.untagged.sales.push({s,idx,q:parseInt(s.articleCount)||1,tot:parseInt(s.articleCount)||1,share:1,kept,moneyIn});return;}
+    Object.entries(m).forEach(([g,q])=>{if(!q)return;const share=q/tot;st[g].back+=kept*share;st[g].cards+=q;st[g].sales.push({s,idx,q,tot,share,kept,moneyIn});});
   });
-  // Still holding: collection market value (Avatar counts as MTG)
-  state.collection.forEach(c=>{
-    let g=c.game||'other';
-    if(/avatar/i.test((c.set||'')+' '+(c.name||'')))g='mtg';
-    (st[g]||st.other).holding+=parseFloat(c.marketValue)||0;
-  });
-  const rows=keys.filter(k=>st[k].spent||st[k].back||st[k].holding).map(k=>({k,...st[k],total:st[k].back+st[k].holding}))
-    .sort((a,b)=>b.spent-a.spent);
+  state.collection.forEach(c=>{(st[collGame(c)]||st.other).holding+=parseFloat(c.marketValue)||0;});
+  const rows=keys.filter(k=>st[k].spent||st[k].back||st[k].holding||st[k].cards).map(k=>({k,...st[k],total:st[k].back+st[k].holding}))
+    .sort((a,b)=>(a.k==='untagged')-(b.k==='untagged')||b.spent-a.spent);
   if(!rows.length){el.innerHTML='<div class="empty">No purchases or sales yet.</div>';return;}
-  const pct=r=>r.spent>0?Math.round(r.total/r.spent*100):null;
-  const verdict=r=>{const p=pct(r);if(p===null)return'<span style="color:var(--green)">all profit</span>';
+  const verdict=r=>{
+    if(r.k==='untagged')return'<span style="color:var(--muted)">click to tag</span>';
+    if(r.spent<=0)return r.total>0?'<span style="color:var(--green)">all profit</span>':'<span style="color:var(--muted)">—</span>';
+    const p=Math.round(r.total/r.spent*100);
     return p>=100?`<span style="color:var(--green);font-weight:600">${p}% back ✓</span>`:`<span style="color:${p>=75?'#f59e0b':'var(--red)'};font-weight:600">${p}% back</span>`;};
   const maxV=Math.max(...rows.map(r=>Math.max(r.spent,r.total)),1);
-  const bar=(v,c)=>`<div style="height:6px;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${v/maxV*100}%;background:${c}"></div></div>`;
+  const bar=(v,c)=>`<div style="height:6px;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${Math.max(0,Math.min(v/maxV*100,100))}%;background:${c}"></div></div>`;
+  const opts=k=>Object.keys(SVR_LBL).filter(g=>g!==k&&g!=='untagged').map(g=>`<option value="${g}">${SVR_LBL[g]}</option>`).join('');
+  const detail=r=>{
+    const list=[...r.sales].sort((a,b)=>(parseDateToObj(b.s.date)||0)-(parseDateToObj(a.s.date)||0));
+    const canTag=r.k==='other'||r.k==='untagged';
+    const shown=list.slice(0,150);
+    return`<tr><td colspan="7" style="padding:0;background:var(--surface2)">
+      <div style="padding:10px 12px;font-size:12px">
+        <div style="margin-bottom:6px;color:var(--muted)">${list.length} sale${list.length===1?'':'s'} counted for <b style="color:var(--text)">${SVR_LBL[r.k]}</b>${canTag?' · wrongly tagged? pick the right game and press Move':''}${list.length>150?' · showing newest 150':''}</div>
+        <div style="max-height:320px;overflow:auto"><table style="font-size:12px">
+          <thead><tr><th>Date</th><th>Sale</th><th>Platform</th><th>Cards</th><th>Order money in</th><th>Counted here</th>${canTag?'<th>Re-tag</th>':''}</tr></thead>
+          <tbody>${shown.map(x=>`<tr><td>${fd(x.s.date)}</td><td>${x.s.item||'—'}</td><td>${x.s.platform||''}</td><td>${r.k==='untagged'?x.q+' (no game set)':x.q+' of '+x.tot}</td><td>${fm(x.moneyIn)}</td><td>${fm(x.kept*x.share)}</td>${canTag?`<td style="white-space:nowrap"><select id="retag-${x.idx}" style="font-size:11px;padding:2px 4px">${opts(r.k)}</select> <button class="btn sm" onclick="event.stopPropagation();retagSale(${x.idx},'${r.k}')">Move</button></td>`:''}</tr>`).join('')}</tbody>
+        </table></div>
+      </div></td></tr>`;
+  };
   el.innerHTML=`<div class="card" style="padding:0">
     <div style="overflow-x:auto"><table>
-      <thead><tr><th>Game</th><th>Spent</th><th>Back from sales</th><th>Still holding</th><th style="min-width:160px"></th><th>Result</th></tr></thead>
-      <tbody>${rows.map(r=>`<tr>
-        <td style="font-weight:600">${LBL[r.k]}</td>
+      <thead><tr><th>Game</th><th>Cards sold</th><th>Spent</th><th>Back from sales</th><th>Still holding</th><th style="min-width:140px"></th><th>Result</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr onclick="toggleSvr('${r.k}')" style="cursor:pointer" title="Click to see the sales counted here">
+        <td style="font-weight:600">${svrOpen===r.k?'▾':'▸'} ${SVR_LBL[r.k]}</td>
+        <td>${r.cards}</td>
         <td>${fm(r.spent)}</td>
-        <td>${fm(r.back)}</td>
+        <td style="${r.back<0?'color:var(--red)':''}">${fm(r.back)}</td>
         <td style="color:var(--muted)">${fm(r.holding)}</td>
         <td><div style="display:flex;flex-direction:column;gap:3px">${bar(r.spent,'var(--red)')}${bar(r.total,'var(--green)')}</div></td>
-        <td>${verdict(r)}</td></tr>`).join('')}</tbody>
+        <td>${verdict(r)}</td></tr>${svrOpen===r.k?detail(r):''}`).join('')}</tbody>
     </table></div>
     <div style="font-size:11px;color:var(--muted);padding:8px 12px;border-top:1px solid var(--border)">
-      <span style="color:var(--red)">■</span> spent &nbsp;<span style="color:var(--green)">■</span> back from sales + still holding · "Back" is what you kept after postage, packaging &amp; fees, split by cards sold${overheads?` · ${fm(overheads)} on supplies &amp; equipment not split by game`:''}
+      Click a game to see exactly which sales are counted. <span style="color:var(--red)">■</span> spent &nbsp;<span style="color:var(--green)">■</span> back from sales + still holding · "Back" is what you kept after postage, packaging &amp; fees; orders with more than one game are split by number of cards${overheads?` · ${fm(overheads)} on supplies &amp; equipment not split by game`:''}
     </div>
   </div>`;
 }
@@ -2383,7 +2425,7 @@ function initSaleForm(){
   function pkgItem(p,extra){
     const def=pkgDefault(p.name);
     const pid=`pkg-${p.name.replace(/\W+/g,'_')}`;
-    if(extra) return`<div class="pkg-item gq-panel" style="cursor:pointer;background:${PKG_FREQ_BG[PKG_FREQ[p.name]||'mid']}" onclick="pkgIncrement('${pid}');applyExtraPkgRule('${pid}')"><label title="${p.name}" style="flex:1;pointer-events:none"><span style="font-size:12px">${p.name}</span><span style="font-size:10px;color:var(--muted);display:block">£${p.cost.toFixed(2)}</span></label><input type="number" min="0" value="${def}" id="${pid}" oninput="if((parseInt(this.value)||0)>0)applyExtraPkgRule('${pid}');else updateSalePreview()" onclick="event.stopPropagation()"></div>`;
+    if(extra) return`<div class="pkg-item gq-panel" style="cursor:pointer;background:${PKG_FREQ_BG[PKG_FREQ[p.name]||'mid']}" onclick="pkgIncrement('${pid}');applyExtraPkgRule(this)"><label title="${p.name}" style="flex:1;pointer-events:none"><span style="font-size:12px">${p.name}</span><span style="font-size:10px;color:var(--muted);display:block">£${p.cost.toFixed(2)}</span></label><input type="number" min="0" value="${def}" id="${pid}" oninput="if((parseInt(this.value)||0)>0)applyExtraPkgRule(this.closest('.pkg-item'));else updateSalePreview()" onclick="event.stopPropagation()"></div>`;
     const freq=PKG_FREQ[p.name]||'mid';
     const bg=PKG_FREQ_BG[freq];
     return`<div class="pkg-item gq-panel" style="cursor:pointer;background:${bg}" onclick="pkgIncrement('${pid}')"><label title="${p.name}" style="flex:1;pointer-events:none"><span style="font-size:12px">${p.name}</span><span style="font-size:10px;color:var(--muted);display:block">£${p.cost.toFixed(2)}</span></label><input type="number" min="0" value="${def}" id="${pid}" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>`;
@@ -2430,7 +2472,7 @@ function initSaleForm(){
     const unlisted=state.packaging.filter(p=>!known.includes(pkgNorm(p.name)));
     if(unlisted.length){
       html+=`<div style="font-size:10px;font-weight:600;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;padding:6px 0 2px;grid-column:1/-1;border-top:1px solid var(--border);margin-top:4px">Other</div>`;
-      html+=unlisted.map(p=>pkgItem(p)).join('');
+      html+=unlisted.map(p=>pkgItem(p,true)).join('');
     }
     extEl.innerHTML=html;
   }
@@ -2656,6 +2698,25 @@ function getCurrentPayPeriodStart(){
   return getPayday(prevYear,prevMonth);
 }
 
+function periodSpendByGameHtml(start){
+  const LBL={...CAT_LABELS,marvel:'MTG'};
+  const tot={};let cm=0;
+  state.purchases.filter(p=>p.date&&inPeriod(p.date,start,null)).forEach(p=>{
+    const amt=parseFloat(p.amount)||0;
+    if(canonicalSupplier((p.supplier||'').trim())==='Cardmarket'){cm+=amt;return;}
+    const c=p.category==='marvel'?'mtg':(p.category||'other');
+    tot[c]=(tot[c]||0)+amt;
+  });
+  const rows=Object.entries(tot).filter(([,v])=>v).sort((a,b)=>b[1]-a[1]);
+  const sum=rows.reduce((a,[,v])=>a+v,0);
+  const head=`<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-top:14px;margin-bottom:6px">Spent this period, by game</div>`;
+  const cmLine=cm?`<div style="font-size:11px;color:var(--muted);margin-top:4px">+ ${fm(cm)} on Cardmarket (not in budget)</div>`:'';
+  if(!rows.length)return head+`<div style="font-size:12px;color:var(--muted)">Nothing bought yet this period</div>`+cmLine;
+  return head+`<div style="display:grid;grid-template-columns:auto 1fr auto;gap:4px 8px;align-items:center;font-size:12px;max-width:300px">
+    ${rows.map(([c,v])=>`<div>${LBL[c]||c}</div><div style="height:6px;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${v/sum*100}%;background:var(--accent,#534AB7)"></div></div><div style="text-align:right;font-weight:600">${fm(v)}</div>`).join('')}
+  </div>${cmLine}`;
+}
+
 function getNextPayday(periodStart){
   const y=periodStart.getFullYear(),m=periodStart.getMonth()+1;
   return m===12?getPayday(y+1,1):getPayday(y,m+1);
@@ -2690,10 +2751,10 @@ function renderMonthlyBudget(){
   const periodStart=getCurrentPayPeriodStart();
   const monthSpend=budgetSpendBetween(periodStart,null);
   const carry=getBudgetCarry();
-  const B=MONTHLY_BUDGET-carry; // budget after last period's overspend
-  const BB=Math.max(B,0.01);
+  const B=MONTHLY_BUDGET,BB=MONTHLY_BUDGET; // this period's spend vs the plain monthly budget
   const over=monthSpend>B;
   const nearLimit=monthSpend>B*0.8;
+  const overall=MONTHLY_BUDGET+salesProfitBetween(periodStart,null)-carry-monthSpend; // same as dashboard Remaining
   const color=over?'var(--red)':nearLimit?'#f59e0b':'var(--green)';
   const periodLabel=`Since ${periodStart.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} (payday)`;
   el.innerHTML=`<div class="card" style="padding:12px 16px;border-color:${color}">
@@ -2701,10 +2762,10 @@ function renderMonthlyBudget(){
       <div>
         <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">${periodLabel} · excl. Cardmarket</div>
         <div style="font-size:22px;font-weight:700;color:${color}">${fm(monthSpend)} <span style="font-size:13px;font-weight:400;color:var(--muted)">of ${fm(B)} budget</span></div>
-        ${carry>0?`<div style="font-size:11px;color:var(--red)">${fm(MONTHLY_BUDGET)} minus ${fm(carry)} overspend carried from last period</div>`:''}
+        ${carry>0?`<div style="font-size:11px;color:${overall>=0?'var(--green)':'var(--red)'}">Including ${fm(carry)} overspent last period and this period's profit: ${overall>=0?fm(overall)+' left':'still '+fm(-overall)+' over'}</div>`:''}
       </div>
       <div style="text-align:right">
-        <div style="font-size:13px;font-weight:600;color:${color}">${over?'Over budget by '+fm(monthSpend-B):fm(B-monthSpend)+' remaining'}</div>
+        <div style="font-size:13px;font-weight:600;color:${color}">${over?'Over this month\'s '+fm(B)+' by '+fm(monthSpend-B):fm(B-monthSpend)+' left of this month\'s '+fm(B)}</div>
         <div style="font-size:11px;color:var(--muted)">Resets ~28th each month</div>
       </div>
     </div>
@@ -2717,17 +2778,28 @@ function renderMonthlyBudget(){
 }
 
 // Additional packaging chosen: A6 envelope drops to 0, and some options set foam insert + team bag
-const EXTRA_PKG_RULES={'pkg-c7_a7_envelope':1,'pkg-c6_a6_box':2,'pkg-a5_c5_pip_envelope':4};
 function pkgDefault(name){
   const k=String(name||'').toLowerCase().replace(/[^a-z0-9]/g,'').replace(/s$/,'');
   return {thermallabel:1,promotionalsticker:1,a6envelope:1}[k]||0;
 }
-function applyExtraPkgRule(id){
-  const set=(pid,v)=>{const el=[...document.querySelectorAll('#page-log-sale input[id^="pkg-"]')].find(e=>e.id.toLowerCase().replace(/s$/,'')===pid);if(el)el.value=v;};
-  id=String(id).toLowerCase();
-  set('pkg-a6_envelope',0);
-  const n=EXTRA_PKG_RULES[id];
-  if(n){set('pkg-foam_insert',n);set('pkg-team_bag',n);}
+function pkgKey(name){return String(name||'').toLowerCase().replace(/[^a-z0-9]/g,'');}
+function pkgInputByName(test){
+  const item=[...document.querySelectorAll('#page-log-sale .pkg-item')].find(it=>{
+    if(it.closest('#pkg-inputs-extra'))return false;
+    const l=it.querySelector('label');return l&&test(pkgKey(l.title||l.textContent));
+  });
+  return item?item.querySelector('input'):null;
+}
+function applyExtraPkgRule(item){
+  const label=item&&item.querySelector?item.querySelector('label'):null;
+  const k=pkgKey(label?(label.title||label.textContent):'');
+  const a6=pkgInputByName(n=>n.startsWith('a6envelope'));
+  if(a6)a6.value=0;
+  const n=k.includes('pip')?4:(k.includes('box')&&(k.includes('c6')||k.includes('a6')))?2:k.includes('c7')?1:0;
+  if(n){
+    const foam=pkgInputByName(x=>x.startsWith('foaminsert'));if(foam)foam.value=n;
+    const team=pkgInputByName(x=>x.startsWith('teambag'));if(team)team.value=n;
+  }
   updateSalePreview();
 }
 
