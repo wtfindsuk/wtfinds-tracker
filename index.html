@@ -218,7 +218,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 2 Oct 2026 (b)</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 2 Oct 2026 (c)</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
     </div>
@@ -911,6 +911,8 @@ function fd(d){
   if(!d)return'';
   // Handle Date objects, numbers (Excel serial), and strings
   let s = String(d).trim();
+  // Sheet timestamps (e.g. 2026-09-28T23:00:00.000Z) - show the UK date, not the UTC one
+  if(/^\d{4}-\d{2}-\d{2}T/.test(s)){const o=parseDateToObj(s);if(o)return o.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});}
   // Already YYYY-MM-DD
   let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if(m) return new Date(parseInt(m[1]),parseInt(m[2])-1,parseInt(m[3])).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});
@@ -1652,7 +1654,7 @@ function renderTaxYear(){
 
 // ===== SPENT VS BACK, BY GAME =====
 const SVR_LBL={pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',other:'Other',untagged:'Not tagged'};
-let svrOpen=null;
+let svrOpen=null,svrMonth='';
 function saleGameMix(s){
   const gq=s.gameQty||{};
   return {pokemon:gq.pokemon||0,mtg:(gq.mtg||0)+(gq.marvel||0)+(gq.mtg_hobbit||0)+(gq.mtg_avatar_tla||0)+(gq.mtg_avatar_tle||0)+(gq.mtg_strixhaven||0)+(gq.mtg_fra||0)+(gq.mtg_ff||0)+(gq.mtg_marvel||0),
@@ -1669,7 +1671,21 @@ function collGame(c){
   if(/dragon ball|\bdbz\b|\bdbs\b/.test(t)) return 'dbz';
   return 'other';
 }
-function toggleSvr(k){svrOpen=svrOpen===k?null:k;renderSpendVsReturn();}
+function toggleSvr(k){svrOpen=svrOpen===k?null:k;svrMonth='';renderSpendVsReturn();}
+function svrTickAll(on){document.querySelectorAll('.svr-chk').forEach(c=>c.checked=on);svrCount();}
+function svrCount(){const n=document.querySelectorAll('.svr-chk:checked').length;const el=document.getElementById('svr-count');if(el)el.textContent=n+' ticked';}
+function retagMany(from){
+  const to=document.getElementById('svr-bulk-to')?.value;
+  const idxs=[...document.querySelectorAll('.svr-chk:checked')].map(c=>+c.dataset.idx);
+  if(!to||!idxs.length){alert('Tick at least one sale first.');return;}
+  let cards=0;
+  const plan=idxs.map(i=>{const s=state.sales[i];const gq=s.gameQty||{};const q=from==='untagged'?(parseInt(s.articleCount)||1):(gq.other||0);cards+=q;return[s,q];});
+  if(!confirm(`Move ${idxs.length} sale${idxs.length===1?'':'s'} (${cards} cards) to ${SVR_LBL[to]}?\n\nThis updates your Sales sheet.`))return;
+  plan.forEach(([s,q])=>{if(!q)return;const gq=s.gameQty||{};gq[to]=(gq[to]||0)+q;if(from==='other')gq.other=0;s.gameQty=gq;});
+  scheduleSave('Sales');
+  renderSpendVsReturn();renderGameBreakdown();
+  showToast(`Moved ${idxs.length} sales (${cards} cards) to ${SVR_LBL[to]}`);
+}
 function retagSale(idx,from){
   const sel=document.getElementById('retag-'+idx);const to=sel&&sel.value;
   const s=state.sales[idx];if(!s||!to)return;
@@ -1714,15 +1730,27 @@ function renderSpendVsReturn(){
   const bar=(v,c)=>`<div style="height:6px;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${Math.max(0,Math.min(v/maxV*100,100))}%;background:${c}"></div></div>`;
   const opts=k=>Object.keys(SVR_LBL).filter(g=>g!==k&&g!=='untagged').map(g=>`<option value="${g}">${SVR_LBL[g]}</option>`).join('');
   const detail=r=>{
-    const list=[...r.sales].sort((a,b)=>(parseDateToObj(b.s.date)||0)-(parseDateToObj(a.s.date)||0));
+    const all=[...r.sales].sort((a,b)=>(parseDateToObj(b.s.date)||0)-(parseDateToObj(a.s.date)||0));
+    const months=[...new Set(all.map(x=>dayKey(x.s.date).slice(0,7)).filter(Boolean))].sort().reverse();
+    const list=svrMonth?all.filter(x=>dayKey(x.s.date).slice(0,7)===svrMonth):all;
     const canTag=r.k==='other'||r.k==='untagged';
-    const shown=list.slice(0,150);
-    return`<tr><td colspan="7" style="padding:0;background:var(--surface2)">
+    const shown=list.slice(0,300);
+    const ids={};state.sales.forEach(s=>{const k=String(s.item||'').trim();if(k)ids[k]=(ids[k]||0)+1;});
+    const mLabel=m=>{const[y,mo]=m.split('-');return new Date(y,mo-1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});};
+    const cardsShown=list.reduce((a,x)=>a+x.q,0);
+    return`<tr onclick="event.stopPropagation()"><td colspan="7" style="padding:0;background:var(--surface2)">
       <div style="padding:10px 12px;font-size:12px">
-        <div style="margin-bottom:6px;color:var(--muted)">${list.length} sale${list.length===1?'':'s'} counted for <b style="color:var(--text)">${SVR_LBL[r.k]}</b>${canTag?' · wrongly tagged? pick the right game and press Move':''}${list.length>150?' · showing newest 150':''}</div>
-        <div style="max-height:320px;overflow:auto"><table style="font-size:12px">
-          <thead><tr><th>Date</th><th>Sale</th><th>Platform</th><th>Cards</th><th>Order money in</th><th>Counted here</th>${canTag?'<th>Re-tag</th>':''}</tr></thead>
-          <tbody>${shown.map(x=>`<tr><td>${fd(x.s.date)}</td><td>${x.s.item||'—'}</td><td>${x.s.platform||''}</td><td>${r.k==='untagged'?x.q+' (no game set)':x.q+' of '+x.tot}</td><td>${fm(x.moneyIn)}</td><td>${fm(x.kept*x.share)}</td>${canTag?`<td style="white-space:nowrap"><select id="retag-${x.idx}" style="font-size:11px;padding:2px 4px">${opts(r.k)}</select> <button class="btn sm" onclick="event.stopPropagation();retagSale(${x.idx},'${r.k}')">Move</button></td>`:''}</tr>`).join('')}</tbody>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px">
+          <select onchange="svrMonth=this.value;renderSpendVsReturn()" style="font-size:12px;padding:3px 6px"><option value="">All months</option>${months.map(m=>`<option value="${m}" ${m===svrMonth?'selected':''}>${mLabel(m)}</option>`).join('')}</select>
+          <span style="color:var(--muted)">${list.length} sale${list.length===1?'':'s'} · ${cardsShown} cards${list.length>300?' · showing newest 300':''}</span>
+          ${canTag?`<span style="flex:1"></span><label style="display:flex;align-items:center;gap:4px"><input type="checkbox" onchange="svrTickAll(this.checked)"> Tick all</label>
+          <span id="svr-count" style="color:var(--muted)">0 ticked</span>
+          <span>Move ticked to</span><select id="svr-bulk-to" style="font-size:12px;padding:3px 6px">${opts(r.k)}</select>
+          <button class="btn sm primary" onclick="retagMany('${r.k}')">Move</button>`:''}
+        </div>
+        <div style="max-height:360px;overflow:auto"><table style="font-size:12px">
+          <thead><tr>${canTag?'<th></th>':''}<th>Date</th><th>Sale</th><th>Buyer</th><th>Cards</th><th>Card value</th><th>Counted here</th></tr></thead>
+          <tbody>${shown.map(x=>`<tr>${canTag?`<td><input type="checkbox" class="svr-chk" data-idx="${x.idx}" onchange="svrCount()"></td>`:''}<td>${fd(x.s.date)}</td><td>${x.s.item||'—'}${ids[String(x.s.item||'').trim()]>1?' <span style="color:var(--red)" title="This Sale ID appears more than once in your sales">⚠ logged twice?</span>':''}</td><td>${x.s.username||''}</td><td>${r.k==='untagged'?x.q:x.q+' of '+x.tot}</td><td>${fm(parseFloat(x.s.price)||0)}</td><td>${fm(x.kept*x.share)}</td></tr>`).join('')}</tbody>
         </table></div>
       </div></td></tr>`;
   };
