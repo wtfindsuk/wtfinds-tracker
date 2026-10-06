@@ -218,7 +218,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 2 Oct 2026 (c)</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 6 Oct 2026</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
     </div>
@@ -249,7 +249,7 @@ tr:hover td{background:var(--surface2)}
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
             <div style="display:flex;gap:4px">
               <button class="btn sm active-snap" id="period-tab-week" onclick="setPeriodTab('week')">This week</button>
-              <button class="btn sm" id="period-tab-month" onclick="setPeriodTab('month')">This month</button>
+              <button class="btn sm" id="period-tab-month" onclick="setPeriodTab('month')">This period</button>
             </div>
             <div style="display:flex;align-items:center;gap:4px" id="period-nav-week">
               <button class="btn sm" onclick="dashWeekNavJump(-4)">«</button>
@@ -284,7 +284,7 @@ tr:hover td{background:var(--surface2)}
 
       <div class="grid2" style="margin-bottom:14px">
         <div class="card">
-          <div class="card-title">Revenue, profit &amp; spend by month</div>
+          <div class="card-title">Revenue, profit &amp; spend by pay period</div>
           <div class="legend" id="main-legend"></div>
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
             <span id="main-chart-month-label" style="font-size:11px;color:var(--muted)"></span>
@@ -293,7 +293,7 @@ tr:hover td{background:var(--surface2)}
           <div style="position:relative;height:180px"><canvas id="mainChart"></canvas></div>
         </div>
         <div class="card">
-          <div class="card-title">Volume &amp; avg order by month</div>
+          <div class="card-title">Volume &amp; avg order by pay period</div>
           <div class="legend" id="vol-legend"></div>
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
             <span id="vol-chart-month-label" style="font-size:11px;color:var(--muted)"></span>
@@ -803,7 +803,7 @@ async function loadFromSheets(){
       state.purchases=data.Purchases.slice(1).map(r=>({date:r[0],description:r[1],category:r[2],amount:parseFloat(r[3])||0,supplier:r[4]||'',set:r[5]||''})).filter(p=>p.description);
     }
     if(data.Collection&&data.Collection.length>1){
-      state.collection=data.Collection.slice(1).map(r=>({id:r[0],name:r[1],type:r[2],game:r[3],status:r[4],set:r[5]||'',cn:r[6]||'',cost:parseFloat(r[7])||0,marketValue:parseFloat(r[8])||0,priceUrl:r[9]||'',notes:r[10]||''})).filter(c=>c.name);
+      state.collection=data.Collection.slice(1).map(r=>({id:r[0],name:r[1],type:r[2],game:r[3],status:r[4],set:r[5]||'',cn:r[6]||'',cost:parseFloat(r[7])||0,marketValue:parseFloat(r[8])||0,priceUrl:r[9]||'',notes:r[10]||'',added:r[11]?dayKey(r[11]):''})).filter(c=>c.name);
     }
     if(data.Settings&&data.Settings.length>1){const map={};data.Settings.slice(1).forEach(r=>{if(r[0])map[r[0]]=r[1];});if(map.cmFee!==undefined)state.settings.cmFee=parseFloat(map.cmFee)||5;if(map.ebFee!==undefined)state.settings.ebFee=parseFloat(map.ebFee)||12;if(map.otFee!==undefined)state.settings.otFee=parseFloat(map.otFee)||0;if(map.inventoryValue!==undefined)state.settings.inventoryValue=parseFloat(map.inventoryValue)||0;}
     if(data.Packaging&&data.Packaging.length>1){state.packaging=data.Packaging.slice(1).map(r=>({name:r[0],cost:parseFloat(r[1])||0})).filter(p=>p.name);}
@@ -873,7 +873,7 @@ async function flushSaves(){
   for(const sheet of sheets){
     if(sheet==='Sales') await saveSheetData('Sales',['Date','Item','Platform','Price','ShippingCharged','PostageCost','Packaging','ArticleCount','ActualCommission','PromotedFee','PokemonQty','MTGQty','OnePieceQty','MarvelQty','OtherQty','DBZQty','RiftboundQty','MTGHobbitQty','MTGAvatarTLAQty','MTGAvatarTLEQty','MTGStrixhavenQty','MTGMarvelQty','MTGFFQty','BuyerUsername','YugiohQty','CyberpunkQty','MTGRealityFractureQty'],state.sales.map(s=>[s.date,s.item,s.platform,s.price,s.shippingCharged||0,s.postageCost,JSON.stringify(s.packaging||[]),s.articleCount||1,s.actualCommission!==null&&s.actualCommission!==undefined?s.actualCommission:'',s.promotedFee||0,(s.gameQty?.pokemon||0),(s.gameQty?.mtg||0),(s.gameQty?.onepiece||0),(s.gameQty?.marvel||0),(s.gameQty?.other||0),(s.gameQty?.dbz||0),(s.gameQty?.riftbound||0),(s.gameQty?.mtg_hobbit||0),(s.gameQty?.mtg_avatar_tla||0),(s.gameQty?.mtg_avatar_tle||0),(s.gameQty?.mtg_strixhaven||0),(s.gameQty?.mtg_marvel||0),(s.gameQty?.mtg_ff||0),s.username||'',(s.gameQty?.yugioh||0),(s.gameQty?.cyberpunk||0),(s.gameQty?.mtg_fra||0)]));
     if(sheet==='Purchases') await saveSheetData('Purchases',['Date','Description','Category','Amount','Supplier','Set'],state.purchases.map(p=>[p.date,p.description,p.category,p.amount,p.supplier||'',p.set||'']));
-    if(sheet==='Collection') await saveSheetData('Collection',['ID','Name','Type','Game','Status','Set','CN','Cost','MarketValue','PriceUrl','Notes'],state.collection.map(c=>[c.id,c.name,c.type,c.game,c.status,c.set||'',c.cn||'',c.cost,c.marketValue,c.priceUrl||'',c.notes||'']));
+    if(sheet==='Collection') await saveSheetData('Collection',['ID','Name','Type','Game','Status','Set','CN','Cost','MarketValue','PriceUrl','Notes','Added'],state.collection.map(c=>[c.id,c.name,c.type,c.game,c.status,c.set||'',c.cn||'',c.cost,c.marketValue,c.priceUrl||'',c.notes||'',c.added||'']));
     if(sheet==='Games') await saveSheetData('Games',['ID','Name','Platform','Condition','Cost','Value','Added'],state.games.map(g=>[g.id,g.name,g.platform,g.condition||'',g.cost,g.value,g.added]));
     if(sheet==='ItemSnapshots'){
       if(state.itemSnapshots&&Object.keys(state.itemSnapshots).length){
@@ -1247,17 +1247,18 @@ function showSaleToast(sale, profit, articleCount){
   }
 
   // Monthly performance — how close to beating last month?
-  const thisMonth=new Date(now2.getFullYear(),now2.getMonth(),1);
-  const lastMonthStart=new Date(now2.getFullYear(),now2.getMonth()-1,1);
+  const curKey=payPeriodKey(now2);
+  const thisMonth=payPeriodRange(curKey).start;
+  const lastMonthStart=payPeriodRange(shiftPeriodKey(curKey,-1)).start;
   const lastMonthEnd=new Date(thisMonth.getTime()-1);
   const thisMonthRev=state.sales.filter(s=>{const d=parseDateToObj(s.date);return d&&d>=thisMonth;}).reduce((a,s)=>a+(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0),0);
   const lastMonthRev=state.sales.filter(s=>{const d=parseDateToObj(s.date);return d&&d>=lastMonthStart&&d<=lastMonthEnd;}).reduce((a,s)=>a+(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0),0);
   if(lastMonthRev>0){
     const remaining=lastMonthRev-thisMonthRev;
     const pct=Math.round(thisMonthRev/lastMonthRev*100);
-    if(thisMonthRev>=lastMonthRev) tips.push(`🏆 Already beaten last month's total revenue!`);
-    else if(remaining<50) tips.push(`🎯 Only ${fm(remaining)} away from beating last month's revenue`);
-    else if(pct>=75) tips.push(`💪 ${pct}% of the way to beating last month (${fm(remaining)} to go)`);
+    if(thisMonthRev>=lastMonthRev) tips.push(`🏆 Already beaten last pay period's revenue!`);
+    else if(remaining<50) tips.push(`🎯 Only ${fm(remaining)} away from beating last pay period's revenue`);
+    else if(pct>=75) tips.push(`💪 ${pct}% of the way to beating last pay period (${fm(remaining)} to go)`);
   }
 
   // Today's order count milestone
@@ -1798,7 +1799,7 @@ function renderGameBreakdown(){
     tagged++;
     const orderRevenue=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);
     const orderProfit=calcSaleProfit(s);
-    const month=parseToYYYYMM(s.date);
+    const month=payPeriodKey(s.date);
     Object.entries(merged).forEach(([game,qty])=>{
       if(!qty||!(game in stats)) return;
       const share=qty/total;
@@ -1819,7 +1820,7 @@ function renderGameBreakdown(){
   if(gameBreakdownDetailed){
     // Chart view — cards sold per game over time
     const allMonths=[...new Set(games.flatMap(g=>Object.keys(stats[g].byMonth)))].sort();
-    const mLabels=allMonths.map(k=>{const[y,m]=k.split('-');return new Date(y,m-1).toLocaleDateString('en-GB',{month:'short',year:'2-digit'});});
+    const mLabels=allMonths.map(k=>payPeriodLabel(k));
     const datasets=sorted.map(g=>({
       label:GAME_LABELS[g],
       data:allMonths.map(m=>stats[g].byMonth[m]||0),
@@ -2242,18 +2243,24 @@ function parseDateToObj(dateVal){
 
 function getMonthlyData(){
   const months={};
+  const blank=()=>({revenue:0,profit:0,spend:0,graded:0,gradedCards:[]});
   state.sales.forEach(s=>{
-    const key=parseToYYYYMM(s.date);
+    const key=payPeriodKey(s.date);
     if(!key) return;
-    if(!months[key])months[key]={revenue:0,profit:0,spend:0};
+    if(!months[key])months[key]=blank();
     months[key].revenue+=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);
     months[key].profit+=calcSaleProfit(s);
   });
   state.purchases.forEach(p=>{
-    const key=parseToYYYYMM(p.date);
+    const key=payPeriodKey(p.date);
     if(!key) return;
-    if(!months[key])months[key]={revenue:0,profit:0,spend:0};
+    if(!months[key])months[key]=blank();
     months[key].spend+=parseFloat(p.amount)||0;
+  });
+  gradedAdditions().forEach(g=>{
+    const key=payPeriodKey(g.added);
+    if(!months[key])months[key]=blank();
+    months[key].graded+=g.value;months[key].gradedCards.push(g);
   });
   const keys=Object.keys(months).sort();
   return{keys,months};
@@ -2263,62 +2270,64 @@ let mainChartDrillMonth=null, volChartDrillMonth=null;
 function mainChartDrillBack(){mainChartDrillMonth=null;renderMainChart();}
 function volChartDrillBack(){volChartDrillMonth=null;renderVolChart();}
 
+function gradedTooltip(cards){
+  if(!cards||!cards.length) return [];
+  return cards.slice(0,6).map(g=>`  ${g.name}: ${fm(g.value)}${g.cost?` (cost ${fm(g.cost)})`:''}`).concat(cards.length>6?[`  +${cards.length-6} more`]:[]);
+}
+function gradedDataset(values,cardLists){
+  return {label:'Graded added',type:'line',data:values.map(v=>+(v||0).toFixed(2)),borderColor:'#E8B84B',backgroundColor:'#E8B84B',
+    pointRadius:values.map(v=>v>0?6:0),pointHoverRadius:8,pointStyle:'rectRot',pointHitRadius:values.map(v=>v>0?10:0),showLine:true,borderWidth:2,borderDash:[5,4],tension:0,_cards:cardLists,order:-1};
+}
+function mainChartOptions(onClick,titleFn){
+  return{responsive:true,maintainAspectRatio:false,onClick,
+    plugins:{legend:{display:false},tooltip:{callbacks:{
+      title:items=>titleFn&&items.length?titleFn(items[0].dataIndex):(items.length?items[0].label:''),
+      label:c=>(c.dataset._cards&&!c.raw)?null:`${c.dataset.label}: £${(+c.raw).toFixed(2)}`,
+      afterLabel:c=>c.dataset._cards?gradedTooltip(c.dataset._cards[c.dataIndex]):[]}}},
+    scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:11}}}}};
+}
 function renderMainChart(){
   const{keys,months}=getMonthlyData();
   const backBtn=document.getElementById('main-chart-back');
   const labelEl=document.getElementById('main-chart-month-label');
+  const legendBase=`<span><span class="lsq" style="background:#1D9E75"></span>Revenue</span><span><span class="lsq" style="background:#185FA5"></span>Profit</span>`;
+  const legendGraded=`<span><span class="lsq" style="background:#E8B84B;transform:rotate(45deg) scale(.8)"></span>Graded card added (value)</span>`;
 
   if(mainChartDrillMonth){
-    // Drill into a specific month — show daily data
-    const [y,m]=mainChartDrillMonth.split('-');
-    const monthName=new Date(y,m-1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
-    if(labelEl) labelEl.textContent=monthName;
+    const{start,end}=payPeriodRange(mainChartDrillMonth);
+    if(labelEl) labelEl.textContent=payPeriodRangeLabel(mainChartDrillMonth);
     if(backBtn) backBtn.style.display='inline-flex';
-    const daySales={};
-    state.sales.forEach(s=>{
-      if(!s.date) return;
-      const d=s.date.slice(0,10);
-      if(d.startsWith(mainChartDrillMonth)){
-        if(!daySales[d]) daySales[d]={revenue:0,profit:0};
-        daySales[d].revenue+=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);
-        daySales[d].profit+=calcSaleProfit(s);
-      }
-    });
-    const days=Object.keys(daySales).sort();
-    const dLabels=days.map(d=>new Date(d+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
-    document.getElementById('main-legend').innerHTML=`<span><span class="lsq" style="background:#1D9E75"></span>Revenue</span><span><span class="lsq" style="background:#185FA5"></span>Profit</span>`;
+    const days=[];for(let d=new Date(start);d<end;d.setDate(d.getDate()+1))days.push(dayKey(new Date(d.getFullYear(),d.getMonth(),d.getDate(),12)));
+    const daySales={};days.forEach(k=>daySales[k]={revenue:0,profit:0,graded:0,cards:[]});
+    state.sales.forEach(s=>{const k=dayKey(s.date);if(daySales[k]){daySales[k].revenue+=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);daySales[k].profit+=calcSaleProfit(s);}});
+    gradedAdditions().forEach(g=>{const k=dayKey(g.added);if(daySales[k]){daySales[k].graded+=g.value;daySales[k].cards.push(g);}});
+    const hasGraded=days.some(k=>daySales[k].graded>0);
+    const dLabels=days.map(k=>parseDateToObj(k).toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
+    document.getElementById('main-legend').innerHTML=legendBase+(hasGraded?legendGraded:'');
     if(mainChartInst) mainChartInst.destroy();
-    mainChartInst=new Chart(document.getElementById('mainChart'),{
-      type:'bar',
-      data:{labels:dLabels,datasets:[
-        {label:'Revenue',data:days.map(d=>+daySales[d].revenue.toFixed(2)),backgroundColor:'#1D9E75',borderRadius:3},
-        {label:'Profit',data:days.map(d=>+daySales[d].profit.toFixed(2)),backgroundColor:'#185FA5',borderRadius:3}
-      ]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:11}}}}}
-    });
+    const ds=[
+      {label:'Revenue',data:days.map(k=>+daySales[k].revenue.toFixed(2)),backgroundColor:'#1D9E75',borderRadius:3},
+      {label:'Profit',data:days.map(k=>+daySales[k].profit.toFixed(2)),backgroundColor:'#185FA5',borderRadius:3}];
+    if(hasGraded) ds.push(gradedDataset(days.map(k=>daySales[k].graded),days.map(k=>daySales[k].cards)));
+    mainChartInst=new Chart(document.getElementById('mainChart'),{type:'bar',data:{labels:dLabels,datasets:ds},options:mainChartOptions()});
     return;
   }
 
-  if(labelEl) labelEl.textContent='';
+  if(labelEl) labelEl.textContent='Each bar = one pay period, from payday';
   if(backBtn) backBtn.style.display='none';
-  const labels=keys.map(k=>{const[y,m]=k.split('-');return new Date(y,m-1).toLocaleDateString('en-GB',{month:'short',year:'2-digit'});});
-  document.getElementById('main-legend').innerHTML=`<span><span class="lsq" style="background:#1D9E75"></span>Revenue</span><span><span class="lsq" style="background:#185FA5"></span>Profit</span><span><span class="lsq" style="background:#D85A30"></span>Spend</span>`;
+  const labels=keys.map(k=>payPeriodLabel(k));
+  const hasGraded=keys.some(k=>months[k].graded>0);
+  document.getElementById('main-legend').innerHTML=legendBase+`<span><span class="lsq" style="background:#D85A30"></span>Spend</span>`+(hasGraded?legendGraded:'');
   if(mainChartInst) mainChartInst.destroy();
+  const ds=[
+    {label:'Revenue',data:keys.map(k=>+months[k].revenue.toFixed(2)),backgroundColor:'#1D9E75',borderRadius:3},
+    {label:'Profit',data:keys.map(k=>+months[k].profit.toFixed(2)),backgroundColor:'#185FA5',borderRadius:3},
+    {label:'Spend',data:keys.map(k=>+months[k].spend.toFixed(2)),backgroundColor:'#D85A30',borderRadius:3}];
+  if(hasGraded) ds.push(gradedDataset(keys.map(k=>months[k].graded),keys.map(k=>months[k].gradedCards)));
   mainChartInst=new Chart(document.getElementById('mainChart'),{
     type:'bar',
-    data:{labels:labels.length?labels:['No data'],datasets:[
-      {label:'Revenue',data:keys.map(k=>+months[k].revenue.toFixed(2)),backgroundColor:'#1D9E75',borderRadius:3},
-      {label:'Profit',data:keys.map(k=>+months[k].profit.toFixed(2)),backgroundColor:'#185FA5',borderRadius:3},
-      {label:'Spend',data:keys.map(k=>+months[k].spend.toFixed(2)),backgroundColor:'#D85A30',borderRadius:3}
-    ]},
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      onClick:(evt,elements)=>{
-        if(elements.length){const k=keys[elements[0].index];mainChartDrillMonth=k;renderMainChart();}
-      },
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},
-      scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:11}}}}
-    }
+    data:{labels:labels.length?labels:['No data'],datasets:ds},
+    options:mainChartOptions((evt,elements)=>{if(elements.length){mainChartDrillMonth=keys[elements[0].index];renderMainChart();}},i=>payPeriodRangeLabel(keys[i]))
   });
 }
 
@@ -2328,9 +2337,8 @@ function renderVolChart(){
   const labelEl=document.getElementById('vol-chart-month-label');
 
   if(volChartDrillMonth){
-    const [y,m]=volChartDrillMonth.split('-');
-    const monthName=new Date(y,m-1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
-    if(labelEl) labelEl.textContent=monthName;
+    const volRange=payPeriodRange(volChartDrillMonth);
+    if(labelEl) labelEl.textContent=payPeriodRangeLabel(volChartDrillMonth);
     if(backBtn) backBtn.style.display='inline-flex';
     const dayData={};
     state.sales.forEach(s=>{
@@ -2338,7 +2346,7 @@ function renderVolChart(){
       const d=parseDateToObj(s.date);
       if(!d) return;
       const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      if(key.startsWith(volChartDrillMonth)){
+      if(d>=volRange.start&&d<volRange.end){
         if(!dayData[key]) dayData[key]={vol:0,prices:[],orders:0};
         dayData[key].vol+=(parseInt(s.articleCount)||1);
         dayData[key].prices.push((parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0));
@@ -2361,15 +2369,15 @@ function renderVolChart(){
     return;
   }
 
-  if(labelEl) labelEl.textContent='';
+  if(labelEl) labelEl.textContent='Each point = one pay period, from payday';
   if(backBtn) backBtn.style.display='none';
-  const labels=keys.map(k=>{const[y,m]=k.split('-');return new Date(y,m-1).toLocaleDateString('en-GB',{month:'short',year:'2-digit'});});
+  const labels=keys.map(k=>payPeriodLabel(k));
 
   const volByMonth={};
   const avgPriceByMonth={};
   const ordersByMonth={};
   state.sales.forEach(s=>{
-    const key=parseToYYYYMM(s.date);
+    const key=payPeriodKey(s.date);
     if(!key) return;
     if(!volByMonth[key]){volByMonth[key]=0;avgPriceByMonth[key]=[];ordersByMonth[key]=0;}
     volByMonth[key]+=(parseInt(s.articleCount)||1);
@@ -2397,7 +2405,7 @@ function renderVolChart(){
     options:{
       responsive:true,maintainAspectRatio:false,
       onClick:(evt,elements)=>{if(elements.length){const k=keys[elements[0].index];volChartDrillMonth=k;renderVolChart();}},
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.dataset.yAxisID==='y2'?'£':'')+c.raw}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{title:items=>items.length?payPeriodRangeLabel(keys[items[0].dataIndex]):'',label:c=>c.dataset.label+': '+(c.dataset.yAxisID==='y2'?'£':'')+c.raw}}},
       interaction:{mode:'index',intersect:false},
       scales:{
         x:{grid:{display:false},ticks:{font:{size:11}}},
@@ -2745,6 +2753,38 @@ function periodSpendByGameHtml(start){
   </div>${cmLine}`;
 }
 
+// ---- Pay periods (payday to the day before next payday) ----
+const _paydayCache={};
+function paydayCached(y,m){const k=y+'-'+m+'-'+ukBankHolidays.size;if(!_paydayCache[k])_paydayCache[k]=getPayday(y,m);return _paydayCache[k];}
+function payPeriodStartFor(d){
+  const y=d.getFullYear(),m=d.getMonth()+1;
+  const pd=paydayCached(y,m);
+  if(d>=pd) return pd;
+  return m===1?paydayCached(y-1,12):paydayCached(y,m-1);
+}
+function pk2(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}
+function payPeriodKey(v){const d=v instanceof Date?v:parseDateToObj(v);return d?pk2(payPeriodStartFor(d)):null;}
+function payPeriodRange(key){const[y,m]=key.split('-').map(Number);const start=paydayCached(y,m);const end=m===12?paydayCached(y+1,1):paydayCached(y,m+1);return{start,end};}
+function payPeriodLabel(key,year=true){return payPeriodRange(key).start.toLocaleDateString('en-GB',year?{day:'numeric',month:'short',year:'2-digit'}:{day:'numeric',month:'short'});}
+function payPeriodRangeLabel(key){const{start,end}=payPeriodRange(key);const last=new Date(end);last.setDate(last.getDate()-1);
+  return start.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' – '+last.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}
+function shiftPeriodKey(key,n){const[y,m]=key.split('-').map(Number);const d=new Date(y,m-1+n,1);return pk2(d);}
+
+// ---- Graded cards: when each was added and what it was worth then ----
+const GRADED_RE=/\b(psa|bgs|beckett|cgc|sgc|ace|tag)\b/i;
+function gradedAdditions(){
+  return state.collection.filter(c=>c.type==='graded'||GRADED_RE.test(c.notes||'')).map(c=>{
+    const snaps=(state.itemSnapshots&&state.itemSnapshots[c.id])||[];
+    const dated=snaps.map(x=>({d:parseDateToObj(x.date),v:x.value})).filter(x=>x.d).sort((a,b)=>a.d-b.d);
+    let added=c.added?parseDateToObj(c.added):null;
+    if(!added&&dated.length) added=dated[0].d;
+    if(!added) return null;
+    const first=dated.find(x=>x.d>=added&&x.v>0);
+    const value=first?first.v:(parseFloat(c.marketValue)||0);
+    return{name:c.name,added,value,cost:parseFloat(c.cost)||0,notes:c.notes||''};
+  }).filter(Boolean);
+}
+
 function getNextPayday(periodStart){
   const y=periodStart.getFullYear(),m=periodStart.getMonth()+1;
   return m===12?getPayday(y+1,1):getPayday(y,m+1);
@@ -2873,13 +2913,13 @@ function renderYearChart(){
   if(labelEl) labelEl.textContent=String(year);
   if(fwdBtn) fwdBtn.disabled=isCurrent;
 
-  const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const PKEYS=Array.from({length:12},(_,i)=>`${year}-${String(i+1).padStart(2,'0')}`);
+  const MONTHS=PKEYS.map(k=>payPeriodLabel(k,false));
   const monthData=MONTHS.map(()=>({vol:0,orders:0,prices:[],cards:0,profit:0}));
 
   state.sales.forEach(s=>{
-    const d=parseDateToObj(s.date);
-    if(!d||d.getFullYear()!==year) return;
-    const m=d.getMonth();
+    const m=PKEYS.indexOf(payPeriodKey(s.date));
+    if(m<0) return;
     monthData[m].vol+=(parseInt(s.articleCount)||1);
     monthData[m].orders++;
     monthData[m].prices.push((parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0));
@@ -2898,7 +2938,7 @@ function renderYearChart(){
     <span><span style="font-weight:600;color:#1D9E75">£${totalProfit.toFixed(2)}</span> <span style="color:var(--muted)">profit</span></span>
     <span><span style="font-weight:600;color:var(--text)">${totalOrders}</span> <span style="color:var(--muted)">orders</span></span>
     <span><span style="font-weight:600;color:#534AB7">${totalCards}</span> <span style="color:var(--muted)">cards</span></span>
-    ${totalOrders>0?`<span><span style="font-weight:600;color:#BA7517">${MONTHS[bestMonth]}</span> <span style="color:var(--muted)">best month</span></span>`:''}`;
+    ${totalOrders>0?`<span><span style="font-weight:600;color:#BA7517">${MONTHS[bestMonth]}</span> <span style="color:var(--muted)">best period</span></span>`:''}`;
 
   const revenues=monthData.map(m=>+m.prices.reduce((a,b)=>a+b,0).toFixed(2));
   const profits=monthData.map(m=>+m.profit.toFixed(2));
@@ -2919,7 +2959,7 @@ function renderYearChart(){
     ]},
     options:{
       responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Cards'?`Cards: ${c.raw}`:`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{title:items=>items.length?payPeriodRangeLabel(PKEYS[items[0].dataIndex]):'',label:c=>c.dataset.label==='Cards'?`Cards: ${c.raw}`:`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},
       scales:{
         x:{grid:{display:false},ticks:{font:{size:11}}},
         y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:11}}},
@@ -3015,20 +3055,16 @@ function renderDashMonthChart(){
   const labelEl=document.getElementById('dash-month-nav-label');
   const fwdBtn=document.getElementById('dash-month-nav-fwd');
   if(!summaryEl||!canvas) return;
-  const now=new Date();
-  const targetDate=new Date(now.getFullYear(),now.getMonth()+dashMonthOffset,1);
-  const year=targetDate.getFullYear();
-  const month=targetDate.getMonth();
-  const daysInMonth=new Date(year,month+1,0).getDate();
+  const pKey=shiftPeriodKey(payPeriodKey(new Date()),dashMonthOffset);
+  const pr=payPeriodRange(pKey);
   const isCurrentMonth=dashMonthOffset===0;
-  if(labelEl) labelEl.textContent=targetDate.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  if(labelEl) labelEl.textContent=payPeriodRangeLabel(pKey);
   if(fwdBtn) fwdBtn.disabled=isCurrentMonth;
-  const dayData={};
-  for(let i=1;i<=daysInMonth;i++) dayData[i]={revenue:0,profit:0,orders:0,cards:0};
+  const dayData={};const dayLabels=[];
+  for(let d=new Date(pr.start);d<pr.end;d.setDate(d.getDate()+1)){const k=dayKey(new Date(d.getFullYear(),d.getMonth(),d.getDate(),12));dayData[k]={revenue:0,profit:0,orders:0,cards:0};dayLabels.push(d.getDate());}
   state.sales.forEach(s=>{
-    const d=parseDateToObj(s.date);
-    if(!d||d.getFullYear()!==year||d.getMonth()!==month) return;
-    const day=d.getDate();
+    const day=dayKey(s.date);
+    if(!dayData[day]) return;
     dayData[day].revenue+=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);
     dayData[day].profit+=calcSaleProfit(s);
     dayData[day].orders++;
@@ -3039,7 +3075,7 @@ function renderDashMonthChart(){
   const totalOrders=Object.values(dayData).reduce((a,d)=>a+d.orders,0);
   const totalCards=Object.values(dayData).reduce((a,d)=>a+d.cards,0);
   summaryEl.innerHTML=`<span><span style="font-weight:600;color:var(--text)">${fm(totalRev)}</span> <span style="color:var(--muted)">revenue</span></span><span><span style="font-weight:600;color:#1D9E75">${fm(totalProfit)}</span> <span style="color:var(--muted)">profit</span></span><span><span style="font-weight:600;color:var(--text)">${totalOrders}</span> <span style="color:var(--muted)">orders</span></span><span><span style="font-weight:600;color:#534AB7">${totalCards}</span> <span style="color:var(--muted)">cards</span></span>`;
-  const labels=Object.keys(dayData).map(d=>+d%5===0||+d===1?String(d):'');
+  const labels=dayLabels.map((d,i)=>i===0||d===1||d%5===0?String(d):'');
   const revenues=Object.values(dayData).map(d=>+d.revenue.toFixed(2));
   const profits=Object.values(dayData).map(d=>+d.profit.toFixed(2));
   const cards=Object.values(dayData).map(d=>d.cards);
@@ -3520,6 +3556,7 @@ function addCollectionItem(){
     marketValue:parseFloat(document.getElementById('ci-value').value)||0,
     priceUrl:document.getElementById('ci-url').value.trim(),
     notes:document.getElementById('ci-notes').value.trim(),
+    added:today(),
   };
   state.collection.push(item);
   scheduleSave('Collection');
@@ -3717,6 +3754,7 @@ function importCollectrCsv(input){
       const cardNumIdx=headers.findIndex(h=>h.includes('card number'));
       const notesIdx=headers.findIndex(h=>h==='notes');
       const catIdx=headers.findIndex(h=>h==='category');
+      const addedIdx=headers.findIndex(h=>h.includes('date added')||h==='added');
 
       if(nameIdx===-1||marketIdx===-1) throw new Error('Invalid Collectr CSV format');
 
@@ -3743,7 +3781,7 @@ function importCollectrCsv(input){
 
       function mapType(port,grade){
         if(String(port).toLowerCase().includes('sealed')) return 'sealed';
-        if(String(grade).toLowerCase().includes('psa')) return 'graded';
+        if(GRADED_RE.test(String(grade))) return 'graded';
         return 'single';
       }
 
@@ -3772,7 +3810,9 @@ function importCollectrCsv(input){
         const itemCost=round2(cost*qty);
         const itemMarket=round2(market*qty);
 
-        newCollection.push({id:uid(),name,type:itype,game,status:'collection',set:short,cn,cost:itemCost,marketValue:itemMarket,priceUrl:'',notes});
+        const addedRaw=addedIdx>=0?String(cols[addedIdx]||'').replace(/"/g,'').trim():'';
+        const addedD=addedRaw?parseDateToObj(addedRaw):null;
+        newCollection.push({id:uid(),name,type:itype,game,status:'collection',set:short,cn,cost:itemCost,marketValue:itemMarket,priceUrl:'',notes,added:addedD?dayKey(addedD):''});
         portfolioTotals[short]=(portfolioTotals[short]||0)+itemMarket;
         typeTotals[itype]=(typeTotals[itype]||0)+itemMarket;
         totalMarket+=itemMarket;
@@ -3791,7 +3831,7 @@ function importCollectrCsv(input){
       });
       newCollection.forEach(item=>{
         const k=`${String(item.name||'').toLowerCase().trim()}|${String(item.set||'').toLowerCase().trim()}|${String(item.cn||'').toLowerCase().trim()}`;
-        if(prevByKey[k]) item.id=prevByKey[k];
+        if(prevByKey[k]){item.id=prevByKey[k];if(!item.added&&prevById[item.id])item.added=prevById[item.id].added||'';}
       });
 
       // Record per-item price snapshots
@@ -3993,7 +4033,7 @@ function renderGamesPage(){
 }
 
 // ---- INIT ----
-async function init(){loadBankHolidays();await loadFromSheets();document.getElementById('loading-overlay').style.display='none';renderDashboard();}
+async function init(){await Promise.all([Promise.race([loadBankHolidays(),new Promise(r=>setTimeout(r,3000))]),loadFromSheets()]);document.getElementById('loading-overlay').style.display='none';renderDashboard();}
 init();
 </script>
 </body>
