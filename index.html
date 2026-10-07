@@ -218,7 +218,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 6 Oct 2026</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 7 Oct 2026</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
     </div>
@@ -1657,8 +1657,9 @@ function renderTaxYear(){
 const SVR_LBL={pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',other:'Other',untagged:'Not tagged'};
 let svrOpen=null,svrMonth='';
 function saleGameMix(s){
+  // MTGQty already includes the MTG sub-sets (Hobbit, Avatar, Strixhaven...), so they are not added again
   const gq=s.gameQty||{};
-  return {pokemon:gq.pokemon||0,mtg:(gq.mtg||0)+(gq.marvel||0)+(gq.mtg_hobbit||0)+(gq.mtg_avatar_tla||0)+(gq.mtg_avatar_tle||0)+(gq.mtg_strixhaven||0)+(gq.mtg_fra||0)+(gq.mtg_ff||0)+(gq.mtg_marvel||0),
+  return {pokemon:gq.pokemon||0,mtg:(gq.mtg||0)+(gq.marvel||0),
     onepiece:gq.onepiece||0,dbz:gq.dbz||0,riftbound:gq.riftbound||0,yugioh:gq.yugioh||0,cyberpunk:gq.cyberpunk||0,other:gq.other||0};
 }
 function collGame(c){
@@ -1784,16 +1785,7 @@ function renderGameBreakdown(){
 
   state.sales.forEach(s=>{
     const gq=s.gameQty||{};
-    const merged={
-      pokemon:gq.pokemon||0,
-      mtg:(gq.mtg||0)+(gq.marvel||0)+(gq.mtg_hobbit||0)+(gq.mtg_avatar_tla||0)+(gq.mtg_avatar_tle||0)+(gq.mtg_strixhaven||0)+(gq.mtg_fra||0)+(gq.mtg_ff||0)+(gq.mtg_marvel||0),
-      onepiece:gq.onepiece||0,
-      dbz:gq.dbz||0,
-      riftbound:gq.riftbound||0,
-      yugioh:gq.yugioh||0,
-      cyberpunk:gq.cyberpunk||0,
-      other:gq.other||0
-    };
+    const merged=saleGameMix(s);
     const total=Object.values(merged).reduce((a,b)=>a+b,0);
     if(!total){untagged++;return;}
     tagged++;
@@ -2577,8 +2569,11 @@ function logSale(){
     dbz:parseInt(document.getElementById('gq-dbz')?.value)||0,
     riftbound:parseInt(document.getElementById('gq-riftbound')?.value)||0,
     yugioh:parseInt(document.getElementById('gq-yugioh')?.value)||0,
+    cyberpunk:parseInt(document.getElementById('gq-cyberpunk')?.value)||0,
     other:parseInt(document.getElementById('gq-other')?.value)||0
   };
+  // Safety net: any game panel not listed above is still recorded
+  document.querySelectorAll('#game-breakdown-grid input[id^="gq-"]').forEach(el=>{const k=el.id.slice(3);if(!(k in gameQty))gameQty[k]=parseInt(el.value)||0;});
   const saleObj={date,platform,item,price,shippingCharged:shipping,postageCost:post?post.cost:0,packaging,articleCount,actualCommission:null,promotedFee,gameQty,username:buyerUsername};
   state.sales.push(saleObj);
   const saleProfit=calcSaleProfit(saleObj);
@@ -3313,12 +3308,10 @@ function renderBudgetBreakdown(){
     state.sales.forEach(s=>{
       const d=parseDateToObj(s.date);
       if(!d||d<periodStart) return;
-      const gq=s.gameQty||{};
-      const total=Object.values(gq).reduce((a,b)=>a+(b||0),0);
+      const mix=saleGameMix(s);
+      const total=Object.values(mix).reduce((a,b)=>a+(b||0),0);
       if(!total) return;
-      let gameQty=0;
-      if(catKey==='mtg') gameQty=(gq.mtg||0)+(gq.mtg_hobbit||0)+(gq.mtg_avatar_tla||0)+(gq.mtg_avatar_tle||0)+(gq.mtg_strixhaven||0)+(gq.mtg_fra||0)+(gq.mtg_ff||0)+(gq.mtg_marvel||0);
-      else gameQty=gq[catKey]||0;
+      const gameQty=mix[catKey==='marvel'?'mtg':catKey]||0;
       if(!gameQty) return;
       profit+=calcSaleProfit(s)*(gameQty/total);
     });
@@ -3382,7 +3375,16 @@ function renderPurchasesTable(cat){
   const tbody=document.getElementById('purchases-tbody');
   const list=cat==='all'?[...state.purchases].reverse():[...state.purchases].filter(p=>p.category===cat).reverse();
   if(!list.length){tbody.innerHTML='<tr><td colspan="6" class="empty">No purchases here yet.</td></tr>';return;}
-  tbody.innerHTML=list.map(p=>{const realIdx=state.purchases.indexOf(p);return`<tr><td>${fd(p.date)}</td><td>${p.description||'—'}</td><td><span class="badge badge-${p.category||'other'}">${CAT_LABELS[p.category]||p.category||'Other'}</span></td><td>${p.supplier||'—'}</td><td>${fm(p.amount)}</td><td><button class="btn sm danger" onclick="deletePurchase(${realIdx})"><i class="ti ti-trash"></i></button></td></tr>`;}).join('');
+  tbody.innerHTML=list.map(p=>{const realIdx=state.purchases.indexOf(p);return`<tr><td>${fd(p.date)}</td><td>${p.description||'—'}</td><td><select title="Change category" onchange="setPurchaseCategory(${realIdx},this.value)" style="font-size:12px;padding:2px 4px;border-radius:var(--radius-sm)">${Object.entries(CAT_LABELS).map(([k,l])=>`<option value="${k}" ${(p.category||'other')===k?'selected':''}>${l}</option>`).join('')}</select></td><td>${p.supplier||'—'}</td><td>${fm(p.amount)}</td><td><button class="btn sm danger" onclick="deletePurchase(${realIdx})"><i class="ti ti-trash"></i></button></td></tr>`;}).join('');
+}
+function setPurchaseCategory(idx,cat){
+  const p=state.purchases[idx];if(!p||!CAT_LABELS[cat])return;
+  const was=CAT_LABELS[p.category]||'Other';
+  p.category=cat;
+  scheduleSave('Purchases');
+  renderPurchasesTable(purchaseTab||'all');
+  try{renderBudgetBreakdown();}catch(e){}
+  showToast(`${p.description||'Purchase'}: ${was} → ${CAT_LABELS[cat]}`);
 }
 function logPurchase(){
   const date=document.getElementById('p-date').value,category=document.getElementById('p-category').value,description=document.getElementById('p-desc').value.trim(),amount=parseFloat(document.getElementById('p-amount').value)||0,supplier=document.getElementById('p-supplier').value.trim(),set=document.getElementById('p-set')?.value.trim()||'';
