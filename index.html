@@ -218,7 +218,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 7 Oct 2026</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 7 Oct 2026 (c)</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
     </div>
@@ -353,8 +353,8 @@ tr:hover td{background:var(--surface2)}
           <!-- LEFT: compact form fields -->
           <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
             <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px">
-              <div class="form-group"><label style="font-size:11px">Sale ID</label><input type="text" id="s-item" style="width:100%;padding:5px 8px;font-size:13px"></div>
-              <div class="form-group"><label style="font-size:11px">Buyer username</label><input type="text" id="s-username" placeholder="username" oninput="checkBuyerVIP()" style="width:100%;padding:5px 8px;font-size:13px"></div>
+              <div class="form-group"><label style="font-size:11px">Sale ID</label><input type="text" id="s-item" oninput="checkDuplicateSaleId()" onchange="checkDuplicateSaleId()" onpaste="setTimeout(checkDuplicateSaleId,0)" style="width:100%;padding:5px 8px;font-size:13px"><div id="s-dup-alert" style="display:none;margin-top:4px;font-size:11px;font-weight:600;color:var(--red);line-height:1.35"></div></div>
+              <div class="form-group"><label style="font-size:11px">Buyer username</label><input type="text" id="s-username" placeholder="username" oninput="checkBuyerVIP()" onchange="checkBuyerVIP()" onpaste="setTimeout(checkBuyerVIP,0)" style="width:100%;padding:5px 8px;font-size:13px"></div>
             </div>
             <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px">
               <div class="form-group"><label style="font-size:11px">Price sold (£)</label><input type="number" id="s-price" step="0.01" min="0" placeholder="0.00" oninput="updateSalePreview()" style="width:100%;padding:5px 8px;font-size:13px"></div>
@@ -424,6 +424,7 @@ tr:hover td{background:var(--surface2)}
           <div class="pkg-item gq-panel" onclick="gqIncrement('gq-riftbound')" style="cursor:pointer"><label style="pointer-events:none">Riftbound</label><input type="number" min="0" value="0" id="gq-riftbound" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
           <div class="pkg-item gq-panel" onclick="gqIncrement('gq-yugioh')" style="cursor:pointer"><label style="pointer-events:none">Yu-Gi-Oh!</label><input type="number" min="0" value="0" id="gq-yugioh" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
           <div class="pkg-item gq-panel" onclick="gqIncrement('gq-cyberpunk')" style="cursor:pointer"><label style="pointer-events:none">Cyberpunk</label><input type="number" min="0" value="0" id="gq-cyberpunk" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
+          <div class="pkg-item gq-panel" onclick="gqIncrement('gq-palworld')" style="cursor:pointer"><label style="pointer-events:none">Palworld</label><input type="number" min="0" value="0" id="gq-palworld" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
           <div class="pkg-item gq-panel" onclick="gqIncrement('gq-other')" style="cursor:pointer"><label style="pointer-events:none">Other</label><input type="number" min="0" value="0" id="gq-other" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:12px;color:var(--muted)">
@@ -465,7 +466,7 @@ tr:hover td{background:var(--surface2)}
             <select id="p-category" style="width:100%;padding:5px 8px;font-size:13px">
               <option value="pokemon">Pokémon</option><option value="mtg">MTG</option>
               <option value="onepiece">One Piece</option><option value="dbz">Dragon Ball Z</option>
-              <option value="riftbound">Riftbound</option><option value="yugioh">Yu-Gi-Oh!</option><option value="cyberpunk">Cyberpunk</option><option value="marvel">Marvel</option>
+              <option value="riftbound">Riftbound</option><option value="yugioh">Yu-Gi-Oh!</option><option value="cyberpunk">Cyberpunk</option><option value="palworld">Palworld</option><option value="marvel">Marvel</option>
               <option value="supplies">Supplies</option><option value="equipment">Equipment</option>
               <option value="other">Other</option>
             </select>
@@ -523,6 +524,7 @@ tr:hover td{background:var(--surface2)}
         <button class="tab" onclick="showPurchaseTab('riftbound')" id="ptab-riftbound">Riftbound</button>
         <button class="tab" onclick="showPurchaseTab('yugioh')" id="ptab-yugioh">Yu-Gi-Oh!</button>
         <button class="tab" onclick="showPurchaseTab('cyberpunk')" id="ptab-cyberpunk">Cyberpunk</button>
+        <button class="tab" onclick="showPurchaseTab('palworld')" id="ptab-palworld">Palworld</button>
         <button class="tab" onclick="showPurchaseTab('marvel')" id="ptab-marvel">Marvel</button>
         <div style="width:1px;height:16px;background:var(--border)"></div>
         <button class="tab" onclick="showPurchaseTab('supplies')" id="ptab-supplies">Supplies</button>
@@ -570,6 +572,7 @@ tr:hover td{background:var(--surface2)}
           <button class="btn sm" id="movers-tcg-riftbound" onclick="setMoversTcg('riftbound')">Riftbound</button>
           <button class="btn sm" id="movers-tcg-yugioh" onclick="setMoversTcg('yugioh')">Yu-Gi-Oh!</button>
           <button class="btn sm" id="movers-tcg-cyberpunk" onclick="setMoversTcg('cyberpunk')">Cyberpunk</button>
+          <button class="btn sm" id="movers-tcg-palworld" onclick="setMoversTcg('palworld')">Palworld</button>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
@@ -604,7 +607,7 @@ tr:hover td{background:var(--surface2)}
             <select id="ci-game" style="width:100%;padding:5px 8px;font-size:13px">
               <option value="pokemon">Pokémon</option><option value="mtg">MTG</option>
               <option value="onepiece">One Piece</option><option value="dbz">Dragon Ball Z</option>
-              <option value="riftbound">Riftbound</option><option value="yugioh">Yu-Gi-Oh!</option><option value="cyberpunk">Cyberpunk</option><option value="marvel">Marvel</option>
+              <option value="riftbound">Riftbound</option><option value="yugioh">Yu-Gi-Oh!</option><option value="cyberpunk">Cyberpunk</option><option value="palworld">Palworld</option><option value="marvel">Marvel</option>
               <option value="other">Other</option>
             </select>
           </div>
@@ -730,8 +733,8 @@ tr:hover td{background:var(--surface2)}
 
 <script>
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbych_44YhqvkW1U3YGqR6MTSzf-H4mbacany9X2xHr233vKXFw7k2WpARmhl56gTlje/exec';
-const CAT_LABELS = {pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',marvel:'Marvel',supplies:'Supplies',equipment:'Equipment',other:'Other'};
-const CAT_COLORS = {pokemon:'#185FA5',mtg:'#534AB7',onepiece:'#D85A30',marvel:'#A32D2D',supplies:'#1D9E75',equipment:'#7a7874',other:'#BA7517'};
+const CAT_LABELS = {pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',palworld:'Palworld',marvel:'Marvel',supplies:'Supplies',equipment:'Equipment',other:'Other'};
+const CAT_COLORS = {palworld:'#EC4899',cyberpunk:'#E8B84B',pokemon:'#185FA5',mtg:'#534AB7',onepiece:'#D85A30',marvel:'#A32D2D',supplies:'#1D9E75',equipment:'#7a7874',other:'#BA7517'};
 const GAME_LABELS = {pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',marvel:'Marvel',other:'Other'};;
 
 const DEFAULTS = {
@@ -792,7 +795,7 @@ async function loadFromSheets(){
             riftbound:g('riftboundqty'),mtg_hobbit:g('mtghobbitqty'),
             mtg_avatar_tla:g('mtgavatartlaqty'),mtg_avatar_tle:g('mtgavatartleqty'),
             mtg_strixhaven:g('mtgstrixhavenqty'),mtg_fra:g('mtgrealityfractureqty'),mtg_marvel:g('mtgmarvelqty'),
-            mtg_ff:g('mtgffqty'),yugioh:g('yugiohqty'),cyberpunk:g('cyberpunkqty')
+            mtg_ff:g('mtgffqty'),yugioh:g('yugiohqty'),cyberpunk:g('cyberpunkqty'),palworld:g('palworldqty')
           },
           username:s('buyerusername')
         };
@@ -871,7 +874,7 @@ function scheduleSave(sheetName){saveQueue[sheetName]=true;clearTimeout(saveTime
 async function flushSaves(){
   const sheets=Object.keys(saveQueue);saveQueue={};
   for(const sheet of sheets){
-    if(sheet==='Sales') await saveSheetData('Sales',['Date','Item','Platform','Price','ShippingCharged','PostageCost','Packaging','ArticleCount','ActualCommission','PromotedFee','PokemonQty','MTGQty','OnePieceQty','MarvelQty','OtherQty','DBZQty','RiftboundQty','MTGHobbitQty','MTGAvatarTLAQty','MTGAvatarTLEQty','MTGStrixhavenQty','MTGMarvelQty','MTGFFQty','BuyerUsername','YugiohQty','CyberpunkQty','MTGRealityFractureQty'],state.sales.map(s=>[s.date,s.item,s.platform,s.price,s.shippingCharged||0,s.postageCost,JSON.stringify(s.packaging||[]),s.articleCount||1,s.actualCommission!==null&&s.actualCommission!==undefined?s.actualCommission:'',s.promotedFee||0,(s.gameQty?.pokemon||0),(s.gameQty?.mtg||0),(s.gameQty?.onepiece||0),(s.gameQty?.marvel||0),(s.gameQty?.other||0),(s.gameQty?.dbz||0),(s.gameQty?.riftbound||0),(s.gameQty?.mtg_hobbit||0),(s.gameQty?.mtg_avatar_tla||0),(s.gameQty?.mtg_avatar_tle||0),(s.gameQty?.mtg_strixhaven||0),(s.gameQty?.mtg_marvel||0),(s.gameQty?.mtg_ff||0),s.username||'',(s.gameQty?.yugioh||0),(s.gameQty?.cyberpunk||0),(s.gameQty?.mtg_fra||0)]));
+    if(sheet==='Sales') await saveSheetData('Sales',['Date','Item','Platform','Price','ShippingCharged','PostageCost','Packaging','ArticleCount','ActualCommission','PromotedFee','PokemonQty','MTGQty','OnePieceQty','MarvelQty','OtherQty','DBZQty','RiftboundQty','MTGHobbitQty','MTGAvatarTLAQty','MTGAvatarTLEQty','MTGStrixhavenQty','MTGMarvelQty','MTGFFQty','BuyerUsername','YugiohQty','CyberpunkQty','MTGRealityFractureQty','PalworldQty'],state.sales.map(s=>[s.date,s.item,s.platform,s.price,s.shippingCharged||0,s.postageCost,JSON.stringify(s.packaging||[]),s.articleCount||1,s.actualCommission!==null&&s.actualCommission!==undefined?s.actualCommission:'',s.promotedFee||0,(s.gameQty?.pokemon||0),(s.gameQty?.mtg||0),(s.gameQty?.onepiece||0),(s.gameQty?.marvel||0),(s.gameQty?.other||0),(s.gameQty?.dbz||0),(s.gameQty?.riftbound||0),(s.gameQty?.mtg_hobbit||0),(s.gameQty?.mtg_avatar_tla||0),(s.gameQty?.mtg_avatar_tle||0),(s.gameQty?.mtg_strixhaven||0),(s.gameQty?.mtg_marvel||0),(s.gameQty?.mtg_ff||0),s.username||'',(s.gameQty?.yugioh||0),(s.gameQty?.cyberpunk||0),(s.gameQty?.mtg_fra||0),(s.gameQty?.palworld||0)]));
     if(sheet==='Purchases') await saveSheetData('Purchases',['Date','Description','Category','Amount','Supplier','Set'],state.purchases.map(p=>[p.date,p.description,p.category,p.amount,p.supplier||'',p.set||'']));
     if(sheet==='Collection') await saveSheetData('Collection',['ID','Name','Type','Game','Status','Set','CN','Cost','MarketValue','PriceUrl','Notes','Added'],state.collection.map(c=>[c.id,c.name,c.type,c.game,c.status,c.set||'',c.cn||'',c.cost,c.marketValue,c.priceUrl||'',c.notes||'',c.added||'']));
     if(sheet==='Games') await saveSheetData('Games',['ID','Name','Platform','Condition','Cost','Value','Added'],state.games.map(g=>[g.id,g.name,g.platform,g.condition||'',g.cost,g.value,g.added]));
@@ -928,6 +931,16 @@ function today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMon
 function dayKey(v){const d=parseDateToObj(v);return d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`:'';}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function calcSaleSupplies(sale){return(sale.packaging||[]).reduce((a,p)=>{const pkg=state.packaging.find(x=>x.name===p.name);return a+(pkg?parseFloat(pkg.cost)*(parseInt(p.qty)||0):0);},0);}
+function saleIdKey(v){const t=String(v||'').trim().toLowerCase();const d=t.match(/\d{5,}/);return d?d[0]:t;}
+function findDuplicateSales(id){const k=saleIdKey(id);if(!k)return[];return state.sales.filter(s=>saleIdKey(s.item)===k);}
+function checkDuplicateSaleId(){
+  const el=document.getElementById('s-item'),box=document.getElementById('s-dup-alert');if(!el||!box)return;
+  const dups=findDuplicateSales(el.value);
+  if(!dups.length){box.style.display='none';el.style.borderColor='';return;}
+  const d=dups[dups.length-1];
+  box.innerHTML=`⚠ Already logged${dups.length>1?' '+dups.length+' times':''}: ${fd(d.date)}${d.username?' · '+d.username:''} · ${fm((parseFloat(d.price)||0))}`;
+  box.style.display='block';el.style.borderColor='var(--red)';
+}
 function checkBuyerVIP(){
   const username=document.getElementById('s-username')?.value.trim().toLowerCase();
   const alertEl=document.getElementById('s-vip-alert');
@@ -1202,7 +1215,7 @@ function showSaleToast(sale, profit, articleCount){
 
   // Game breakdown tips
   const gq=sale.gameQty||{};
-  const GLABELS={pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',other:'Other',mtg_hobbit:'MTG Hobbit',mtg_avatar_tla:'Avatar TLA',mtg_avatar_tle:'Avatar TLE',mtg_strixhaven:'Strixhaven',mtg_fra:'Reality Fracture',mtg_marvel:'Marvel MTG',mtg_ff:'Final Fantasy'};
+  const GLABELS={pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',palworld:'Palworld',other:'Other',mtg_hobbit:'MTG Hobbit',mtg_avatar_tla:'Avatar TLA',mtg_avatar_tle:'Avatar TLE',mtg_strixhaven:'Strixhaven',mtg_fra:'Reality Fracture',mtg_marvel:'Marvel MTG',mtg_ff:'Final Fantasy'};
   const topGame=Object.entries(gq).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])[0];
   if(topGame){
     const gameName=GLABELS[topGame[0]]||topGame[0];
@@ -1654,13 +1667,13 @@ function renderTaxYear(){
 }
 
 // ===== SPENT VS BACK, BY GAME =====
-const SVR_LBL={pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',other:'Other',untagged:'Not tagged'};
+const SVR_LBL={pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',palworld:'Palworld',other:'Other',untagged:'Not tagged'};
 let svrOpen=null,svrMonth='';
 function saleGameMix(s){
   // MTGQty already includes the MTG sub-sets (Hobbit, Avatar, Strixhaven...), so they are not added again
   const gq=s.gameQty||{};
   return {pokemon:gq.pokemon||0,mtg:(gq.mtg||0)+(gq.marvel||0),
-    onepiece:gq.onepiece||0,dbz:gq.dbz||0,riftbound:gq.riftbound||0,yugioh:gq.yugioh||0,cyberpunk:gq.cyberpunk||0,other:gq.other||0};
+    onepiece:gq.onepiece||0,dbz:gq.dbz||0,riftbound:gq.riftbound||0,yugioh:gq.yugioh||0,cyberpunk:gq.cyberpunk||0,palworld:gq.palworld||0,other:gq.other||0};
 }
 function collGame(c){
   const g=c.game||'other';
@@ -1668,6 +1681,7 @@ function collGame(c){
   const t=((c.set||'')+' '+(c.name||'')+' '+(c.notes||'')).toLowerCase();
   if(/avatar|hobbit|strixhaven|final fantasy|magic|mtg/.test(t)) return 'mtg';
   if(/cyberpunk/.test(t)) return 'cyberpunk';
+  if(/palworld/.test(t)) return 'palworld';
   if(/yu-?gi-?oh/.test(t)) return 'yugioh';
   if(/riftbound/.test(t)) return 'riftbound';
   if(/dragon ball|\bdbz\b|\bdbs\b/.test(t)) return 'dbz';
@@ -1775,9 +1789,9 @@ function renderSpendVsReturn(){
 }
 
 function renderGameBreakdown(){
-  const GAME_LABELS={pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',other:'Other',dbz:'Dragon Ball Z',riftbound:'Riftbound'};
-  const GAME_COLORS={pokemon:'#185FA5',mtg:'#534AB7',onepiece:'#D85A30',yugioh:'#8B5CF6',cyberpunk:'#E8B84B',other:'#BA7517',dbz:'#DC2626',riftbound:'#0BC4C4'};
-  const games=['pokemon','mtg','onepiece','yugioh','dbz','riftbound','cyberpunk','other'];
+  const GAME_LABELS={pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',palworld:'Palworld',other:'Other',dbz:'Dragon Ball Z',riftbound:'Riftbound'};
+  const GAME_COLORS={pokemon:'#185FA5',mtg:'#534AB7',onepiece:'#D85A30',yugioh:'#8B5CF6',cyberpunk:'#E8B84B',palworld:'#EC4899',other:'#BA7517',dbz:'#DC2626',riftbound:'#0BC4C4'};
+  const games=['pokemon','mtg','onepiece','yugioh','dbz','riftbound','cyberpunk','palworld','other'];
 
   const stats={};
   games.forEach(g=>{stats[g]={cards:0,revenue:0,profit:0,byMonth:{}};});
@@ -1952,7 +1966,7 @@ const SET_KEYWORDS=[
   ['151','Pokémon 151'],
   ['foundations','MTG Foundations'],['bloomburrow','Bloomburrow'],
   ['duskmourn','Duskmourn'],['final fantasy','Final Fantasy'],
-  ['reality fracture','Reality Fracture'],
+  ['reality fracture','Reality Fracture'],['palworld','Palworld'],
   ['avatar','Avatar'],['hobbit','Hobbit'],
   ['one piece','One Piece'],['op-','One Piece'],
   ['dragon ball','Dragon Ball Super'],
@@ -2538,6 +2552,8 @@ function logSale(){
   const date=document.getElementById('s-date').value,platform=document.getElementById('s-platform').value,item=document.getElementById('s-item').value.trim(),price=parseFloat(document.getElementById('s-price').value)||0,shipping=parseFloat(document.getElementById('s-shipping').value)||0,promotedFee=parseFloat(document.getElementById('s-promoted')?.value)||0,postName=document.getElementById('s-postage').value,post=state.postage.find(p=>p.name===postName);
   const buyerUsername=document.getElementById('s-username')?.value.trim()||'';
   if(!item){alert('Please enter a Sale ID.');return;}
+  const dupSales=findDuplicateSales(item);
+  if(dupSales.length){const d=dupSales[dupSales.length-1];if(!confirm(`Sale ID ${item} is already logged (${fd(d.date)}${d.username?', '+d.username:''}, ${fm(parseFloat(d.price)||0)}).\n\nLog it again anyway?`))return;}
   if(!price){alert('Please enter a price.');return;}
   const totalGQ=getTotalGameQty();
   const articleCount=parseInt(document.getElementById('s-article-count').value)||totalGQ||0;
@@ -2570,6 +2586,7 @@ function logSale(){
     riftbound:parseInt(document.getElementById('gq-riftbound')?.value)||0,
     yugioh:parseInt(document.getElementById('gq-yugioh')?.value)||0,
     cyberpunk:parseInt(document.getElementById('gq-cyberpunk')?.value)||0,
+    palworld:parseInt(document.getElementById('gq-palworld')?.value)||0,
     other:parseInt(document.getElementById('gq-other')?.value)||0
   };
   // Safety net: any game panel not listed above is still recorded
@@ -2584,8 +2601,9 @@ function logSale(){
   const platEl=document.getElementById('s-platform');if(platEl)platEl.value='Cardmarket';
   togglePromotedField();
   const su=document.getElementById('s-username');if(su)su.value='';
+  const da=document.getElementById('s-dup-alert');if(da)da.style.display='none';const si=document.getElementById('s-item');if(si)si.style.borderColor='';
   const va=document.getElementById('s-vip-alert');if(va)va.style.display='none';
-  ['gq-pokemon','gq-mtg','gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_marvel','gq-mtg_strixhaven','gq-mtg_fra','gq-mtg_ff','gq-mtg_hobbit','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-cyberpunk','gq-other'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=0;});
+  ['gq-pokemon','gq-mtg','gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_marvel','gq-mtg_strixhaven','gq-mtg_fra','gq-mtg_ff','gq-mtg_hobbit','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-cyberpunk','gq-palworld','gq-other'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=0;});
   syncArticleCount();
   const defaults={'Thermal label':1,'Promotional sticker':1,'A6 envelope':1};
   state.packaging.forEach(p=>{const inp=document.getElementById('pkg-'+p.name.replace(/\W+/g,'_'));if(inp)inp.value=pkgDefault(p.name);});
@@ -3214,7 +3232,7 @@ function syncArticleCount(){
 }
 
 function getTotalGameQty(){
-  const ids=['gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_strixhaven','gq-mtg_fra','gq-mtg_marvel','gq-mtg_ff','gq-mtg_hobbit','gq-mtg','gq-pokemon','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-cyberpunk','gq-other'];
+  const ids=['gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_strixhaven','gq-mtg_fra','gq-mtg_marvel','gq-mtg_ff','gq-mtg_hobbit','gq-mtg','gq-pokemon','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-cyberpunk','gq-palworld','gq-other'];
   return ids.reduce((a,id)=>{const el=document.getElementById(id);return a+(parseInt(el?.value)||0);},0);
 }
 
@@ -3422,7 +3440,7 @@ let moverCharts={};
 
 function setMoversTcg(t){
   moversTcg=t;
-  ['all','pokemon','mtg','onepiece','dbz','riftbound','yugioh','cyberpunk'].forEach(k=>{
+  ['all','pokemon','mtg','onepiece','dbz','riftbound','yugioh','cyberpunk','palworld'].forEach(k=>{
     const el=document.getElementById('movers-tcg-'+k);
     if(el) el.className='btn sm'+(k===t?' active-snap':'');
   });
@@ -3776,6 +3794,8 @@ function importCollectrCsv(input){
         const c=String(cat).toLowerCase(),p=String(port).toLowerCase();
         if(c.includes('pokemon')) return 'pokemon';
         if(c.includes('one piece')) return 'onepiece';
+        if(c.includes('palworld')) return 'palworld';
+        if(c.includes('cyberpunk')) return 'cyberpunk';
         if(c.includes('dragon ball')) return 'other';
         if(c.includes('magic')) return p.includes('avatar')?'other':'mtg';
         return 'other';
