@@ -218,7 +218,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 8 Oct 2026</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 8 Oct 2026 (b)</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
     </div>
@@ -229,6 +229,8 @@ tr:hover td{background:var(--surface2)}
     <!-- DASHBOARD -->
     <div id="page-dashboard" class="page active">
       <div class="page-title">Dashboard</div>
+
+      <div id="dash-summary" style="margin-bottom:16px"></div>
 
       <!-- FINANCIAL POSITION -->
       <div class="dash-section-title">Financial position</div>
@@ -330,7 +332,8 @@ tr:hover td{background:var(--surface2)}
           </div>
         </div>
         <div class="legend" id="snap-legend"></div>
-        <div style="position:relative;height:200px"><canvas id="snapChart"></canvas></div>
+        <div style="position:relative;height:220px"><canvas id="snapChart"></canvas></div>
+        <div id="snap-events"></div>
       </div>
       <div class="card" style="margin-bottom:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -859,30 +862,10 @@ async function loadFromSheets(){
     setSyncStatus('Synced with Google Sheets','ok');
     buildBuyersFromSales();
     repairOrphanedSnapshots();
-    try{fixGradingCategoriesOct2026();}catch(e){console.error(e);}
   }catch(e){
     setSyncStatus('Offline — changes saved locally','err');
     try{const raw=localStorage.getItem('cardtracker_v1');if(raw)state=JSON.parse(raw);}catch(e2){}
   }
-}
-
-// One-off (8 Oct 2026): move grading costs out of 'Other' into the game of the cards graded.
-// Only touches these exact rows while they are still 'other', so it can never run twice.
-function fixGradingCategoriesOct2026(){
-  const amt=p=>Math.round((parseFloat(p.amount)||0)*100);
-  const find=(desc,pence)=>state.purchases.findIndex(p=>(p.category||'other')==='other'&&String(p.description||'').trim()===desc&&amt(p)===pence);
-  let changed=[];
-  const recat=(desc,pence,cat)=>{const i=find(desc,pence);if(i>=0){state.purchases[i].category=cat;changed.push(desc);}};
-  const split=(desc,pence,parts)=>{const i=find(desc,pence);if(i<0)return;const o=state.purchases[i];
-    const rows=parts.map(([d,a,c])=>({date:o.date,description:d,category:c,amount:a,supplier:'The Sub Center',set:o.set||''}));
-    state.purchases.splice(i,1,...rows);changed.push(desc);};
-  recat('The Sub Center Ltd.',52850,'mtg');
-  recat('Postage to The Sub Center Ltd.',1945,'mtg');
-  recat('The Sub Center Ltd.',17870,'onepiece');
-  recat('PokeMart Subscription',499,'supplies');
-  split('Grading 2 cards',14425,[['Grading – Pokémon (1 card)',72.13,'pokemon'],['Grading – One Piece (1 card)',72.12,'onepiece']]);
-  split('PSA Submissions',33925,[['Grading – Pokémon (3 cards)',203.55,'pokemon'],['Grading – DBZ (1 card)',67.85,'dbz'],['Grading – One Piece (1 card)',67.85,'onepiece']]);
-  if(changed.length){scheduleSave('Purchases');setTimeout(()=>{try{showToast(`Grading costs moved to their games (${changed.length} purchases updated)`);}catch(e){}},1500);}
 }
 
 async function saveSheetData(sheetName,headers,rows){
@@ -929,7 +912,7 @@ async function flushSaves(){
 async function syncNow(){await loadFromSheets();renderDashboard();}
 
 // ---- HELPERS ----
-function fm(v){return'£'+parseFloat(v||0).toFixed(2);}
+function fm(v){const n=parseFloat(v)||0;return(n<-0.004?'−':'')+'£'+Math.abs(n).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function fd(d){
   if(!d)return'';
   // Handle Date objects, numbers (Excel serial), and strings
@@ -1417,14 +1400,7 @@ function renderDashboard(){
 
   // Sales metrics
   function tip(text){return`<span class="tip"><span class="tip-icon">?</span><span class="tip-text">${text}</span></span>`;}
-  const repeatPct=state.buyers.length?Math.round(repeatBuyers/state.buyers.length*100):0;
-  const keptPence=Math.round(profitMargin);
-  document.getElementById('dash-sales-metrics').innerHTML=`
-    <div class="metric"><div class="metric-label">Money in ${tip('Everything buyers have paid you: card prices plus the shipping you charged. Nothing taken off yet.')}</div><div class="metric-value">${fm(totalRevenue)}</div><div class="metric-sub">from ${state.sales.length} sales</div></div>
-    <div class="metric"><div class="metric-label">Kept after selling ${tip('Money in, minus the cost of sending it: postage, packaging and platform fees. It does NOT take off what you paid for the cards. For the true bottom line, see Net position above.')}</div><div class="metric-value ${totalProfit>=0?'pos':'neg'}">${fm(totalProfit)}</div><div class="metric-sub">before card costs</div></div>
-    <div class="metric"><div class="metric-label">Kept per £1 ${tip('For every £1 a buyer pays, this is how much is left after postage, packaging and fees. What you paid for the cards is not included.')}</div><div class="metric-value ${profitMargin>=0?'pos':'neg'}">${keptPence}p</div><div class="metric-sub">${100-keptPence}p goes on postage &amp; fees</div></div>
-    <div class="metric"><div class="metric-label">Kept per sale ${tip('The average amount left from one order after postage, packaging and fees. Not including what the cards cost you.')}</div><div class="metric-value ${avgProfit>=0?'pos':'neg'}">${fm(avgProfit)}</div><div class="metric-sub">avg order ${fm(avgPrice)}</div></div>
-    <div class="metric"><div class="metric-label">Repeat buyers ${tip('People who have bought from you more than once.')}</div><div class="metric-value">${repeatBuyers}</div><div class="metric-sub">${state.buyers.length?repeatPct+'% of '+state.buyers.length+' buyers':'—'}</div></div>`;
+  try{renderSalesKpis();}catch(e){console.error(e);}
 
   // Financial details (hidden)
   document.getElementById('dash-fin-metrics').innerHTML=`
@@ -1578,6 +1554,7 @@ function renderDashboard(){
   renderGameBreakdown();
   renderSetPerformance();
   try{renderTaxYear();}catch(e){console.error(e);}
+  try{renderDashSummary();}catch(e){console.error(e);}
   try{renderSpendVsReturn();}catch(e){console.error(e);}
   renderTopBuyers();
   renderCollectionDashboard(bestColl,unrealisedPct);
@@ -1645,6 +1622,105 @@ let gameBreakdownChartInst=null;
 
 // ===== TAX YEAR =====
 function taxYearStart(d){const y=d.getMonth()>3||(d.getMonth()===3&&d.getDate()>=6)?d.getFullYear():d.getFullYear()-1;return new Date(y,3,6);}
+// ===== SALES KPIs: this pay period vs the same point last period =====
+function salesStats(a,b){
+  const list=state.sales.filter(s=>{const d=parseDateToObj(s.date);return d&&d>=a&&d<b;});
+  const firstSeen={};[...state.sales].sort((x,y)=>(parseDateToObj(x.date)||0)-(parseDateToObj(y.date)||0)).forEach(s=>{const u=(s.username||'').trim().toLowerCase();if(u&&!firstSeen[u])firstSeen[u]=parseDateToObj(s.date);});
+  let revenue=0,profit=0,cards=0,named=0,returning=0;
+  list.forEach(s=>{revenue+=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);profit+=calcSaleProfit(s);cards+=parseInt(s.articleCount)||1;
+    const u=(s.username||'').trim().toLowerCase();if(u){named++;if(firstSeen[u]&&firstSeen[u]<parseDateToObj(s.date))returning++;}});
+  const orders=list.length;
+  return{revenue,profit,orders,cards,margin:revenue?profit/revenue*100:0,avg:orders?revenue/orders:0,returningPct:named?returning/named*100:0};
+}
+function sparkSvg(vals,color){
+  const w=120,h=26,max=Math.max(...vals,0.01),min=Math.min(...vals,0);
+  const pts=vals.map((v,i)=>[i*(w/(vals.length-1||1)),h-2-((v-min)/((max-min)||1))*(h-4)]);
+  const line=pts.map(p=>p.map(n=>n.toFixed(1)).join(',')).join(' ');
+  const last=pts[pts.length-1];
+  return`<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="display:block;overflow:visible"><polyline points="${line}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round" opacity=".85"/><circle cx="${last[0]}" cy="${last[1]}" r="2.6" fill="${color}" vector-effect="non-scaling-stroke"/></svg>`;
+}
+function renderSalesKpis(){
+  const el=document.getElementById('dash-sales-metrics');if(!el)return;
+  const now=new Date();const curKey=payPeriodKey(now);const cur=payPeriodRange(curKey);
+  const DAY=86400000;const elapsed=Math.max(1,Math.floor((new Date(now.getFullYear(),now.getMonth(),now.getDate())-cur.start)/DAY)+1);
+  const total=Math.round((cur.end-cur.start)/DAY);
+  const prev=payPeriodRange(shiftPeriodKey(curKey,-1));
+  const prevCut=new Date(prev.start.getTime()+elapsed*DAY);
+  const c=salesStats(cur.start,cur.end),p=salesStats(prev.start,prevCut);
+  const hist=[];for(let i=-6;i<=0;i++){const r=payPeriodRange(shiftPeriodKey(curKey,i));hist.push(salesStats(r.start,r.end));}
+  const all=salesStats(new Date(2000,0,1),new Date(2100,0,1));
+  const pct=(a,b)=>b?((a-b)/Math.abs(b))*100:null;
+  const delta=(d,unit)=>{if(d===null||!isFinite(d))return`<span style="color:var(--muted)">no comparison yet</span>`;
+    const up=d>=0;return`<span style="color:${up?'var(--green)':'var(--red)'};font-weight:600">${up?'▲':'▼'} ${Math.abs(d).toFixed(unit==='pts'?1:0)}${unit==='pts'?' pts':'%'}</span> <span style="color:var(--muted)">vs last period</span>`;};
+  const tile=(label,value,d,unit,series,color,allTime)=>`<div class="metric" style="display:flex;flex-direction:column;gap:6px">
+      <div class="metric-label" style="margin:0">${label}</div>
+      <div class="metric-value" style="font-variant-numeric:tabular-nums;white-space:nowrap">${value}</div>
+      ${sparkSvg(series,color)}
+      <div class="metric-sub" style="margin:0">${delta(d,unit)}</div>
+      <div class="metric-sub" style="margin:0;border-top:1px solid var(--border);padding-top:5px">All time: ${allTime}</div>
+    </div>`;
+  const pctTxt=v=>v.toFixed(1)+'%';
+  el.style.gridTemplateColumns='repeat(auto-fit,minmax(165px,1fr))';
+  el.innerHTML=`<div style="grid-column:1/-1;font-size:12px;color:var(--muted);margin-bottom:-2px">This pay period · ${payPeriodRangeLabel(curKey)} · day ${elapsed} of ${total} · ▲▼ compare with the same day of last period · lines show the last 7 periods</div>
+    ${tile('Revenue',fm(c.revenue),pct(c.revenue,p.revenue),'%',hist.map(h=>h.revenue),'#185FA5',fm(all.revenue))}
+    ${tile('Profit',fm(c.profit),pct(c.profit,p.profit),'%',hist.map(h=>h.profit),'#1D9E75',fm(all.profit))}
+    ${tile('Margin',pctTxt(c.margin),p.orders?c.margin-p.margin:null,'pts',hist.map(h=>h.margin),'#534AB7',pctTxt(all.margin))}
+    ${tile('Orders',`${c.orders.toLocaleString('en-GB')}<span style="font-size:12px;color:var(--muted);font-weight:500"> · ${c.cards.toLocaleString('en-GB')} cards</span>`,pct(c.orders,p.orders),'%',hist.map(h=>h.orders),'#BA7517',`${all.orders.toLocaleString('en-GB')} orders`)}
+    ${tile('Avg order',fm(c.avg),pct(c.avg,p.avg),'%',hist.map(h=>h.avg),'#D85A30',fm(all.avg))}
+    ${tile('Returning buyers',pctTxt(c.returningPct),p.orders?c.returningPct-p.returningPct:null,'pts',hist.map(h=>h.returningPct),'#0BC4C4',`${state.buyers.filter(b=>b.orders>1).length} repeat buyers`)}`;
+}
+
+// ===== Written summary =====
+function renderDashSummary(){
+  const el=document.getElementById('dash-summary');if(!el)return;
+  const DAY=86400000,now=new Date(),t0=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const inRange=(v,a,b)=>{const d=parseDateToObj(v);return d&&d>=a&&d<b;};
+  const sum=(list,f)=>list.reduce((a,x)=>a+f(x),0);
+  const money=s=>(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);
+  const lines=[];
+  const b=t=>`<b style="color:var(--text)">${t}</b>`;
+  // Today
+  const today=state.sales.filter(s=>inRange(s.date,t0,new Date(t0.getTime()+DAY)));
+  const curKey=payPeriodKey(now),cur=payPeriodRange(curKey);
+  const elapsed=Math.max(1,Math.floor((t0-cur.start)/DAY)+1),total=Math.round((cur.end-cur.start)/DAY);
+  const periodSales=state.sales.filter(s=>inRange(s.date,cur.start,cur.end));
+  const periodProfit=sum(periodSales,calcSaleProfit);
+  const avgDay=periodProfit/elapsed;
+  if(today.length){
+    const tp=sum(today,calcSaleProfit);const best=today.reduce((m,s)=>money(s)>money(m)?s:m,today[0]);
+    const vs=elapsed>1&&avgDay>0?(tp>=avgDay?` — ${b('above')} your ${fm(avgDay)} daily average this period`:` — below your ${fm(avgDay)} daily average`):'';
+    lines.push(['Today',`${today.length} sale${today.length===1?'':'s'}, ${b(fm(tp))} profit${vs}. Biggest order ${fm(money(best))}${best.username?' from '+best.username:''}.`]);
+  } else lines.push(['Today','No sales logged yet.']);
+  // Week (Mon start) vs same point last week
+  const dow=(t0.getDay()+6)%7,wk=new Date(t0.getTime()-dow*DAY),lwk=new Date(wk.getTime()-7*DAY),lwkCut=new Date(lwk.getTime()+(dow+1)*DAY);
+  const ws=state.sales.filter(s=>inRange(s.date,wk,new Date(t0.getTime()+DAY))),ls=state.sales.filter(s=>inRange(s.date,lwk,lwkCut));
+  const wp=sum(ws,calcSaleProfit),lp=sum(ls,calcSaleProfit),wd=wp-lp;
+  const gq={};ws.forEach(s=>{const m=saleGameMix(s);Object.entries(m).forEach(([g,q])=>gq[g]=(gq[g]||0)+q);});
+  const top=Object.entries(gq).filter(([,q])=>q>0).sort((a,b)=>b[1]-a[1])[0];
+  lines.push(['This week',`${ws.length} sales, ${b(fm(wp))} profit — ${wd>=0?b(fm(wd)+' ahead of'):fm(-wd)+' behind'} the same point last week.${top?` Mostly ${SVR_LBL[top[0]]||top[0]} (${top[1]} cards).`:''}`]);
+  // Pay period + budget
+  const spend=budgetSpendBetween(cur.start,null),carry=getBudgetCarry();
+  const remaining=MONTHLY_BUDGET+periodProfit-carry-spend;
+  const pace=avgDay*total;
+  lines.push(['This pay period',`Day ${elapsed} of ${total}: ${b(fm(periodProfit))} profit, ${fm(spend)} spent${elapsed>=3?`, on pace for about ${fm(pace)} profit`:''}. ${remaining>=0?`${b(fm(remaining))} left to spend.`:`<span style="color:var(--red);font-weight:600">Still ${fm(-remaining)} over budget</span>${carry>0?' after last period\'s overspend':''}.`}`]);
+  // Collection
+  const snaps=(state.snapshots||[]).map(x=>({v:parseFloat(x.TotalMarket)||0,d:parseDateToObj(x.Date||x.date)})).filter(x=>x.d).sort((a,b)=>a.d-b.d);
+  const graded=gradedAdditions().filter(g=>g.added>=cur.start);
+  let coll='';
+  if(snaps.length){const base=[...snaps].reverse().find(x=>x.d<=cur.start)||snaps[0],last=snaps[snaps.length-1],ch=last.v-base.v;
+    coll=`Worth ${b(fm(last.v))}, ${ch>=0?'up '+b(fm(ch)):'down '+fm(-ch)} since payday (last import ${last.d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}).`;}
+  if(graded.length) coll+=` ${graded.length} graded card${graded.length===1?'':'s'} added this period, worth ${b(fm(sum(graded,g=>g.value)))}.`;
+  if(coll) lines.push(['Collection',coll.trim()]);
+  // Housekeeping nudge
+  const untagged=periodSales.filter(s=>!Object.values(saleGameMix(s)).some(q=>q>0)).length;
+  if(untagged) lines.push(['To tidy',`${untagged} sale${untagged===1?'':'s'} this period ${untagged===1?'has':'have'} no game set — see Spent vs back → Not tagged.`]);
+  el.innerHTML=`<div class="card" style="padding:14px 18px">
+    <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">${now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div>
+    <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.45;color:var(--muted)">
+      ${lines.map(([k,v])=>`<div style="display:flex;flex-wrap:wrap;column-gap:16px"><div style="flex:0 0 118px;font-weight:600;color:var(--text)">${k}</div><div style="flex:1 1 240px;min-width:0">${v}</div></div>`).join('')}
+    </div></div>`;
+}
+
 function renderTaxYear(){
   const el=document.getElementById('dash-tax-year');if(!el)return;
   const now=new Date();
@@ -1673,17 +1749,12 @@ function renderTaxYear(){
   const deadline=crossed
     ? row('Register by',fdt(regBy),`${daysTo(regBy)} days · then file &amp; pay by ${fdt(fileBy)}`)
     : row('Register by','Not needed yet','only if you pass £1,000 this tax year');
-  el.innerHTML=`<div class="metrics4" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
+  el.innerHTML=`<div class="metrics4" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:0">
     ${row('Money in '+label,fm(turnover),`since ${fdt(start)}`)}
     ${row('Rough profit '+label,fm(estProfit),`${fm(turnover)} in − ${fm(bought)} bought − ${fm(sellingCosts)} selling costs`,estProfit>=0?'var(--green)':'var(--red)')}
-    ${allowance}
-    ${deadline}
+    ${crossed?row('Self Assessment',`Register by ${fdt(regBy)}`,`${daysTo(regBy)} days · file &amp; pay by ${fdt(fileBy)}`):''}
   </div>
-  <div class="card" style="margin-top:10px;padding:12px 16px">
-    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span style="color:var(--muted)">VAT threshold · money in over the last 12 months</span><span><b>${fm(vatTurnover)}</b> <span style="color:var(--muted)">of ${fm(VAT)} (${vatPct.toFixed(1)}%)</span></span></div>
-    <div style="height:7px;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${vatPct}%;background:${vatPct>=90?'var(--red)':vatPct>=75?'#f59e0b':'var(--green)'}"></div></div>
-    <div style="font-size:11px;color:var(--muted);margin-top:8px">Rough guide only, not tax advice. Counts every purchase as a business cost; cards you still hold at 5 April can change the real figure.</div>
-  </div>`;
+  <div style="font-size:11px;color:var(--muted);margin-top:6px">Rough guide, not tax advice: counts every purchase as a business cost, so stock you still hold makes real profit higher.</div>`;
 }
 
 // ===== SPENT VS BACK, BY GAME =====
@@ -1907,6 +1978,26 @@ function setSnapView(view){
   renderSnapChart();
 }
 
+// Interesting points on the collection value line
+function collectionEvents(sn){
+  const byIndex={},list=[];
+  const add=(i,kind,text)=>{if(i<0||i>=sn.length)return;(byIndex[i]=byIndex[i]||[]).push({kind,text});list.push({i,date:sn[i]._d,kind,text});};
+  const mv=sn.map(s=>parseFloat(s.TotalMarket)||0);
+  // graded cards: plot at the first import on/after the day they were added
+  gradedAdditions().forEach(g=>{let i=sn.findIndex(x=>x._d>=new Date(g.added.getFullYear(),g.added.getMonth(),g.added.getDate()));if(i<0)i=sn.length-1;
+    add(i,'graded',`${g.name} added graded · worth ${fm(g.value)}${g.cost?` (cost ${fm(g.cost)})`:''}`);});
+  if(mv.length>1){
+    let hi=0;mv.forEach((v,i)=>{if(v>mv[hi])hi=i;});
+    add(hi,'high',`All-time high: ${fm(mv[hi])}`);
+    let up=-1,dn=-1,upV=0,dnV=0;
+    for(let i=1;i<mv.length;i++){const d=mv[i]-mv[i-1];if(d>upV){upV=d;up=i;}if(d<dnV){dnV=d;dn=i;}}
+    if(up>0&&upV>=Math.max(25,mv[up-1]*0.02))add(up,'rise',`Biggest jump between imports: +${fm(upV)}`);
+    if(dn>0&&-dnV>=Math.max(25,mv[dn-1]*0.02))add(dn,'fall',`Biggest drop between imports: ${fm(dnV)}`);
+  }
+  list.sort((a,b)=>b.date-a.date);
+  return{byIndex,list};
+}
+
 function renderSnapChart(){
   const snaps=state.snapshots;
   if(!snaps||snaps.length<1){
@@ -1915,7 +2006,9 @@ function renderSnapChart(){
     return;
   }
 
-  const labels=snaps.map(s=>fd(s.Date));
+  const sortedSnaps=[...snaps].map(x=>({...x,_d:parseDateToObj(x.Date||x.date)})).filter(x=>x._d).sort((a,b)=>a._d-b._d);
+  const labels=sortedSnaps.map(s=>s._d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
+  const snapEvents=collectionEvents(sortedSnaps);
   const PORTFOLIO_COLORS={
     'Avatar_TLA':'#185FA5','Avatar_TLE':'#534AB7','Avatar_ART':'#8B5CF6',
     'Singles_One_Piece':'#D85A30','Singles_DBZ':'#DC2626','Singles_Pokemon':'#1D9E75',
@@ -1933,15 +2026,21 @@ function renderSnapChart(){
 
   if(snapView==='total'){
     datasets=[
-      {label:'Market value',data:snaps.map(s=>parseFloat(s.TotalMarket)||0),borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',tension:0.3,pointRadius:4,fill:true},
-      {label:'Cost paid',data:snaps.map(s=>parseFloat(s.TotalCost)||0),borderColor:'#D85A30',backgroundColor:'rgba(216,90,48,0.05)',tension:0.3,pointRadius:4,fill:false,borderDash:[4,4]}
+      {label:'Market value',data:sortedSnaps.map(s=>parseFloat(s.TotalMarket)||0),borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',tension:0.3,pointRadius:4,fill:true},
+      {label:'Cost paid',data:sortedSnaps.map(s=>parseFloat(s.TotalCost)||0),borderColor:'#D85A30',backgroundColor:'rgba(216,90,48,0.05)',tension:0.3,pointRadius:4,fill:false,borderDash:[4,4]}
     ];
-    legendHTML=`<span><span class="lsq" style="background:#1D9E75"></span>Market value</span><span><span class="lsq" style="background:#D85A30"></span>Cost paid</span>`;
+    const mv=sortedSnaps.map(s=>parseFloat(s.TotalMarket)||0);
+    datasets.unshift({label:'Notable',type:'line',showLine:false,data:mv.map((v,i)=>snapEvents.byIndex[i]?v:null),
+      pointRadius:mv.map((v,i)=>snapEvents.byIndex[i]?7:0),pointHoverRadius:9,
+      pointStyle:mv.map((v,i)=>{const e=snapEvents.byIndex[i];return !e?'circle':e.some(x=>x.kind==='graded')?'rectRot':e.some(x=>x.kind==='high')?'star':'triangle';}),
+      pointBackgroundColor:mv.map((v,i)=>{const e=snapEvents.byIndex[i];return !e?'transparent':e.some(x=>x.kind==='graded')?'#E8B84B':e.some(x=>x.kind==='fall')?'#D85A30':'#185FA5';}),
+      pointBorderColor:'#fff',pointBorderWidth:1.5,_events:mv.map((v,i)=>snapEvents.byIndex[i]||null)});
+    legendHTML=`<span><span class="lsq" style="background:#1D9E75"></span>Market value</span><span><span class="lsq" style="background:#D85A30"></span>Cost paid</span><span><span class="lsq" style="background:#E8B84B;transform:rotate(45deg) scale(.8)"></span>Graded card added</span><span><span class="lsq" style="background:#185FA5"></span>Peak / big move</span>`;
   } else if(snapView==='portfolio'){
     const portfolioKeys=Object.keys(PORTFOLIO_COLORS);
     datasets=portfolioKeys.map(key=>({
       label:PORTFOLIO_LABELS[key],
-      data:snaps.map(s=>parseFloat(s['Portfolio_'+key])||0),
+      data:sortedSnaps.map(s=>parseFloat(s['Portfolio_'+key])||0),
       borderColor:PORTFOLIO_COLORS[key],
       backgroundColor:PORTFOLIO_COLORS[key]+'20',
       tension:0.3,pointRadius:4,fill:false
@@ -1951,7 +2050,7 @@ function renderSnapChart(){
     const typeKeys=['Sealed','Single','Graded'];
     datasets=typeKeys.map(key=>({
       label:key,
-      data:snaps.map(s=>parseFloat(s['Type_'+key])||0),
+      data:sortedSnaps.map(s=>parseFloat(s['Type_'+key])||0),
       borderColor:TYPE_COLORS[key],
       backgroundColor:TYPE_COLORS[key]+'20',
       tension:0.3,pointRadius:4,fill:false
@@ -1959,6 +2058,11 @@ function renderSnapChart(){
     legendHTML=datasets.map(d=>`<span><span class="lsq" style="background:${d.borderColor}"></span>${d.label}</span>`).join('');
   }
 
+  const evEl=document.getElementById('snap-events');
+  if(evEl) evEl.innerHTML=snapEvents.list.length?`<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
+      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Notable moments</div>
+      ${snapEvents.list.slice(0,6).map(e=>`<div style="display:flex;gap:10px;font-size:12px;padding:3px 0"><span style="color:var(--muted);min-width:64px">${e.date.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span><span>${e.text}</span></div>`).join('')}
+    </div>`:'';
   const legendEl=document.getElementById('snap-legend');
   if(legendEl) legendEl.innerHTML=legendHTML;
   if(snapChartInst) snapChartInst.destroy();
@@ -1969,8 +2073,11 @@ function renderSnapChart(){
     data:{labels,datasets},
     options:{
       responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: £${c.raw.toFixed(2)}`}}},
-      scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:11}}}}
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{filter:i=>i.raw!==null,callbacks:{title:items=>items.length?sortedSnaps[items[0].dataIndex]._d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'',
+        label:c=>c.dataset._events?null:`${c.dataset.label}: ${fm(c.raw)}`,
+        afterBody:items=>{const e=snapEvents.byIndex[items[0]?.dataIndex];return e?['',...e.map(x=>'• '+x.text)]:[];}}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:11},maxTicksLimit:10}},y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+Number(v).toLocaleString('en-GB'),font:{size:11}}}}
     }
   });
 }
@@ -2016,101 +2123,7 @@ function renderCollectionDashboard(bestColl,unrealisedPct){
     <div class="coll-metric"><div class="coll-metric-label">Market value ${tip('Current market value of all items, pulled from Collectr on your last import.')}</div><div class="coll-metric-value">${fm(totalMarket)}</div></div>
     <div class="coll-metric"><div class="coll-metric-label">Unrealised gain ${tip('The difference between market value and cost paid. "Unrealised" means it\'s on paper only — you haven\'t sold these items yet.')}</div><div class="coll-metric-value ${gain>=0?'up':'down'}">${gain>=0?'+':''}${fm(gain)}</div></div>`;
 
-  const insEl=document.getElementById('dash-coll-insights');
-  if(insEl){
-    // Use ALL collection items, sort by tracked value change (first snapshot vs now)
-    const withHistory=coll.map(c=>{
-      const currentVal=parseFloat(c.marketValue)||0;
-      const history=(state.itemSnapshots[c.id]||[]).slice()
-        .filter(h=>{const v=parseFloat(h.value)||0;return v>0&&(currentVal<=0||v>=currentVal*0.05);})
-        .sort((a,b)=>{
-          const da=parseDateToObj(a.date),db=parseDateToObj(b.date);
-          return da&&db?da-db:0;
-        });
-      const uniqueDates=new Set(history.map(h=>{
-        const d=parseDateToObj(h.date);
-        return d?`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`:h.date;
-      }));
-      const hasHistory=uniqueDates.size>1;
-      const firstVal=history.length>0?history[0].value:null;
-      const lastVal=history.length>0?history[history.length-1].value:null;
-      const trackedGain=hasHistory&&firstVal!==null?currentVal-firstVal:null;
-      return{name:c.name,id:c.id,currentVal,firstVal,trackedGain,history,hasHistory};
-    });
-
-    const allHaveHistory=withHistory.some(c=>c.hasHistory);
-
-    // If no multi-day history yet, fall back to sorting by current market value
-    const sorted=allHaveHistory
-      ?[...withHistory].filter(c=>c.hasHistory).sort((a,b)=>b.trackedGain-a.trackedGain)
-      :[...withHistory].sort((a,b)=>b.currentVal-a.currentVal);
-    const top3=sorted.slice(0,3);
-    const bot3=[...sorted].reverse().slice(0,3);
-
-    let chartCounter=0;
-    function moverCard(m, isGain){
-      const chartId=`mover-chart-${chartCounter++}`;
-      const gain=m.trackedGain;
-      const history=m.history;
-      let chartHtml='';
-      if(history.length>1){
-        chartHtml=`<div style="position:relative;height:60px;margin-top:6px"><canvas id="${chartId}"></canvas></div>`;
-      }
-      return`<div style="padding:6px 0;border-bottom:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;font-size:12px">
-          <div style="min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)" title="${m.name}">${m.name}</div>
-          <div style="flex-shrink:0;text-align:right">
-            <div style="font-weight:600" class="${gain>=0?'profit-pos':'profit-neg'}">${gain>=0?'+':''}${fm(gain)}</div>
-            <div style="font-size:10px;color:var(--muted)">${m.firstVal!==null?fm(m.firstVal)+' → ':''} ${fm(m.currentVal)}</div>
-          </div>
-        </div>
-        ${chartHtml}
-      </div>`;
-    }
-
-    const sectionLabel=allHaveHistory?'since tracked':'by current value';
-
-    const emptySnap='<div class="empty">Import Collectr CSV to track</div>';
-    insEl.innerHTML=`<div class="grid2" style="margin-bottom:0">
-      <div class="card" style="margin:0">
-        <div class="card-title" style="font-size:11px;margin-bottom:6px">Top 3 gains ${sectionLabel}</div>
-        ${top3.length?top3.map(m=>moverCard(m,true)).join(''):emptySnap}
-      </div>
-      <div class="card" style="margin:0">
-        <div class="card-title" style="font-size:11px;margin-bottom:6px">Top 3 ${allHaveHistory?'losses '+sectionLabel:'by value'}</div>
-        ${bot3.length?bot3.map(m=>moverCard(m,false)).join(''):emptySnap}
-      </div>
-    </div>`;
-
-    // Render mini charts after DOM is set
-    let idx=0;
-    [...top3,...bot3].forEach(m=>{
-      if(m.history.length<2){idx++;return;}
-      const canvasId=`mover-chart-${idx++}`;
-      const canvas=document.getElementById(canvasId);
-      if(!canvas) return;
-      const vals=m.history.map(h=>h.value);
-      const labels=m.history.map(h=>parseDateToObj(h.date)?.toLocaleDateString('en-GB',{day:'numeric',month:'short'})||h.date);
-      const isGain=vals[vals.length-1]>vals[0];
-      new Chart(canvas.getContext('2d'),{
-        type:'line',
-        data:{labels,datasets:[{
-          data:vals,
-          borderColor:isGain?'var(--green)':'var(--red)',
-          backgroundColor:isGain?'rgba(29,158,117,0.08)':'rgba(220,38,38,0.08)',
-          tension:0.3,pointRadius:2,fill:true,borderWidth:1.5
-        }]},
-        options:{
-          responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`£${c.raw.toFixed(2)}`}}},
-          scales:{
-            x:{display:false},
-            y:{display:false}
-          }
-        }
-      });
-    });
-  }
+  const insEl=document.getElementById('dash-coll-insights');if(insEl)insEl.innerHTML='';
 
   renderSnapChart();
   renderCollByPortfolio();
@@ -2286,7 +2299,7 @@ function getMonthlyData(){
   gradedAdditions().forEach(g=>{
     const key=payPeriodKey(g.added);
     if(!months[key])months[key]=blank();
-    months[key].graded+=g.value;months[key].gradedCards.push(g);
+    months[key].graded+=g.value-g.cost;months[key].gradedCards.push(g);
   });
   const keys=Object.keys(months).sort();
   return{keys,months};
@@ -2298,61 +2311,56 @@ function volChartDrillBack(){volChartDrillMonth=null;renderVolChart();}
 
 function gradedTooltip(cards){
   if(!cards||!cards.length) return [];
-  return cards.slice(0,6).map(g=>`  ${g.name}: ${fm(g.value)}${g.cost?` (cost ${fm(g.cost)})`:''}`).concat(cards.length>6?[`  +${cards.length-6} more`]:[]);
-}
-function gradedDataset(values,cardLists){
-  return {label:'Graded added',type:'line',data:values.map(v=>+(v||0).toFixed(2)),borderColor:'#E8B84B',backgroundColor:'#E8B84B',
-    pointRadius:values.map(v=>v>0?6:0),pointHoverRadius:8,pointStyle:'rectRot',pointHitRadius:values.map(v=>v>0?10:0),showLine:true,borderWidth:2,borderDash:[5,4],tension:0,_cards:cardLists,order:-1};
+  return cards.slice(0,6).map(g=>`  ${g.name}: worth ${fm(g.value)}${g.cost?`, cost ${fm(g.cost)}`:''}`).concat(cards.length>6?[`  +${cards.length-6} more`]:[]);
 }
 function mainChartOptions(onClick,titleFn){
-  return{responsive:true,maintainAspectRatio:false,onClick,
-    plugins:{legend:{display:false},tooltip:{callbacks:{
+  return{responsive:true,maintainAspectRatio:false,onClick,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:false},tooltip:{filter:i=>!(i.dataset._cards&&!i.raw),callbacks:{
       title:items=>titleFn&&items.length?titleFn(items[0].dataIndex):(items.length?items[0].label:''),
-      label:c=>(c.dataset._cards&&!c.raw)?null:`${c.dataset.label}: £${(+c.raw).toFixed(2)}`,
+      label:c=>`${c.dataset.label}: ${fm(c.raw)}`,
       afterLabel:c=>c.dataset._cards?gradedTooltip(c.dataset._cards[c.dataIndex]):[]}}},
-    scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+v,font:{size:11}}}}};
+    scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:11}}},y:{stacked:true,grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>'£'+Number(v).toLocaleString('en-GB'),font:{size:11}}}}};
 }
+const GRADED_COLOR='#E8B84B';
 function renderMainChart(){
   const{keys,months}=getMonthlyData();
   const backBtn=document.getElementById('main-chart-back');
   const labelEl=document.getElementById('main-chart-month-label');
-  const legendBase=`<span><span class="lsq" style="background:#1D9E75"></span>Revenue</span><span><span class="lsq" style="background:#185FA5"></span>Profit</span>`;
-  const legendGraded=`<span><span class="lsq" style="background:#E8B84B;transform:rotate(45deg) scale(.8)"></span>Graded card added (value)</span>`;
+  const lg=(c,t)=>`<span><span class="lsq" style="background:${c}"></span>${t}</span>`;
+  const legendGraded=lg(GRADED_COLOR,'Graded uplift (worth − cost), stacked on profit');
 
   if(mainChartDrillMonth){
     const{start,end}=payPeriodRange(mainChartDrillMonth);
     if(labelEl) labelEl.textContent=payPeriodRangeLabel(mainChartDrillMonth);
     if(backBtn) backBtn.style.display='inline-flex';
     const days=[];for(let d=new Date(start);d<end;d.setDate(d.getDate()+1))days.push(dayKey(new Date(d.getFullYear(),d.getMonth(),d.getDate(),12)));
-    const daySales={};days.forEach(k=>daySales[k]={revenue:0,profit:0,graded:0,cards:[]});
-    state.sales.forEach(s=>{const k=dayKey(s.date);if(daySales[k]){daySales[k].revenue+=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);daySales[k].profit+=calcSaleProfit(s);}});
-    gradedAdditions().forEach(g=>{const k=dayKey(g.added);if(daySales[k]){daySales[k].graded+=g.value;daySales[k].cards.push(g);}});
-    const hasGraded=days.some(k=>daySales[k].graded>0);
-    const dLabels=days.map(k=>parseDateToObj(k).toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
-    document.getElementById('main-legend').innerHTML=legendBase+(hasGraded?legendGraded:'');
+    const D={};days.forEach(k=>D[k]={revenue:0,profit:0,graded:0,cards:[]});
+    state.sales.forEach(s=>{const k=dayKey(s.date);if(D[k]){D[k].revenue+=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);D[k].profit+=calcSaleProfit(s);}});
+    gradedAdditions().forEach(g=>{const k=dayKey(g.added);if(D[k]){D[k].graded+=g.value-g.cost;D[k].cards.push(g);}});
+    const hasGraded=days.some(k=>D[k].cards.length);
+    document.getElementById('main-legend').innerHTML=lg('#185FA5','Revenue')+lg('#1D9E75','Profit')+(hasGraded?legendGraded:'');
     if(mainChartInst) mainChartInst.destroy();
     const ds=[
-      {label:'Revenue',data:days.map(k=>+daySales[k].revenue.toFixed(2)),backgroundColor:'#1D9E75',borderRadius:3},
-      {label:'Profit',data:days.map(k=>+daySales[k].profit.toFixed(2)),backgroundColor:'#185FA5',borderRadius:3}];
-    if(hasGraded) ds.push(gradedDataset(days.map(k=>daySales[k].graded),days.map(k=>daySales[k].cards)));
-    mainChartInst=new Chart(document.getElementById('mainChart'),{type:'bar',data:{labels:dLabels,datasets:ds},options:mainChartOptions()});
+      {label:'Revenue',data:days.map(k=>+D[k].revenue.toFixed(2)),backgroundColor:'#185FA5',borderRadius:3,stack:'rev'},
+      {label:'Profit',data:days.map(k=>+D[k].profit.toFixed(2)),backgroundColor:'#1D9E75',borderRadius:3,stack:'pro'}];
+    if(hasGraded) ds.push({label:'Graded uplift',data:days.map(k=>+D[k].graded.toFixed(2)),backgroundColor:GRADED_COLOR,borderRadius:3,stack:'pro',_cards:days.map(k=>D[k].cards)});
+    mainChartInst=new Chart(document.getElementById('mainChart'),{type:'bar',data:{labels:days.map(k=>parseDateToObj(k).toLocaleDateString('en-GB',{day:'numeric',month:'short'})),datasets:ds},options:mainChartOptions()});
     return;
   }
 
-  if(labelEl) labelEl.textContent='Each bar = one pay period, from payday';
+  if(labelEl) labelEl.textContent='Each group = one pay period · click a period for daily detail';
   if(backBtn) backBtn.style.display='none';
-  const labels=keys.map(k=>payPeriodLabel(k));
-  const hasGraded=keys.some(k=>months[k].graded>0);
-  document.getElementById('main-legend').innerHTML=legendBase+`<span><span class="lsq" style="background:#D85A30"></span>Spend</span>`+(hasGraded?legendGraded:'');
+  const hasGraded=keys.some(k=>months[k].gradedCards.length);
+  document.getElementById('main-legend').innerHTML=lg('#185FA5','Revenue')+lg('#1D9E75','Profit')+(hasGraded?legendGraded:'')+lg('#D85A30','Spend');
   if(mainChartInst) mainChartInst.destroy();
   const ds=[
-    {label:'Revenue',data:keys.map(k=>+months[k].revenue.toFixed(2)),backgroundColor:'#1D9E75',borderRadius:3},
-    {label:'Profit',data:keys.map(k=>+months[k].profit.toFixed(2)),backgroundColor:'#185FA5',borderRadius:3},
-    {label:'Spend',data:keys.map(k=>+months[k].spend.toFixed(2)),backgroundColor:'#D85A30',borderRadius:3}];
-  if(hasGraded) ds.push(gradedDataset(keys.map(k=>months[k].graded),keys.map(k=>months[k].gradedCards)));
+    {label:'Revenue',data:keys.map(k=>+months[k].revenue.toFixed(2)),backgroundColor:'#185FA5',borderRadius:3,stack:'rev'},
+    {label:'Profit',data:keys.map(k=>+months[k].profit.toFixed(2)),backgroundColor:'#1D9E75',borderRadius:3,stack:'pro'}];
+  if(hasGraded) ds.push({label:'Graded uplift',data:keys.map(k=>+months[k].graded.toFixed(2)),backgroundColor:GRADED_COLOR,borderRadius:3,stack:'pro',_cards:keys.map(k=>months[k].gradedCards)});
+  ds.push({label:'Spend',data:keys.map(k=>+months[k].spend.toFixed(2)),backgroundColor:'#D85A30',borderRadius:3,stack:'sp'});
   mainChartInst=new Chart(document.getElementById('mainChart'),{
     type:'bar',
-    data:{labels:labels.length?labels:['No data'],datasets:ds},
+    data:{labels:keys.length?keys.map(k=>payPeriodLabel(k)):['No data'],datasets:ds},
     options:mainChartOptions((evt,elements)=>{if(elements.length){mainChartDrillMonth=keys[elements[0].index];renderMainChart();}},i=>payPeriodRangeLabel(keys[i]))
   });
 }
