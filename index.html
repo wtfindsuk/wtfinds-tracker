@@ -218,7 +218,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 7 Oct 2026 (c)</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 8 Oct 2026</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
     </div>
@@ -859,10 +859,30 @@ async function loadFromSheets(){
     setSyncStatus('Synced with Google Sheets','ok');
     buildBuyersFromSales();
     repairOrphanedSnapshots();
+    try{fixGradingCategoriesOct2026();}catch(e){console.error(e);}
   }catch(e){
     setSyncStatus('Offline — changes saved locally','err');
     try{const raw=localStorage.getItem('cardtracker_v1');if(raw)state=JSON.parse(raw);}catch(e2){}
   }
+}
+
+// One-off (8 Oct 2026): move grading costs out of 'Other' into the game of the cards graded.
+// Only touches these exact rows while they are still 'other', so it can never run twice.
+function fixGradingCategoriesOct2026(){
+  const amt=p=>Math.round((parseFloat(p.amount)||0)*100);
+  const find=(desc,pence)=>state.purchases.findIndex(p=>(p.category||'other')==='other'&&String(p.description||'').trim()===desc&&amt(p)===pence);
+  let changed=[];
+  const recat=(desc,pence,cat)=>{const i=find(desc,pence);if(i>=0){state.purchases[i].category=cat;changed.push(desc);}};
+  const split=(desc,pence,parts)=>{const i=find(desc,pence);if(i<0)return;const o=state.purchases[i];
+    const rows=parts.map(([d,a,c])=>({date:o.date,description:d,category:c,amount:a,supplier:'The Sub Center',set:o.set||''}));
+    state.purchases.splice(i,1,...rows);changed.push(desc);};
+  recat('The Sub Center Ltd.',52850,'mtg');
+  recat('Postage to The Sub Center Ltd.',1945,'mtg');
+  recat('The Sub Center Ltd.',17870,'onepiece');
+  recat('PokeMart Subscription',499,'supplies');
+  split('Grading 2 cards',14425,[['Grading – Pokémon (1 card)',72.13,'pokemon'],['Grading – One Piece (1 card)',72.12,'onepiece']]);
+  split('PSA Submissions',33925,[['Grading – Pokémon (3 cards)',203.55,'pokemon'],['Grading – DBZ (1 card)',67.85,'dbz'],['Grading – One Piece (1 card)',67.85,'onepiece']]);
+  if(changed.length){scheduleSave('Purchases');setTimeout(()=>{try{showToast(`Grading costs moved to their games (${changed.length} purchases updated)`);}catch(e){}},1500);}
 }
 
 async function saveSheetData(sheetName,headers,rows){
