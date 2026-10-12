@@ -218,7 +218,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 12 Oct 2026</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 12 Oct 2026 (b)</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
     </div>
@@ -937,7 +937,7 @@ function today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMon
 function dayKey(v){const d=parseDateToObj(v);return d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`:'';}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function calcSaleSupplies(sale){return(sale.packaging||[]).reduce((a,p)=>{const pkg=state.packaging.find(x=>x.name===p.name);return a+(pkg?parseFloat(pkg.cost)*(parseInt(p.qty)||0):0);},0);}
-function saleIdKey(v){const t=String(v||'').trim().toLowerCase();const d=t.match(/\d{5,}/);return d?d[0]:t;}
+function saleIdKey(v){const t=String(v||'').trim().toLowerCase();const d=t.replace(/\D/g,'');return d.length>=5?d:t.replace(/\s+/g,'');}
 function findDuplicateSales(id){const k=saleIdKey(id);if(!k)return[];return state.sales.filter(s=>saleIdKey(s.item)===k);}
 function checkDuplicateSaleId(){
   const el=document.getElementById('s-item'),box=document.getElementById('s-dup-alert');if(!el||!box)return;
