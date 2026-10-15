@@ -219,7 +219,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 15 Oct 2026 (c)</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 15 Oct 2026 (d)</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
     </div>
@@ -560,7 +560,7 @@ tr:hover td{background:var(--surface2)}
       <div class="card" style="padding:0">
         <div style="overflow-x:auto">
           <table>
-            <thead><tr id="collection-thead"><th class="sortable" onclick="setCollSort('name')">Name<span class="sort-ind" data-col="name"></span></th><th class="sortable" onclick="setCollSort('type')">Type<span class="sort-ind" data-col="type"></span></th><th class="sortable" onclick="setCollSort('status')">Status<span class="sort-ind" data-col="status"></span></th><th class="sortable" onclick="setCollSort('set')">Set / CN<span class="sort-ind" data-col="set"></span></th><th class="sortable" onclick="setCollSort('cost')">Cost paid<span class="sort-ind" data-col="cost"></span></th><th class="sortable" onclick="setCollSort('value')">Market value<span class="sort-ind" data-col="value"></span></th><th class="sortable" onclick="setCollSort('gain')">Gain/Loss<span class="sort-ind" data-col="gain"></span></th><th class="sortable" onclick="setCollSort('link')">Price link<span class="sort-ind" data-col="link"></span></th><th></th></tr></thead>
+            <thead><tr id="collection-thead"><th class="sortable" onclick="setCollSort('name')">Name<span class="sort-ind" data-col="name"></span></th><th class="sortable" onclick="setCollSort('grade')">Grade<span class="sort-ind" data-col="grade"></span></th><th class="sortable" onclick="setCollSort('type')">Type<span class="sort-ind" data-col="type"></span></th><th class="sortable" onclick="setCollSort('status')">Status<span class="sort-ind" data-col="status"></span></th><th class="sortable" onclick="setCollSort('set')">Set / CN<span class="sort-ind" data-col="set"></span></th><th class="sortable" onclick="setCollSort('cost')">Cost paid<span class="sort-ind" data-col="cost"></span></th><th class="sortable" onclick="setCollSort('value')">Market value<span class="sort-ind" data-col="value"></span></th><th class="sortable" onclick="setCollSort('gain')">Gain/Loss<span class="sort-ind" data-col="gain"></span></th><th class="sortable" onclick="setCollSort('link')">Price link<span class="sort-ind" data-col="link"></span></th><th></th></tr></thead>
             <tbody id="collection-tbody"></tbody>
           </table>
         </div>
@@ -3657,9 +3657,18 @@ const COLL_SORT_KEYS={
   cost:c=>parseFloat(c.cost)||0,
   value:c=>parseFloat(c.marketValue)||0,
   gain:c=>(parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0),
-  link:c=>c.priceUrl?0:1
+  link:c=>c.priceUrl?0:1,
+  grade:c=>gradeScore(c)
 };
-const COLL_SORT_NUMERIC=['cost','value','gain'];
+const COLL_SORT_NUMERIC=['cost','value','gain','grade'];
+// 10 > 9.5 > 9 …; Pristine/Black Label rank just above a plain 10; ungraded cards always sort last
+function gradeScore(c){
+  const g=gradeInfo(c);
+  if(!g||!g.grade){return c.type==='graded'?-1:-2;}
+  const n=parseFloat((g.grade.match(/\d+(\.\d)?/)||[0])[0])||0;
+  const bonus=/black label/i.test(g.grade)?0.2:/pristine/i.test(g.grade)?0.1:0;
+  return n+bonus;
+}
 function setCollSort(col){
   if(collSort.col===col) collSort.dir*=-1;
   else collSort={col,dir:COLL_SORT_NUMERIC.includes(col)?-1:1};
@@ -3671,14 +3680,15 @@ function renderCollectionTable(tab){
   if(collSort.col){const k=COLL_SORT_KEYS[collSort.col];list.sort((a,b)=>{const x=k(a),y=k(b);return(x<y?-1:x>y?1:String(a.name).localeCompare(String(b.name)))*collSort.dir;});}
   renderCollTypeTotals(tab);
   document.querySelectorAll('#collection-thead .sort-ind').forEach(el=>{el.textContent=el.dataset.col===collSort.col?(collSort.dir>0?'▲':'▼'):'';});
-  if(!list.length){tbody.innerHTML='<tr><td colspan="9" class="empty">Nothing here yet.</td></tr>';return;}
+  if(!list.length){renderCollTypeTotals(tab);tbody.innerHTML='<tr><td colspan="10" class="empty">Nothing here yet.</td></tr>';return;}
   tbody.innerHTML=list.map(c=>{
     const gain=(parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0);
     const realIdx=state.collection.indexOf(c);
     const statusLabel=c.type==='graded'?(c.status==='psa'?'At PSA':c.status==='pending'?'Pending':'In collection'):'—';
     const urlBtn=c.priceUrl?`<a href="${c.priceUrl}" target="_blank" class="btn sm" title="Open price link"><i class="ti ti-external-link"></i></a>`:'-';
     return`<tr>
-      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${nameWithGrade(c)}">${gradeBadge(c)}${c.name}</td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${nameWithGrade(c)}">${c.name}</td>
+      <td style="white-space:nowrap">${gradeBadge(c)||'<span style="color:var(--muted)">—</span>'}</td>
       <td><span class="badge badge-${c.type}">${c.type==='sealed'?'Sealed':c.type==='single'?'Single':'Graded'}</span></td>
       <td>${c.type==='graded'?`<span class="badge badge-${c.status}">${statusLabel}</span>`:'—'}</td>
       <td>${[c.set,c.cn?'#'+c.cn:''].filter(Boolean).join(' ')||'—'}</td>
@@ -3689,7 +3699,7 @@ function renderCollectionTable(tab){
       <td><button class="btn sm danger" onclick="deleteCollItem(${realIdx})"><i class="ti ti-trash"></i></button></td>
     </tr>`;
   }).join('')+(()=>{const t=collTotals(list);return`<tr style="font-weight:700;border-top:2px solid var(--border)">
-      <td>Total · ${t.count} item${t.count===1?'':'s'}</td><td></td><td></td><td></td>
+      <td>Total · ${t.count} item${t.count===1?'':'s'}</td><td></td><td></td><td></td><td></td>
       <td>${fm(t.cost)}</td><td>${fm(t.value)}</td>
       <td class="${t.gain>=0?'profit-pos':'profit-neg'}">${t.gain>=0?'+':''}${fm(t.gain)}</td><td></td><td></td></tr>`;})();
 }
