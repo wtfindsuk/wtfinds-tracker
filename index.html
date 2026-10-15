@@ -218,7 +218,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 12 Oct 2026 (c)</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 15 Oct 2026</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
     </div>
@@ -3890,6 +3890,21 @@ function importCollectrCsv(input){
         if(prevByKey[k]){item.id=prevByKey[k];if(!item.added&&prevById[item.id])item.added=prevById[item.id].added||'';}
       });
 
+      // Collectr gives £0 when it has no price (common for graded cards).
+      // Keep the price you already had (typed in, or from an earlier import) unless Collectr now has a real one.
+      const keptPrices=[];
+      newCollection.forEach(item=>{
+        const prev=prevById[item.id];
+        if((parseFloat(item.marketValue)||0)===0&&prev&&(parseFloat(prev.marketValue)||0)>0){
+          const v=round2(parseFloat(prev.marketValue));
+          item.marketValue=v;
+          portfolioTotals[item.set]=(portfolioTotals[item.set]||0)+v;
+          typeTotals[item.type]=(typeTotals[item.type]||0)+v;
+          totalMarket+=v;
+          keptPrices.push(`${item.name}: ${fm(v)}`);
+        }
+      });
+
       // Record per-item price snapshots
       const snapDate=today();
       newCollection.forEach(item=>{
@@ -3936,7 +3951,8 @@ function importCollectrCsv(input){
       showPage('collection');
 
       const gain=totalMarket-totalCost;
-      alert(`Imported ${newCollection.length} items\nMarket value: £${totalMarket.toFixed(2)}\nCost paid: £${totalCost.toFixed(2)}\nGain: ${gain>=0?'+':''}£${gain.toFixed(2)}\n\nCollection and snapshot saved.`);
+      const keptNote=keptPrices.length?`\n\nCollectr had no price for ${keptPrices.length} item${keptPrices.length===1?'':'s'}, so your existing price was kept:\n${keptPrices.slice(0,8).join('\n')}${keptPrices.length>8?`\n…and ${keptPrices.length-8} more`:''}`:'';
+      alert(`Imported ${newCollection.length} items\nMarket value: ${fm(totalMarket)}\nCost paid: ${fm(totalCost)}\nGain: ${gain>=0?'+':''}${fm(gain)}${keptNote}\n\nCollection and snapshot saved.`);
 
     }catch(err){
       alert('Import error: '+err.message);
