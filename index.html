@@ -218,7 +218,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 15 Oct 2026</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 15 Oct 2026 (b)</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
     </div>
@@ -635,7 +635,7 @@ tr:hover td{background:var(--surface2)}
           <div class="form-group"><label style="font-size:11px">Current market value (£)</label><input type="number" id="ci-value" step="0.01" min="0" placeholder="0.00" style="width:100%;padding:5px 8px;font-size:13px"></div>
         </div>
         <div class="form-group"><label style="font-size:11px">Price tracking URL (optional)</label><input type="text" id="ci-url" placeholder="e.g. https://www.ebay.co.uk/sch/..." style="padding:5px 8px;font-size:13px"></div>
-        <div class="form-group"><label style="font-size:11px">Notes (optional)</label><input type="text" id="ci-notes" placeholder="e.g. PSA grade, condition notes..." style="padding:5px 8px;font-size:13px"></div>
+        <div class="form-group"><label style="font-size:11px">Notes (optional)</label><input type="text" id="ci-notes" placeholder="e.g. PSA 10, BGS 9.5 — then any notes" style="padding:5px 8px;font-size:13px"></div>
         <div class="btn-row"><button class="btn primary" onclick="addCollectionItem()"><i class="ti ti-check"></i> Add to collection</button></div>
       </div>
     </div>
@@ -2169,7 +2169,7 @@ function renderCollectionDashboard(bestColl,unrealisedPct){
         ?`${c.trackedChange>=0?'+':''}${fm(c.trackedChange)} tracked`
         :fm(c.currentVal);
       return`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;gap:6px">
-        <div style="min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.name}">${c.name}</div>
+        <div style="min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${nameWithGrade(c)}">${gradeBadge(c)}${c.name}</div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
           ${sparkline}
           <div style="text-align:right">
@@ -2195,8 +2195,8 @@ function renderCollGraded(elId,items){
     const urlBtn=c.priceUrl?`<a href="${c.priceUrl}" target="_blank" class="btn sm" style="padding:3px 7px;font-size:11px" title="Open price link"><i class="ti ti-external-link"></i></a>`:'';
     return`<div class="inv-item">
       <div class="inv-item-name">
-        ${statusBadge}<span>${c.name}</span>
-        ${c.notes?`<div class="sub">${c.notes}</div>`:''}
+        ${statusBadge}${gradeBadge(c)}<span>${c.name}</span>
+        ${notesWithoutGrade(c)?`<div class="sub">${notesWithoutGrade(c)}</div>`:''}
       </div>
       <div class="inv-item-cost">${fm(c.cost)}</div>
       <div class="inv-item-value">${fm(c.marketValue)} ${gainStr}</div>
@@ -2218,7 +2218,7 @@ function renderCollSection(elId,items,showStatus=false){
     const urlBtn=c.priceUrl?`<a href="${c.priceUrl}" target="_blank" class="btn sm" style="padding:3px 7px;font-size:11px" title="Open price link"><i class="ti ti-external-link"></i></a>`:'';
     return`<div class="inv-item">
       <div class="inv-item-name">
-        ${statusBadge}<span>${c.name}</span>
+        ${statusBadge}${gradeBadge(c)}<span>${c.name}</span>
         ${c.set||c.cn?`<div class="sub">${[c.set,c.cn?'#'+c.cn:''].filter(Boolean).join(' · ')}</div>`:''}
         ${c.notes?`<div class="sub">${c.notes}</div>`:''}
       </div>
@@ -2816,10 +2816,31 @@ function payPeriodRangeLabel(key){const{start,end}=payPeriodRange(key);const las
   return start.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' – '+last.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}
 function shiftPeriodKey(key,n){const[y,m]=key.split('-').map(Number);const d=new Date(y,m-1+n,1);return pk2(d);}
 
+// ---- Grade + grading service, read from notes (Collectr imports put e.g. "PSA 10" there) or the name ----
+const GRADE_SVC={psa:'PSA',bgs:'BGS',beckett:'BGS',cgc:'CGC',sgc:'SGC',ace:'ACE',tag:'TAG',ags:'AGS',ars:'ARS'};
+function gradeInfo(c){
+  const txt=`${c.notes||''} ${c.name||''}`;
+  const m=txt.match(/\b(PSA|BGS|Beckett|CGC|SGC|ACE|TAG|AGS|ARS)(?![a-z])[\s:#-]*((?:Black Label|Pristine|Gem Mint|Mint|NM-MT|Authentic)?\s*(?:10|[1-9](?:\.5)?)?)/i);
+  if(!m) return null;
+  return{service:GRADE_SVC[m[1].toLowerCase()]||m[1].toUpperCase(),grade:(m[2]||'').trim().replace(/\s+/g,' ')};
+}
+function gradeText(c){const g=gradeInfo(c);return g?(g.service+(g.grade?' '+g.grade:'')):'';}
+const GRADE_COLORS={PSA:['#B91C1C','#FEE2E2'],BGS:['#1F2937','#E5E7EB'],CGC:['#1D4ED8','#DBEAFE'],SGC:['#065F46','#D1FAE5']};
+function gradeBadge(c){
+  if(c.type!=='graded'&&!gradeInfo(c)) return '';
+  const t=gradeText(c);
+  if(c.status==='psa'&&!(gradeInfo(c)||{}).grade) return '';
+  if(!t) return `<span title="Add the grade to this card's notes, e.g. PSA 10" style="display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-right:6px;border:1px dashed var(--border);color:var(--muted);vertical-align:1px">Grade?</span>`;
+  const [fg,bg]=GRADE_COLORS[gradeInfo(c).service]||['#92400E','#FEF3C7'];
+  return `<span style="display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-right:6px;background:${bg};color:${fg};letter-spacing:.02em;vertical-align:1px;white-space:nowrap">${t}</span>`;
+}
+function nameWithGrade(c){const t=gradeText(c);return t&&!String(c.name||'').toLowerCase().includes(t.toLowerCase())?`${c.name} (${t})`:c.name;}
+function notesWithoutGrade(c){return String(c.notes||'').replace(/^\s*(PSA|BGS|Beckett|CGC|SGC|ACE|TAG|AGS|ARS)\b[^—-]*(—|-)?\s*/i,'').trim();}
+
 // ---- Graded cards: when each was added and what it was worth then ----
 const GRADED_RE=/\b(psa|bgs|beckett|cgc|sgc|ace|tag)\b/i;
 function gradedAdditions(){
-  return state.collection.filter(c=>c.type==='graded'||GRADED_RE.test(c.notes||'')).map(c=>{
+  return state.collection.filter(c=>c.type==='graded'||!!gradeInfo(c)).map(c=>{
     const snaps=(state.itemSnapshots&&state.itemSnapshots[c.id])||[];
     const dated=snaps.map(x=>({d:parseDateToObj(x.date),v:x.value})).filter(x=>x.d).sort((a,b)=>a.d-b.d);
     let added=c.added?parseDateToObj(c.added):null;
@@ -2827,7 +2848,7 @@ function gradedAdditions(){
     if(!added) return null;
     const first=dated.find(x=>x.d>=added&&x.v>0);
     const value=first?first.v:(parseFloat(c.marketValue)||0);
-    return{name:c.name,added,value,cost:parseFloat(c.cost)||0,notes:c.notes||''};
+    return{name:nameWithGrade(c),added,value,cost:parseFloat(c.cost)||0,notes:c.notes||''};
   }).filter(Boolean);
 }
 
@@ -3567,7 +3588,7 @@ function renderMoversPage(){
       :`<div style="height:30px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;margin-top:8px">No price history yet</div>`;
 
     return`<div class="card" style="padding:12px">
-      <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px" title="${c.name}">${c.name}</div>
+      <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px" title="${nameWithGrade(c)}">${gradeBadge(c)}${c.name}</div>
       <div style="font-size:10px;color:var(--muted);margin-bottom:6px">${TYPE_LABELS[c.type]||c.type}${c.set?' · '+c.set:''}</div>
       <div style="display:flex;justify-content:space-between;align-items:baseline">
         <div>
@@ -3634,7 +3655,7 @@ function renderCollectionTable(tab){
     const statusLabel=c.type==='graded'?(c.status==='psa'?'At PSA':c.status==='pending'?'Pending':'In collection'):'—';
     const urlBtn=c.priceUrl?`<a href="${c.priceUrl}" target="_blank" class="btn sm" title="Open price link"><i class="ti ti-external-link"></i></a>`:'-';
     return`<tr>
-      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.name}">${c.name}</td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${nameWithGrade(c)}">${gradeBadge(c)}${c.name}</td>
       <td><span class="badge badge-${c.type}">${c.type==='sealed'?'Sealed':c.type==='single'?'Single':'Graded'}</span></td>
       <td>${c.type==='graded'?`<span class="badge badge-${c.status}">${statusLabel}</span>`:'—'}</td>
       <td>${[c.set,c.cn?'#'+c.cn:''].filter(Boolean).join(' ')||'—'}</td>
