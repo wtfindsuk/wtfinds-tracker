@@ -219,7 +219,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 15 Oct 2026 (d)</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 15 Oct 2026 (e)</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
     </div>
@@ -560,7 +560,7 @@ tr:hover td{background:var(--surface2)}
       <div class="card" style="padding:0">
         <div style="overflow-x:auto">
           <table>
-            <thead><tr id="collection-thead"><th class="sortable" onclick="setCollSort('name')">Name<span class="sort-ind" data-col="name"></span></th><th class="sortable" onclick="setCollSort('grade')">Grade<span class="sort-ind" data-col="grade"></span></th><th class="sortable" onclick="setCollSort('type')">Type<span class="sort-ind" data-col="type"></span></th><th class="sortable" onclick="setCollSort('status')">Status<span class="sort-ind" data-col="status"></span></th><th class="sortable" onclick="setCollSort('set')">Set / CN<span class="sort-ind" data-col="set"></span></th><th class="sortable" onclick="setCollSort('cost')">Cost paid<span class="sort-ind" data-col="cost"></span></th><th class="sortable" onclick="setCollSort('value')">Market value<span class="sort-ind" data-col="value"></span></th><th class="sortable" onclick="setCollSort('gain')">Gain/Loss<span class="sort-ind" data-col="gain"></span></th><th class="sortable" onclick="setCollSort('link')">Price link<span class="sort-ind" data-col="link"></span></th><th></th></tr></thead>
+            <thead><tr id="collection-thead"></tr></thead>
             <tbody id="collection-tbody"></tbody>
           </table>
         </div>
@@ -3674,34 +3674,36 @@ function setCollSort(col){
   else collSort={col,dir:COLL_SORT_NUMERIC.includes(col)?-1:1};
   renderCollectionTable(collTab);
 }
+function collColumns(tab){
+  const cols=[['name','Name']];
+  if(tab==='all'||tab==='graded') cols.push(['grade','Grade']);
+  if(tab==='all') cols.push(['type','Type']);
+  cols.push(['set','Set / CN'],['cost','Cost paid'],['value','Market value'],['gain','Gain / loss']);
+  return cols;
+}
 function renderCollectionTable(tab){
   const tbody=document.getElementById('collection-tbody');
+  const cols=collColumns(tab);
+  if(collSort.col&&!cols.some(([k])=>k===collSort.col)) collSort={col:null,dir:1};
+  const head=document.getElementById('collection-thead');
+  if(head) head.innerHTML=cols.map(([k,l])=>`<th class="sortable" onclick="setCollSort('${k}')"${['cost','value','gain'].includes(k)?' style="text-align:right"':''}>${l}<span class="sort-ind">${collSort.col===k?(collSort.dir>0?'▲':'▼'):''}</span></th>`).join('');
   let list=tab==='all'?[...state.collection]:[...state.collection].filter(c=>c.type===tab);
-  if(collSort.col){const k=COLL_SORT_KEYS[collSort.col];list.sort((a,b)=>{const x=k(a),y=k(b);return(x<y?-1:x>y?1:String(a.name).localeCompare(String(b.name)))*collSort.dir;});}
   renderCollTypeTotals(tab);
-  document.querySelectorAll('#collection-thead .sort-ind').forEach(el=>{el.textContent=el.dataset.col===collSort.col?(collSort.dir>0?'▲':'▼'):'';});
-  if(!list.length){renderCollTypeTotals(tab);tbody.innerHTML='<tr><td colspan="10" class="empty">Nothing here yet.</td></tr>';return;}
-  tbody.innerHTML=list.map(c=>{
-    const gain=(parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0);
-    const realIdx=state.collection.indexOf(c);
-    const statusLabel=c.type==='graded'?(c.status==='psa'?'At PSA':c.status==='pending'?'Pending':'In collection'):'—';
-    const urlBtn=c.priceUrl?`<a href="${c.priceUrl}" target="_blank" class="btn sm" title="Open price link"><i class="ti ti-external-link"></i></a>`:'-';
-    return`<tr>
-      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${nameWithGrade(c)}">${c.name}</td>
-      <td style="white-space:nowrap">${gradeBadge(c)||'<span style="color:var(--muted)">—</span>'}</td>
-      <td><span class="badge badge-${c.type}">${c.type==='sealed'?'Sealed':c.type==='single'?'Single':'Graded'}</span></td>
-      <td>${c.type==='graded'?`<span class="badge badge-${c.status}">${statusLabel}</span>`:'—'}</td>
-      <td>${[c.set,c.cn?'#'+c.cn:''].filter(Boolean).join(' ')||'—'}</td>
-      <td>${fm(c.cost)}</td>
-      <td><input class="inline-input" type="number" step="0.01" value="${parseFloat(c.marketValue)||0}" onchange="updateMarketValue('${c.id}',this.value)"></td>
-      <td class="${gain>=0?'profit-pos':'profit-neg'}">${gain>=0?'+':''}${fm(gain)}</td>
-      <td>${urlBtn}</td>
-      <td><button class="btn sm danger" onclick="deleteCollItem(${realIdx})"><i class="ti ti-trash"></i></button></td>
-    </tr>`;
-  }).join('')+(()=>{const t=collTotals(list);return`<tr style="font-weight:700;border-top:2px solid var(--border)">
-      <td>Total · ${t.count} item${t.count===1?'':'s'}</td><td></td><td></td><td></td><td></td>
-      <td>${fm(t.cost)}</td><td>${fm(t.value)}</td>
-      <td class="${t.gain>=0?'profit-pos':'profit-neg'}">${t.gain>=0?'+':''}${fm(t.gain)}</td><td></td><td></td></tr>`;})();
+  if(!list.length){tbody.innerHTML=`<tr><td colspan="${cols.length}" class="empty">Nothing here yet.</td></tr>`;return;}
+  if(collSort.col){const k=COLL_SORT_KEYS[collSort.col];list.sort((a,b)=>{const x=k(a),y=k(b);return(x<y?-1:x>y?1:String(a.name).localeCompare(String(b.name)))*collSort.dir;});}
+  const cell={
+    name:c=>`<td style="min-width:200px;max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${nameWithGrade(c)}">${c.name}</td>`,
+    grade:c=>`<td style="white-space:nowrap">${gradeBadge(c)||'<span style="color:var(--muted)">—</span>'}</td>`,
+    type:c=>`<td><span class="badge badge-${c.type}">${c.type==='sealed'?'Sealed':c.type==='single'?'Single':'Graded'}</span></td>`,
+    set:c=>`<td style="white-space:nowrap">${c.set||'—'}${c.cn?` <span style="color:var(--muted)">#${c.cn}</span>`:''}</td>`,
+    cost:c=>`<td style="text-align:right;font-variant-numeric:tabular-nums">${fm(c.cost)}</td>`,
+    value:c=>`<td style="text-align:right"><input class="inline-input" type="number" step="0.01" value="${parseFloat(c.marketValue)||0}" onchange="updateMarketValue('${c.id}',this.value)" style="text-align:right;max-width:110px"></td>`,
+    gain:c=>{const g=(parseFloat(c.marketValue)||0)-(parseFloat(c.cost)||0);return`<td style="text-align:right;font-variant-numeric:tabular-nums" class="${g>=0?'profit-pos':'profit-neg'}">${g>=0?'+':''}${fm(g)}</td>`;}
+  };
+  const t=collTotals(list);
+  const foot={name:`<td>Total · ${t.count} item${t.count===1?'':'s'}</td>`,cost:`<td style="text-align:right">${fm(t.cost)}</td>`,value:`<td style="text-align:right;padding-right:14px">${fm(t.value)}</td>`,gain:`<td style="text-align:right" class="${t.gain>=0?'profit-pos':'profit-neg'}">${t.gain>=0?'+':''}${fm(t.gain)}</td>`};
+  tbody.innerHTML=list.map(c=>`<tr>${cols.map(([k])=>cell[k](c)).join('')}</tr>`).join('')
+    +`<tr style="font-weight:700;border-top:2px solid var(--border)">${cols.map(([k])=>foot[k]||'<td></td>').join('')}</tr>`;
 }
 function collTotals(list){
   const value=list.reduce((a,c)=>a+(parseFloat(c.marketValue)||0),0),cost=list.reduce((a,c)=>a+(parseFloat(c.cost)||0),0);
