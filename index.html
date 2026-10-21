@@ -219,9 +219,10 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 15 Oct 2026 (e)</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 21 Oct 2026</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
+      <button class="btn sm" onclick="lockTracker()" title="Forget the passcode and clear saved data on this device"><i class="ti ti-lock"></i> Lock</button>
     </div>
   </div>
 
@@ -773,8 +774,42 @@ let purchaseTab = 'all', collTab = 'all';
 let saveQueue = {}, saveTimer = null;
 
 // ---- SHEETS SYNC ----
-async function sheetsGet(action){const url=SCRIPT_URL+'?action='+action+'&t='+Date.now();const res=await fetch(url);return res.json();}
-async function sheetsPost(payload){const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});return res.json();}
+// ---- Passcode: checked by the Apps Script; remembered on this device only ----
+const KEY_STORE='wtf_tracker_key';
+function getKey(){try{return localStorage.getItem(KEY_STORE)||'';}catch(e){return'';}}
+function setKey(k){try{k?localStorage.setItem(KEY_STORE,k):localStorage.removeItem(KEY_STORE);}catch(e){}}
+class AuthError extends Error{constructor(){super('unauthorized');this.name='AuthError';}}
+async function sheetsCall(payload){
+  const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({...payload,key:getKey()})});
+  const j=await res.json();
+  if(j&&j.ok===false&&j.error==='unauthorized') throw new AuthError();
+  return j;
+}
+async function sheetsGet(action){return sheetsCall({action});}
+async function sheetsPost(payload){const j=await sheetsCall(payload);if(!j||!j.ok)throw new Error((j&&j.error)||'save failed');return j;}
+function askPasscode(message){
+  return new Promise(resolve=>{
+    const ov=document.getElementById('loading-overlay');ov.style.display='flex';
+    const t=document.getElementById('loading-text'),h=document.getElementById('loading-help');
+    const sp=ov.querySelector('.spinner');if(sp)sp.style.display='none';
+    if(t)t.textContent='Enter your tracker passcode';
+    h.style.display='block';
+    h.innerHTML=`${message?`<div style="color:var(--red);font-weight:600;margin-bottom:6px">${message}</div>`:''}
+      <form id="pass-form" style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+        <input id="pass-input" type="password" autocomplete="current-password" placeholder="Passcode" style="padding:8px 10px;font-size:14px;width:100%">
+        <button class="btn primary" type="submit">Unlock</button>
+        <div style="font-size:11px;color:var(--muted)">Remembered on this device until you press Lock.</div>
+      </form>`;
+    const inp=document.getElementById('pass-input');setTimeout(()=>inp&&inp.focus(),50);
+    document.getElementById('pass-form').onsubmit=ev=>{ev.preventDefault();const v=inp.value.trim();if(!v)return;
+      setKey(v);if(sp)sp.style.display='';if(t)t.innerHTML='Loading your data from Google Sheets… <span id="loading-secs" style="color:var(--muted)"></span>';h.style.display='none';h.innerHTML='';resolve();};
+  });
+}
+function lockTracker(){
+  if(!confirm('Lock the tracker on this device?\n\nThis forgets the passcode and clears the copy of your data saved in this browser.'))return;
+  setKey('');try{localStorage.removeItem('cardtracker_v1');}catch(e){}
+  location.reload();
+}
 function setSyncStatus(msg,type=''){const el=document.getElementById('sync-status');el.textContent=msg;el.className='sync-status'+(type?' '+type:'');}
 
 async function loadFromSheets(){
@@ -868,6 +903,7 @@ async function loadFromSheets(){
     buildBuyersFromSales();
     repairOrphanedSnapshots();
   }catch(e){
+    if(e instanceof AuthError){setSyncStatus('Locked','err');throw e;}
     setSyncStatus('Offline — changes saved locally','err');
     try{const raw=localStorage.getItem('cardtracker_v1');if(raw)state=JSON.parse(raw);}catch(e2){}
   }
@@ -875,7 +911,7 @@ async function loadFromSheets(){
 
 async function saveSheetData(sheetName,headers,rows){
   try{setSyncStatus('Saving...','syncing');await sheetsPost({action:'save',sheet:sheetName,rows:[headers,...rows]});setSyncStatus('Synced with Google Sheets','ok');}
-  catch(e){setSyncStatus('Sync failed — saved locally','err');}
+  catch(e){setSyncStatus(e instanceof AuthError?'Locked — not saved, reload and enter passcode':'Sync failed — saved locally','err');}
   try{localStorage.setItem('cardtracker_v1',JSON.stringify(state));}catch(e){}
 }
 function scheduleSave(sheetName){saveQueue[sheetName]=true;clearTimeout(saveTimer);saveTimer=setTimeout(()=>flushSaves(),800);}
@@ -914,7 +950,7 @@ async function flushSaves(){
     if(sheet==='Postage') await saveSheetData('Postage',['Name','Cost'],state.postage.map(p=>[p.name,p.cost]));
   }
 }
-async function syncNow(){await loadFromSheets();renderDashboard();}
+async function syncNow(){try{await loadFromSheets();renderDashboard();}catch(e){if(e instanceof AuthError){setKey('');location.reload();}else throw e;}}
 
 // ---- HELPERS ----
 function fm(v){const n=parseFloat(v)||0;return(n<-0.004?'−':'')+'£'+Math.abs(n).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});}
@@ -4181,11 +4217,17 @@ function renderGamesPage(){
 
 // ---- INIT ----
 async function init(){
-  const t0=Date.now();
-  const tick=setInterval(()=>{const secs=Math.round((Date.now()-t0)/1000);const el=document.getElementById('loading-secs');if(el)el.textContent=secs+'s';
+  let t0=Date.now();
+  const tick=setInterval(()=>{if(document.getElementById('pass-form')){t0=Date.now();return;}const secs=Math.round((Date.now()-t0)/1000);const el=document.getElementById('loading-secs');if(el)el.textContent=secs+'s';
     if(secs===15){const h=document.getElementById('loading-help');if(h){h.style.display='block';h.innerHTML='Google Sheets is taking longer than usual to reply. This is on Google\'s side and usually clears within a minute — your data is safe.<br><button class="btn sm" style="margin-top:8px" onclick="location.reload()">Try again</button>';}}},1000);
   try{
-    await Promise.all([Promise.race([loadBankHolidays(),new Promise(r=>setTimeout(r,3000))]),loadFromSheets()]);
+    if(!getKey()) await askPasscode();
+    const holidays=Promise.race([loadBankHolidays(),new Promise(r=>setTimeout(r,3000))]);
+    for(;;){
+      try{await loadFromSheets();break;}
+      catch(e){if(!(e instanceof AuthError))throw e;setKey('');await askPasscode('That passcode wasn\'t accepted.');}
+    }
+    await holidays;
     clearInterval(tick);
     document.getElementById('loading-overlay').style.display='none';
     renderDashboard();
