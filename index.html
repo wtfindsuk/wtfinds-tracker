@@ -219,7 +219,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 21 Oct 2026</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 22 Oct 2026 (b)</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
       <button class="btn sm" onclick="lockTracker()" title="Forget the passcode and clear saved data on this device"><i class="ti ti-lock"></i> Lock</button>
@@ -358,7 +358,7 @@ tr:hover td{background:var(--surface2)}
           <!-- LEFT: compact form fields -->
           <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
             <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px">
-              <div class="form-group"><label style="font-size:11px">Sale ID</label><input type="text" id="s-item" oninput="checkDuplicateSaleId()" onchange="checkDuplicateSaleId()" onpaste="setTimeout(checkDuplicateSaleId,0)" style="width:100%;padding:5px 8px;font-size:13px"><div id="s-dup-alert" style="display:none;margin-top:4px;font-size:11px;font-weight:600;color:var(--red);line-height:1.35"></div></div>
+              <div class="form-group"><label style="font-size:11px">Sale ID</label><input type="text" id="s-item" oninput="checkDuplicateSaleId();autoPlatformFromId()" onchange="checkDuplicateSaleId();autoPlatformFromId()" onpaste="setTimeout(()=>{checkDuplicateSaleId();autoPlatformFromId()},0)" style="width:100%;padding:5px 8px;font-size:13px"><div id="s-dup-alert" style="display:none;margin-top:4px;font-size:11px;font-weight:600;color:var(--red);line-height:1.35"></div></div>
               <div class="form-group"><label style="font-size:11px">Buyer username</label><input type="text" id="s-username" placeholder="username" oninput="checkBuyerVIP()" onchange="checkBuyerVIP()" onpaste="setTimeout(checkBuyerVIP,0)" style="width:100%;padding:5px 8px;font-size:13px"></div>
             </div>
             <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px">
@@ -436,6 +436,8 @@ tr:hover td{background:var(--surface2)}
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:12px;color:var(--muted)">
           <span>Total articles:</span><span id="gq-total-display" style="font-weight:600;color:var(--text)">0</span>
           <input type="hidden" id="s-article-count">
+          <span style="margin-left:18px">Of these, graded slabs:</span>
+          <div class="pkg-item gq-panel" onclick="pkgIncrement('s-graded-qty')" style="cursor:pointer;padding:3px 8px;min-width:0"><input type="number" min="0" value="0" id="s-graded-qty" onclick="event.stopPropagation()" style="width:52px"></div>
         </div>
         <div class="section-divider">Standard packaging</div>
         <div class="pkg-grid" id="pkg-inputs-standard" style="display:flex;flex-direction:column;gap:0"></div>
@@ -840,6 +842,7 @@ async function loadFromSheets(){
             mtg_strixhaven:g('mtgstrixhavenqty'),mtg_fra:g('mtgrealityfractureqty'),mtg_marvel:g('mtgmarvelqty'),
             mtg_ff:g('mtgffqty'),yugioh:g('yugiohqty'),cyberpunk:g('cyberpunkqty'),palworld:g('palworldqty'),gundam:g('gundamqty')
           },
+          gradedQty:g('gradedqty'),
           username:s('buyerusername')
         };
       }).filter(s=>s.item);
@@ -918,7 +921,7 @@ function scheduleSave(sheetName){saveQueue[sheetName]=true;clearTimeout(saveTime
 async function flushSaves(){
   const sheets=Object.keys(saveQueue);saveQueue={};
   for(const sheet of sheets){
-    if(sheet==='Sales') await saveSheetData('Sales',['Date','Item','Platform','Price','ShippingCharged','PostageCost','Packaging','ArticleCount','ActualCommission','PromotedFee','PokemonQty','MTGQty','OnePieceQty','MarvelQty','OtherQty','DBZQty','RiftboundQty','MTGHobbitQty','MTGAvatarTLAQty','MTGAvatarTLEQty','MTGStrixhavenQty','MTGMarvelQty','MTGFFQty','BuyerUsername','YugiohQty','CyberpunkQty','MTGRealityFractureQty','PalworldQty','GundamQty'],state.sales.map(s=>[s.date,s.item,s.platform,s.price,s.shippingCharged||0,s.postageCost,JSON.stringify(s.packaging||[]),s.articleCount||1,s.actualCommission!==null&&s.actualCommission!==undefined?s.actualCommission:'',s.promotedFee||0,(s.gameQty?.pokemon||0),(s.gameQty?.mtg||0),(s.gameQty?.onepiece||0),(s.gameQty?.marvel||0),(s.gameQty?.other||0),(s.gameQty?.dbz||0),(s.gameQty?.riftbound||0),(s.gameQty?.mtg_hobbit||0),(s.gameQty?.mtg_avatar_tla||0),(s.gameQty?.mtg_avatar_tle||0),(s.gameQty?.mtg_strixhaven||0),(s.gameQty?.mtg_marvel||0),(s.gameQty?.mtg_ff||0),s.username||'',(s.gameQty?.yugioh||0),(s.gameQty?.cyberpunk||0),(s.gameQty?.mtg_fra||0),(s.gameQty?.palworld||0),(s.gameQty?.gundam||0)]));
+    if(sheet==='Sales') await saveSheetData('Sales',['Date','Item','Platform','Price','ShippingCharged','PostageCost','Packaging','ArticleCount','ActualCommission','PromotedFee','PokemonQty','MTGQty','OnePieceQty','MarvelQty','OtherQty','DBZQty','RiftboundQty','MTGHobbitQty','MTGAvatarTLAQty','MTGAvatarTLEQty','MTGStrixhavenQty','MTGMarvelQty','MTGFFQty','BuyerUsername','YugiohQty','CyberpunkQty','MTGRealityFractureQty','PalworldQty','GundamQty','GradedQty'],state.sales.map(s=>[s.date,s.item,s.platform,s.price,s.shippingCharged||0,s.postageCost,JSON.stringify(s.packaging||[]),s.articleCount||1,s.actualCommission!==null&&s.actualCommission!==undefined?s.actualCommission:'',s.promotedFee||0,(s.gameQty?.pokemon||0),(s.gameQty?.mtg||0),(s.gameQty?.onepiece||0),(s.gameQty?.marvel||0),(s.gameQty?.other||0),(s.gameQty?.dbz||0),(s.gameQty?.riftbound||0),(s.gameQty?.mtg_hobbit||0),(s.gameQty?.mtg_avatar_tla||0),(s.gameQty?.mtg_avatar_tle||0),(s.gameQty?.mtg_strixhaven||0),(s.gameQty?.mtg_marvel||0),(s.gameQty?.mtg_ff||0),s.username||'',(s.gameQty?.yugioh||0),(s.gameQty?.cyberpunk||0),(s.gameQty?.mtg_fra||0),(s.gameQty?.palworld||0),(s.gameQty?.gundam||0),(s.gradedQty||0)]));
     if(sheet==='Purchases') await saveSheetData('Purchases',['Date','Description','Category','Amount','Supplier','Set'],state.purchases.map(p=>[p.date,p.description,p.category,p.amount,p.supplier||'',p.set||'']));
     if(sheet==='Collection') await saveSheetData('Collection',['ID','Name','Type','Game','Status','Set','CN','Cost','MarketValue','PriceUrl','Notes','Added'],state.collection.map(c=>[c.id,c.name,c.type,c.game,c.status,c.set||'',c.cn||'',c.cost,c.marketValue,c.priceUrl||'',c.notes||'',c.added||'']));
     if(sheet==='Games') await saveSheetData('Games',['ID','Name','Platform','Condition','Cost','Value','Added'],state.games.map(g=>[g.id,g.name,g.platform,g.condition||'',g.cost,g.value,g.added]));
@@ -977,6 +980,12 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 function calcSaleSupplies(sale){return(sale.packaging||[]).reduce((a,p)=>{const pkg=state.packaging.find(x=>x.name===p.name);return a+(pkg?parseFloat(pkg.cost)*(parseInt(p.qty)||0):0);},0);}
 function saleIdKey(v){const t=String(v||'').trim().toLowerCase();const d=t.replace(/\D/g,'');return d.length>=5?d:t.replace(/\s+/g,'');}
 function findDuplicateSales(id){const k=saleIdKey(id);if(!k)return[];return state.sales.filter(s=>saleIdKey(s.item)===k);}
+// eBay order numbers look like 23-15261-51063; Cardmarket's are plain 10-digit numbers
+function autoPlatformFromId(){
+  const v=(document.getElementById('s-item')?.value||'').trim(),sel=document.getElementById('s-platform');if(!sel)return;
+  const want=/^\d{2}-\d{5}-\d{5}$/.test(v)?'eBay':/^\d{9,11}$/.test(v)?'Cardmarket':null;
+  if(want&&sel.value!==want){sel.value=want;togglePromotedField();updateSalePreview();}
+}
 function checkDuplicateSaleId(){
   const el=document.getElementById('s-item'),box=document.getElementById('s-dup-alert');if(!el||!box)return;
   const dups=findDuplicateSales(el.value);
@@ -1848,6 +1857,31 @@ function retagSale(idx,from){
   renderSpendVsReturn();renderGameBreakdown();
   showToast(`Moved ${qty} card${qty===1?'':'s'} to ${SVR_LBL[to]}`);
 }
+// Graded cards cut across games: grading costs (from purchases), slabs held (collection), sales marked graded
+const GRADING_RE=/sub ?cent(er|re)|grading|\bpsa\b|\bbgs\b|beckett|\bcgc\b|\bsgc\b|ace grading/i;
+function gradedPicture(){
+  const fees=state.purchases.filter(p=>GRADING_RE.test(`${p.description||''} ${p.supplier||''} ${p.set||''}`));
+  const slabs=state.collection.filter(c=>c.type==='graded');
+  const sales=state.sales.map((s,idx)=>({s,idx})).filter(x=>(parseInt(x.s.gradedQty)||0)>0);
+  const spentFees=fees.reduce((a,p)=>a+(parseFloat(p.amount)||0),0);
+  const cardCost=slabs.reduce((a,c)=>a+(parseFloat(c.cost)||0),0);
+  let back=0,cards=0;
+  sales.forEach(({s})=>{const q=parseInt(s.gradedQty)||0,tot=Math.max(parseInt(s.articleCount)||1,q);back+=calcSaleProfit(s)*q/tot;cards+=q;});
+  const holding=slabs.reduce((a,c)=>a+(parseFloat(c.marketValue)||0),0);
+  return{fees,slabs,sales,spentFees,cardCost,spent:spentFees+cardCost,back,cards,holding,total:back+holding};
+}
+function markSaleGraded(){
+  const id=(document.getElementById('graded-mark-id')?.value||'').trim(),q=parseInt(document.getElementById('graded-mark-qty')?.value)||1;
+  if(!id)return;
+  const matches=findDuplicateSales(id);
+  if(!matches.length){alert(`No sale found with ID ${id}.`);return;}
+  const s=matches[matches.length-1];
+  s.gradedQty=Math.min(q,parseInt(s.articleCount)||q);
+  scheduleSave('Sales');renderSpendVsReturn();
+  showToast(`Sale ${s.item} marked as ${s.gradedQty} graded slab${s.gradedQty===1?'':'s'}`);
+}
+function unmarkSaleGraded(idx){const s=state.sales[idx];if(!s)return;s.gradedQty=0;scheduleSave('Sales');renderSpendVsReturn();}
+
 function renderSpendVsReturn(){
   const el=document.getElementById('dash-spend-return');if(!el)return;
   const keys=Object.keys(SVR_LBL);
@@ -1875,7 +1909,8 @@ function renderSpendVsReturn(){
     if(r.spent<=0)return r.total>0?'<span style="color:var(--green)">all profit</span>':'<span style="color:var(--muted)">—</span>';
     const p=Math.round(r.total/r.spent*100);
     return p>=100?`<span style="color:var(--green);font-weight:600">${p}% back ✓</span>`:`<span style="color:${p>=75?'#f59e0b':'var(--red)'};font-weight:600">${p}% back</span>`;};
-  const maxV=Math.max(...rows.map(r=>Math.max(r.spent,r.total)),1);
+  const Gp=gradedPicture();
+  const maxV=Math.max(...rows.map(r=>Math.max(r.spent,r.total)),Gp.spent,Gp.total,1);
   const bar=(v,c)=>`<div style="height:6px;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${Math.max(0,Math.min(v/maxV*100,100))}%;background:${c}"></div></div>`;
   const opts=k=>Object.keys(SVR_LBL).filter(g=>g!==k&&g!=='untagged').map(g=>`<option value="${g}">${SVR_LBL[g]}</option>`).join('');
   const detail=r=>{
@@ -1903,6 +1938,31 @@ function renderSpendVsReturn(){
         </table></div>
       </div></td></tr>`;
   };
+  const G=gradedPicture();
+  const gradedRowHtml=bar=>{
+    if(!G.fees.length&&!G.slabs.length&&!G.sales.length) return '';
+    const pctTxt=G.spent>0?Math.round(G.total/G.spent*100):null;
+    const res=pctTxt===null?'<span style="color:var(--green)">all profit</span>':pctTxt>=100?`<span style="color:var(--green);font-weight:600">${pctTxt}% back ✓</span>`:`<span style="color:${pctTxt>=75?'#f59e0b':'var(--red)'};font-weight:600">${pctTxt}% back</span>`;
+    const open=svrOpen==='__graded';
+    const li=(a,b,c='')=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:2px 0"><span>${a}</span><span style="white-space:nowrap;${c}">${b}</span></div>`;
+    const detail=open?`<tr onclick="event.stopPropagation()"><td colspan="7" style="background:var(--surface2);padding:10px 12px;font-size:12px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px">
+        <div><div style="font-weight:600;margin-bottom:4px">Spent · grading ${fm(G.spentFees)}${G.cardCost?` + card cost ${fm(G.cardCost)}`:''}</div>
+          ${G.fees.map(p=>li(`${fd(p.date)} · ${p.description||p.supplier}`,fm(p.amount))).join('')||'<div style="color:var(--muted)">No grading purchases found</div>'}</div>
+        <div><div style="font-weight:600;margin-bottom:4px">Still holding · ${G.slabs.length} slabs</div>
+          ${[...G.slabs].sort((a,b)=>(parseFloat(b.marketValue)||0)-(parseFloat(a.marketValue)||0)).map(c=>li(`${gradeBadge(c)}${c.name}`,fm(c.marketValue))).join('')||'<div style="color:var(--muted)">No graded cards in collection</div>'}</div>
+        <div><div style="font-weight:600;margin-bottom:4px">Sold · ${G.cards} slab${G.cards===1?'':'s'}</div>
+          ${G.sales.map(({s,idx})=>li(`${fd(s.date)} · ${s.item}${s.username?' · '+s.username:''} · ${s.gradedQty} slab${s.gradedQty>1?'s':''}`,`${fm((parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0))} <a href="#" onclick="event.preventDefault();unmarkSaleGraded(${idx})" style="color:var(--muted);font-size:11px;margin-left:6px">unmark</a>`)).join('')||'<div style="color:var(--muted)">No sales marked as graded yet</div>'}
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+            <div style="color:var(--muted);margin-bottom:4px">Sold a slab before this was added? Mark the sale:</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap"><input id="graded-mark-id" placeholder="Sale ID" style="flex:1;min-width:120px;font-size:12px;padding:3px 6px"><input id="graded-mark-qty" type="number" min="1" value="1" style="width:52px;font-size:12px;padding:3px 6px" title="Slabs in that sale"><button class="btn sm" onclick="markSaleGraded()">Mark</button></div>
+          </div></div>
+      </div></td></tr>`:'';
+    return`<tr><td colspan="7" style="padding:6px 12px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;border-top:2px solid var(--border)">Across all games</td></tr>
+      <tr onclick="toggleSvr('__graded')" style="cursor:pointer" title="Click to see grading costs, slabs and graded sales">
+        <td style="font-weight:600">${open?'▾':'▸'} Graded cards</td><td>${G.cards}</td><td>${fm(G.spent)}</td><td>${fm(G.back)}</td><td style="color:var(--muted)">${fm(G.holding)}</td>
+        <td><div style="display:flex;flex-direction:column;gap:3px">${bar(G.spent,'var(--red)')}${bar(G.total,'var(--green)')}</div></td><td>${res}</td></tr>${detail}`;
+  };
   el.innerHTML=`<div class="card" style="padding:0">
     <div style="overflow-x:auto"><table>
       <thead><tr><th>Game</th><th>Cards sold</th><th>Spent</th><th>Back from sales</th><th>Still holding</th><th style="min-width:140px"></th><th>Result</th></tr></thead>
@@ -1913,10 +1973,10 @@ function renderSpendVsReturn(){
         <td style="${r.back<0?'color:var(--red)':''}">${fm(r.back)}</td>
         <td style="color:var(--muted)">${fm(r.holding)}</td>
         <td><div style="display:flex;flex-direction:column;gap:3px">${bar(r.spent,'var(--red)')}${bar(r.total,'var(--green)')}</div></td>
-        <td>${verdict(r)}</td></tr>${svrOpen===r.k?detail(r):''}`).join('')}</tbody>
+        <td>${verdict(r)}</td></tr>${svrOpen===r.k?detail(r):''}`).join('')}${gradedRowHtml(bar)}</tbody>
     </table></div>
     <div style="font-size:11px;color:var(--muted);padding:8px 12px;border-top:1px solid var(--border)">
-      Click a game to see exactly which sales are counted. <span style="color:var(--red)">■</span> spent &nbsp;<span style="color:var(--green)">■</span> back from sales + still holding · "Back" is what you kept after postage, packaging &amp; fees; orders with more than one game are split by number of cards${overheads?` · ${fm(overheads)} on supplies &amp; equipment not split by game`:''}
+      Click a row to see exactly what's counted. Graded cards are also included in their game's row above. <span style="color:var(--red)">■</span> spent &nbsp;<span style="color:var(--green)">■</span> back from sales + still holding · "Back" is what you kept after postage, packaging &amp; fees; orders with more than one game are split by number of cards${overheads?` · ${fm(overheads)} on supplies &amp; equipment not split by game`:''}
     </div>
   </div>`;
 }
@@ -2627,7 +2687,7 @@ function logSale(){
   if(!price){alert('Please enter a price.');return;}
   const totalGQ=getTotalGameQty();
   const articleCount=parseInt(document.getElementById('s-article-count').value)||totalGQ||0;
-  if(!articleCount){alert('Please enter article count or add at least one card in the game breakdown.');return;}
+  if(!articleCount){alert('Click at least one game in the Game breakdown (e.g. Gundam ×1 for a sealed box) so the sale has an item count.');return;}
 
   // Mandatory: team bag or sealable penny sleeve (Cardmarket only — eBay items may be boxed)
   if(platform==='Cardmarket'){
@@ -2636,7 +2696,7 @@ function logSale(){
     const teamBagQty=parseInt(teamBagEl?.value)||0;
     const sealableQty=parseInt(sealableEl?.value)||0;
     if(teamBagQty===0&&sealableQty===0){
-      alert('Please add at least one Team bag or Sealable Penny Sleeve before logging.');
+      alert('Cardmarket sales need at least one Team bag or Sealable Penny Sleeve.\n\nPlatform is currently set to Cardmarket. If this is an eBay sale, switch Platform to eBay — eBay sales don\'t need either.');
       return;
     }
   }
@@ -2662,7 +2722,8 @@ function logSale(){
   };
   // Safety net: any game panel not listed above is still recorded
   document.querySelectorAll('#game-breakdown-grid input[id^="gq-"]').forEach(el=>{const k=el.id.slice(3);if(!(k in gameQty))gameQty[k]=parseInt(el.value)||0;});
-  const saleObj={date,platform,item,price,shippingCharged:shipping,postageCost:post?post.cost:0,packaging,articleCount,actualCommission:null,promotedFee,gameQty,username:buyerUsername};
+  const gradedQty=Math.min(parseInt(document.getElementById('s-graded-qty')?.value)||0,articleCount);
+  const saleObj={date,platform,item,price,shippingCharged:shipping,postageCost:post?post.cost:0,packaging,articleCount,actualCommission:null,promotedFee,gameQty,gradedQty,username:buyerUsername};
   state.sales.push(saleObj);
   const saleProfit=calcSaleProfit(saleObj);
   scheduleSave('Sales');
@@ -2674,6 +2735,7 @@ function logSale(){
   const su=document.getElementById('s-username');if(su)su.value='';
   const da=document.getElementById('s-dup-alert');if(da)da.style.display='none';const si=document.getElementById('s-item');if(si)si.style.borderColor='';
   const va=document.getElementById('s-vip-alert');if(va)va.style.display='none';
+  {const gs=document.getElementById('s-graded-qty');if(gs)gs.value=0;}
   ['gq-pokemon','gq-mtg','gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_marvel','gq-mtg_strixhaven','gq-mtg_fra','gq-mtg_ff','gq-mtg_hobbit','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-cyberpunk','gq-palworld','gq-gundam','gq-other'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=0;});
   syncArticleCount();
   const defaults={'Thermal label':1,'Promotional sticker':1,'A6 envelope':1};
