@@ -219,7 +219,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 23 Oct 2026 (c)</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 23 Oct 2026 (d)</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
       <button class="btn sm" onclick="lockTracker()" title="Forget the passcode and clear saved data on this device"><i class="ti ti-lock"></i> Lock</button>
@@ -869,7 +869,7 @@ async function loadFromSheets(){
     if(data.Collection&&data.Collection.length>1){
       state.collection=data.Collection.slice(1).map(r=>({id:r[0],name:r[1],type:r[2],game:r[3],status:r[4],set:r[5]||'',cn:r[6]||'',cost:parseFloat(r[7])||0,marketValue:parseFloat(r[8])||0,priceUrl:r[9]||'',notes:r[10]||'',added:r[11]?dayKey(r[11]):''})).filter(c=>c.name);
     }
-    if(data.Settings&&data.Settings.length>1){const map={};data.Settings.slice(1).forEach(r=>{if(r[0])map[r[0]]=r[1];});if(map.cmFee!==undefined)state.settings.cmFee=parseFloat(map.cmFee)||5;if(map.ebFee!==undefined)state.settings.ebFee=parseFloat(map.ebFee)||12;if(map.otFee!==undefined)state.settings.otFee=parseFloat(map.otFee)||0;if(map.inventoryValue!==undefined)state.settings.inventoryValue=parseFloat(map.inventoryValue)||0;}
+    if(data.Settings&&data.Settings.length>1){const map={};data.Settings.slice(1).forEach(r=>{if(r[0])map[r[0]]=r[1];});if(map.cmFee!==undefined)state.settings.cmFee=parseFloat(map.cmFee)||5;if(map.ebFee!==undefined)state.settings.ebFee=parseFloat(map.ebFee)||12;if(map.otFee!==undefined)state.settings.otFee=parseFloat(map.otFee)||0;if(map.inventoryValue!==undefined)state.settings.inventoryValue=parseFloat(map.inventoryValue)||0;try{state.settings.inventoryHistory=map.inventoryHistory?JSON.parse(map.inventoryHistory):[];}catch(e){state.settings.inventoryHistory=[];}}
     if(data.Packaging&&data.Packaging.length>1){state.packaging=data.Packaging.slice(1).map(r=>({name:r[0],cost:parseFloat(r[1])||0})).filter(p=>p.name);}
     if(data.Postage&&data.Postage.length>1){state.postage=data.Postage.slice(1).map(r=>({name:r[0],cost:parseFloat(r[1])||0})).filter(p=>p.name);}
     if(data.Buyers&&data.Buyers.length>1){
@@ -963,7 +963,7 @@ async function flushSaves(){
         await saveSheetData('Snapshots',allKeys,dataRows);
       }
     }
-    if(sheet==='Settings') await saveSheetData('Settings',['Key','Value'],[['cmFee',state.settings.cmFee],['ebFee',state.settings.ebFee],['otFee',state.settings.otFee],['inventoryValue',state.settings.inventoryValue||0]]);
+    if(sheet==='Settings') await saveSheetData('Settings',['Key','Value'],[['cmFee',state.settings.cmFee],['ebFee',state.settings.ebFee],['otFee',state.settings.otFee],['inventoryValue',state.settings.inventoryValue||0],['inventoryHistory',JSON.stringify(state.settings.inventoryHistory||[])]]);
     if(sheet==='Packaging') await saveSheetData('Packaging',['Name','Cost'],state.packaging.map(p=>[p.name,p.cost]));
     if(sheet==='Postage') await saveSheetData('Postage',['Name','Cost'],state.postage.map(p=>[p.name,p.cost]));
   }
@@ -1157,6 +1157,9 @@ function toggleInventoryInput(){
 function commitInventoryValue(){
   const input=document.getElementById('nav-inventory-input');if(!input)return;
   state.settings.inventoryValue=parseFloat(input.value)||0;
+  const h=(state.settings.inventoryHistory||[]).filter(x=>x.d!==today());
+  h.push({d:today(),v:state.settings.inventoryValue});h.sort((a,b)=>a.d.localeCompare(b.d));
+  state.settings.inventoryHistory=h;
   scheduleSave('Settings');
   document.getElementById('nav-inventory-panel').style.display='none';
   renderDashboard();
@@ -1176,13 +1179,17 @@ function netDailySeries(){
   state.sales.forEach(x=>{const d=parseDateToObj(x.date);if(!d)return;const v=calcSaleProfit(x);if(d<start&&dayKey(d)!==dayKey(start))baseP+=v;else{const k=dayKey(d);prof[k]=(prof[k]||0)+v;}});
   state.purchases.forEach(x=>{const d=parseDateToObj(x.date);if(!d)return;const v=parseFloat(x.amount)||0;if(d<start&&dayKey(d)!==dayKey(start))baseS+=v;else{const k=dayKey(d);spend[k]=(spend[k]||0)+v;}});
   const currentColl=state.collection.reduce((a,c)=>a+(parseFloat(c.marketValue)||0),0);
+  const invNow=parseFloat(state.settings.inventoryValue)||0;
+  const invHist=(state.settings.inventoryHistory||[]).filter(x=>x&&x.d).sort((a,b)=>a.d.localeCompare(b.d));
+  const invOn=k=>{if(!invHist.length)return invNow;let v=invHist[0].v;for(const x of invHist){if(x.d<=k)v=x.v;else break;}return v;};
   const out=[];let cp=baseP,cs=baseS,si=-1;const todayKey=dayKey(today);
   for(let d=new Date(start);d<=today;d.setDate(d.getDate()+1)){
     const dd=new Date(d.getFullYear(),d.getMonth(),d.getDate(),12),k=dayKey(dd);
     cp+=prof[k]||0;cs+=spend[k]||0;
     while(si+1<snaps.length&&snaps[si+1].d<=dd)si++;
     const coll=k===todayKey?currentColl:snaps[si].v;
-    out.push({d:dd,net:cp-cs+coll,coll,p:prof[k]||0,s:spend[k]||0});
+    const inv=k===todayKey?invNow:invOn(k);
+    out.push({d:dd,net:cp-cs+coll+inv,coll,inv,p:prof[k]||0,s:spend[k]||0});
   }
   return out;
 }
@@ -1203,12 +1210,13 @@ function renderNetTimeline(){
       <div style="font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;color:${color||'var(--text)'}">${value}</div>
       <div style="font-size:11px;color:var(--muted)">${sub}</div></div>`;
   if(sumEl) sumEl.innerHTML=
-    chip('Now',fm(last.net),'excl. inventory',col(last.net))+
+    chip('Now',fm(last.net),'matches the tile above',col(last.net))+
     chip('Change',signed(chg),`since ${lbl(first.d)}`,col(chg))+
     (best?chip('Best day',signed(best.dl),lbl(pts[best.i].d),col(best.dl)):'')+
     (worst?chip('Worst day',signed(worst.dl),lbl(pts[worst.i].d),col(worst.dl)):'');
   const inv=parseFloat(state.settings.inventoryValue)||0;
-  if(tipEl) tipEl.innerHTML=infoTip(`Each day: all-time sales profit − all-time spend + collection value from your latest Collectr import. Starts at your first import (${lbl(all[0].d)}). ${inv?`Leaves out your ${fm(inv)} inventory value, which has no history — so the tile above is ${fm(inv)} higher.`:''} Big jumps usually mean a Collectr import revalued the collection, or a large purchase.`);
+  const ih=(state.settings.inventoryHistory||[]).filter(x=>x&&x.d).sort((a,b)=>a.d.localeCompare(b.d));
+  if(tipEl) tipEl.innerHTML=infoTip(`Each day: all-time sales profit − all-time spend + collection value (latest Collectr import) + inventory value — the same as the Net position tile. Starts at your first Collectr import (${lbl(all[0].d)}). Inventory value has only been recorded ${ih.length?'since '+parseDateToObj(ih[0].d).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'from your next change'}; earlier days use ${ih.length?'the first value recorded':'today\'s value'}. Big jumps usually mean a Collectr import revalued the collection, or a large purchase.`);
   const G='#1D9E75',R='#D85A30';
   if(netTimelineInst)netTimelineInst.destroy();
   netTimelineInst=new Chart(canvas.getContext('2d'),{type:'line',
@@ -1220,7 +1228,7 @@ function renderNetTimeline(){
       plugins:{legend:{display:false},tooltip:{displayColors:false,callbacks:{
         title:it=>it.length?pts[it[0].dataIndex].d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):'',
         label:c=>`Net position: ${fm(c.raw)}`,
-        afterBody:it=>{const p=pts[it[0]?.dataIndex];if(!p)return[];const o=[`Collection: ${fm(p.coll)}`];if(p.p)o.push(`Sales profit that day: ${signed(p.p)}`);if(p.s)o.push(`Spent that day: ${fm(p.s)}`);return o;}}}},
+        afterBody:it=>{const p=pts[it[0]?.dataIndex];if(!p)return[];const o=[`Collection: ${fm(p.coll)}`,`Inventory: ${fm(p.inv)}`];if(p.p)o.push(`Sales profit that day: ${signed(p.p)}`);if(p.s)o.push(`Spent that day: ${fm(p.s)}`);return o;}}}},
       scales:{x:{grid:{display:false},ticks:{font:{size:11},maxTicksLimit:8,maxRotation:0}},
         y:{suggestedMin:Math.min(0,...pts.map(p=>p.net)),suggestedMax:Math.max(0,...pts.map(p=>p.net)),grid:{color:c=>c.tick.value===0?'rgba(128,128,128,0.45)':'rgba(128,128,128,0.08)',lineWidth:c=>c.tick.value===0?1.5:1},
           ticks:{callback:v=>(v<0?'−':'')+'£'+Math.abs(v).toLocaleString('en-GB'),font:{size:11},maxTicksLimit:6}}}}});
