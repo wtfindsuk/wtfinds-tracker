@@ -219,7 +219,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 23 Oct 2026 (b)</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 23 Oct 2026 (c)</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
       <button class="btn sm" onclick="lockTracker()" title="Forget the passcode and clear saved data on this device"><i class="ti ti-lock"></i> Lock</button>
@@ -238,12 +238,15 @@ tr:hover td{background:var(--surface2)}
       <div class="dash-section-title">Financial position</div>
       <div id="dash-net-position"></div>
       <div class="card" style="margin-bottom:14px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px">
-          <div class="card-title" style="margin-bottom:0">Net position, day by day</div>
-          <div style="display:flex;align-items:center;gap:4px"><button class="btn sm" onclick="netYearStep(-1)">‹</button><span id="net-year-label" style="font-size:11px;color:var(--muted);min-width:40px;text-align:center"></span><button class="btn sm" id="net-year-fwd" onclick="netYearStep(1)">›</button></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <div class="card-title" style="margin-bottom:0">Net position over time <span id="net-timeline-tip"></span></div>
+          <div style="display:flex;gap:4px">
+            <button class="btn sm" id="net-range-30" onclick="setNetRange(30)">30 days</button>
+            <button class="btn sm" id="net-range-90" onclick="setNetRange(90)">90 days</button>
+            <button class="btn sm active-snap" id="net-range-0" onclick="setNetRange(0)">All</button>
+          </div>
         </div>
-        <div id="net-timeline-summary" style="font-size:12px;color:var(--muted);margin-bottom:6px"></div>
-        <div class="legend" id="net-timeline-legend"></div>
+        <div id="net-timeline-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:10px"></div>
         <div style="position:relative;height:220px"><canvas id="netTimelineChart"></canvas></div>
       </div>
       <div id="dash-fin-metrics" style="display:none;margin-top:10px"></div>
@@ -1160,66 +1163,67 @@ function commitInventoryValue(){
   showToast(`Inventory value saved: ${fm(state.settings.inventoryValue)}`);
 }
 
-// ===== Net position, day by day (profit − spend + collection value) =====
-let netTimelineInst=null,netYearOffset=0;
-function netYearStep(d){netYearOffset=Math.min(0,netYearOffset+d);renderNetTimeline();}
-function renderNetTimeline(){
-  const canvas=document.getElementById('netTimelineChart');if(!canvas||typeof Chart==='undefined')return;
-  const DAY=86400000,now=new Date(),year=now.getFullYear()+netYearOffset;
-  const start=new Date(year,0,1),endDay=netYearOffset===0?new Date(now.getFullYear(),now.getMonth(),now.getDate()):new Date(year,11,31);
-  document.getElementById('net-year-label').textContent=String(year);
-  const fwd=document.getElementById('net-year-fwd');if(fwd)fwd.disabled=netYearOffset===0;
-  // daily totals, plus everything before 1 Jan as the starting balance
-  const prof={},spend={};let baseP=0,baseS=0;
-  state.sales.forEach(x=>{const d=parseDateToObj(x.date);if(!d)return;const v=calcSaleProfit(x);if(d<start)baseP+=v;else{const k=dayKey(d);prof[k]=(prof[k]||0)+v;}});
-  state.purchases.forEach(x=>{const d=parseDateToObj(x.date);if(!d)return;const v=parseFloat(x.amount)||0;if(d<start)baseS+=v;else{const k=dayKey(d);spend[k]=(spend[k]||0)+v;}});
+// ===== Net position over time (profit − spend + collection value) =====
+let netTimelineInst=null,netRange=0;
+function setNetRange(d){netRange=d;[30,90,0].forEach(k=>{const b=document.getElementById('net-range-'+k);if(b)b.className='btn sm'+(k===d?' active-snap':'');});renderNetTimeline();}
+function netDailySeries(){
+  // one point per day, from the first Collectr import to today
   const snaps=(state.snapshots||[]).map(x=>({d:parseDateToObj(x.Date||x.date),v:parseFloat(x.TotalMarket)||0})).filter(x=>x.d).sort((a,b)=>a.d-b.d);
+  const now=new Date(),today=new Date(now.getFullYear(),now.getMonth(),now.getDate(),12);
+  const start=snaps.length?new Date(snaps[0].d.getFullYear(),snaps[0].d.getMonth(),snaps[0].d.getDate(),12):null;
+  if(!start) return null;
+  const prof={},spend={};let baseP=0,baseS=0;
+  state.sales.forEach(x=>{const d=parseDateToObj(x.date);if(!d)return;const v=calcSaleProfit(x);if(d<start&&dayKey(d)!==dayKey(start))baseP+=v;else{const k=dayKey(d);prof[k]=(prof[k]||0)+v;}});
+  state.purchases.forEach(x=>{const d=parseDateToObj(x.date);if(!d)return;const v=parseFloat(x.amount)||0;if(d<start&&dayKey(d)!==dayKey(start))baseS+=v;else{const k=dayKey(d);spend[k]=(spend[k]||0)+v;}});
   const currentColl=state.collection.reduce((a,c)=>a+(parseFloat(c.marketValue)||0),0);
-  const labels=[],net=[],trade=[],coll=[],dayP=[],dayS=[];
-  let cp=baseP,cs=baseS,si=-1;
-  const endKey=dayKey(endDay);
-  for(let d=new Date(start);d<=endDay;d.setDate(d.getDate()+1)){
-    const dd=new Date(d.getFullYear(),d.getMonth(),d.getDate(),12);const k=dayKey(dd);
+  const out=[];let cp=baseP,cs=baseS,si=-1;const todayKey=dayKey(today);
+  for(let d=new Date(start);d<=today;d.setDate(d.getDate()+1)){
+    const dd=new Date(d.getFullYear(),d.getMonth(),d.getDate(),12),k=dayKey(dd);
     cp+=prof[k]||0;cs+=spend[k]||0;
     while(si+1<snaps.length&&snaps[si+1].d<=dd)si++;
-    let cv=si>=0?snaps[si].v:null;
-    if(netYearOffset===0&&k===endKey&&(cv!==null||currentColl>0))cv=currentColl; // today matches the tile
-    labels.push(dd.toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
-    trade.push(+(cp-cs).toFixed(2));coll.push(cv);net.push(cv===null?null:+(cp-cs+cv).toFixed(2));
-    dayP.push(prof[k]||0);dayS.push(spend[k]||0);
+    const coll=k===todayKey?currentColl:snaps[si].v;
+    out.push({d:dd,net:cp-cs+coll,coll,p:prof[k]||0,s:spend[k]||0});
   }
-  // summary: start → now, best/worst days
-  const series=net.map((v,i)=>v===null?trade[i]:v);
-  const first=series[0],last=series[series.length-1],chg=last-first;
-  let best=-1,worst=-1;for(let i=1;i<series.length;i++){if((coll[i]===null)!==(coll[i-1]===null))continue;const dlt=series[i]-series[i-1];if(best<0||dlt>series[best]-series[best-1])best=i;if(worst<0||dlt<series[worst]-series[worst-1])worst=i;}
-  const firstColl=coll.findIndex(v=>v!==null);
+  return out;
+}
+function infoTip(text){return`<span class="tip"><span class="tip-icon">?</span><span class="tip-text">${text}</span></span>`;}
+function renderNetTimeline(){
+  const canvas=document.getElementById('netTimelineChart');if(!canvas||typeof Chart==='undefined')return;
+  const sumEl=document.getElementById('net-timeline-summary'),tipEl=document.getElementById('net-timeline-tip');
+  const all=netDailySeries();
+  if(!all||!all.length){if(sumEl)sumEl.innerHTML='<div style="color:var(--muted);font-size:12px">Import your Collectr CSV to start tracking this.</div>';if(netTimelineInst){netTimelineInst.destroy();netTimelineInst=null;}return;}
+  const pts=netRange?all.slice(-netRange):all;
+  const lbl=d=>d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  const first=pts[0],last=pts[pts.length-1],chg=last.net-first.net;
+  let best=null,worst=null;
+  for(let i=1;i<pts.length;i++){const dl=pts[i].net-pts[i-1].net;if(!best||dl>best.dl)best={i,dl};if(!worst||dl<worst.dl)worst={i,dl};}
+  const signed=v=>(v>=0?'+':'')+fm(v),col=v=>v>=0?'var(--green)':'var(--red)';
+  const chip=(label,value,sub,color)=>`<div style="background:var(--surface2);border-radius:var(--radius-sm);padding:8px 10px">
+      <div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">${label}</div>
+      <div style="font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;color:${color||'var(--text)'}">${value}</div>
+      <div style="font-size:11px;color:var(--muted)">${sub}</div></div>`;
+  if(sumEl) sumEl.innerHTML=
+    chip('Now',fm(last.net),'excl. inventory',col(last.net))+
+    chip('Change',signed(chg),`since ${lbl(first.d)}`,col(chg))+
+    (best?chip('Best day',signed(best.dl),lbl(pts[best.i].d),col(best.dl)):'')+
+    (worst?chip('Worst day',signed(worst.dl),lbl(pts[worst.i].d),col(worst.dl)):'');
   const inv=parseFloat(state.settings.inventoryValue)||0;
-  const sum=document.getElementById('net-timeline-summary');
-  const chgTxt=(x,y)=>{const c=y-x;return`<b style="color:var(--text)">${fm(x)}</b> → <b style="color:var(--text)">${fm(y)}</b> (<b style="color:${c>=0?'var(--green)':'var(--red)'}">${c>=0?'+':''}${fm(c)}</b>)`;};
-  const endLbl=netYearOffset===0?'today':'31 Dec';
-  const fn=firstColl>=0?firstColl:null;
-  if(sum) sum.innerHTML=series.length>1?
-    (fn!==null?`Net position ${fn===0?'1 Jan':labels[fn]} → ${endLbl}: ${chgTxt(net[fn],net[net.length-1])}`:'')
-    +`${fn!==null?' · ':''}Profit − spend 1 Jan → ${endLbl}: ${chgTxt(trade[0],trade[trade.length-1])}`
-    +(best>0?` · best day ${labels[best]} (${series[best]-series[best-1]>=0?'+':''}${fm(series[best]-series[best-1])})`:'')+(worst>0?` · worst day ${labels[worst]} (${fm(series[worst]-series[worst-1])})`:'')
-    +`<div style="font-size:11px;margin-top:2px">Net position = profit − spend + collection value${inv?` · excludes your ${fm(inv)} inventory value (no history)`:''}${firstColl>0?` · collection value tracked from ${labels[firstColl]} (first Collectr import)`:''}</div>`:'';
-  const lg=document.getElementById('net-timeline-legend');
-  if(lg) lg.innerHTML=`<span><span class="lsq" style="background:#1D9E75"></span>Net position</span><span><span class="lsq" style="background:#888"></span>Profit − spend only</span>`;
+  if(tipEl) tipEl.innerHTML=infoTip(`Each day: all-time sales profit − all-time spend + collection value from your latest Collectr import. Starts at your first import (${lbl(all[0].d)}). ${inv?`Leaves out your ${fm(inv)} inventory value, which has no history — so the tile above is ${fm(inv)} higher.`:''} Big jumps usually mean a Collectr import revalued the collection, or a large purchase.`);
+  const G='#1D9E75',R='#D85A30';
   if(netTimelineInst)netTimelineInst.destroy();
   netTimelineInst=new Chart(canvas.getContext('2d'),{type:'line',
-    data:{labels,datasets:[
-      {label:'Net position',data:net,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.10)',fill:'origin',pointRadius:0,pointHoverRadius:4,borderWidth:2,tension:0.15,spanGaps:false},
-      {label:'Profit − spend',data:trade,borderColor:'#888',borderDash:[4,4],pointRadius:0,pointHoverRadius:3,borderWidth:1.5,tension:0.15}]},
+    data:{labels:pts.map(p=>lbl(p.d)),datasets:[{label:'Net position',data:pts.map(p=>+p.net.toFixed(2)),
+      borderColor:G,borderWidth:2,pointRadius:0,pointHoverRadius:4,tension:0.2,
+      segment:{borderColor:c=>(c.p0.parsed.y+c.p1.parsed.y)/2<0?R:G},
+      fill:{target:'origin',above:'rgba(29,158,117,0.12)',below:'rgba(216,90,48,0.12)'}}]},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-      plugins:{legend:{display:false},tooltip:{callbacks:{
-        title:it=>it.length?`${labels[it[0].dataIndex]} ${year}`:'',
-        label:c=>c.raw===null?null:`${c.dataset.label}: ${fm(c.raw)}`,
-        afterBody:it=>{const i=it[0]?.dataIndex;if(i===undefined)return[];const out=[];
-          if(coll[i]!==null)out.push(`Collection: ${fm(coll[i])}`);
-          if(dayP[i])out.push(`That day's sales profit: ${fm(dayP[i])}`);
-          if(dayS[i])out.push(`That day's spend: ${fm(dayS[i])}`);return out;}}}},
-      scales:{x:{grid:{display:false},ticks:{font:{size:11},maxTicksLimit:12,autoSkip:true}},
-        y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>(v<0?'−':'')+'£'+Math.abs(v).toLocaleString('en-GB'),font:{size:11}}}}}});
+      plugins:{legend:{display:false},tooltip:{displayColors:false,callbacks:{
+        title:it=>it.length?pts[it[0].dataIndex].d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):'',
+        label:c=>`Net position: ${fm(c.raw)}`,
+        afterBody:it=>{const p=pts[it[0]?.dataIndex];if(!p)return[];const o=[`Collection: ${fm(p.coll)}`];if(p.p)o.push(`Sales profit that day: ${signed(p.p)}`);if(p.s)o.push(`Spent that day: ${fm(p.s)}`);return o;}}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:11},maxTicksLimit:8,maxRotation:0}},
+        y:{suggestedMin:Math.min(0,...pts.map(p=>p.net)),suggestedMax:Math.max(0,...pts.map(p=>p.net)),grid:{color:c=>c.tick.value===0?'rgba(128,128,128,0.45)':'rgba(128,128,128,0.08)',lineWidth:c=>c.tick.value===0?1.5:1},
+          ticks:{callback:v=>(v<0?'−':'')+'£'+Math.abs(v).toLocaleString('en-GB'),font:{size:11},maxTicksLimit:6}}}}});
 }
 
 let collView='chart';
