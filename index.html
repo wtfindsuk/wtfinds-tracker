@@ -198,7 +198,7 @@ tr:hover td{background:var(--surface2)}
         <input type="file" id="collectr-csv-input" accept=".csv" style="display:none" onchange="importCollectrCsv(this)">
         <button class="nav-btn" onclick="toggleInventoryInput()" id="nav-inventory-btn"><i class="ti ti-building-store"></i> Inventory value</button>
         <div id="nav-inventory-panel" style="display:none;padding:4px 10px 8px">
-          <input type="number" id="nav-inventory-input" step="0.01" min="0" placeholder="£0.00" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text);font-size:13px" oninput="state.settings.inventoryValue=parseFloat(this.value)||0;scheduleSave('Settings');renderDashboard()">
+          <input type="number" id="nav-inventory-input" step="0.01" min="0" placeholder="£0.00" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text);font-size:13px" onkeydown="if(event.key==='Enter'){event.preventDefault();commitInventoryValue();}else if(event.key==='Escape'){toggleInventoryInput();}"><div style="font-size:10px;color:var(--muted);margin-top:3px">Press Enter to save · Esc to cancel</div>
           <div style="font-size:10px;color:var(--muted);margin-top:4px">Paste from Cardmarket inventory page</div>
         </div>
       </div>
@@ -219,7 +219,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 22 Oct 2026 (b)</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 23 Oct 2026 (b)</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
       <button class="btn sm" onclick="lockTracker()" title="Forget the passcode and clear saved data on this device"><i class="ti ti-lock"></i> Lock</button>
@@ -237,6 +237,15 @@ tr:hover td{background:var(--surface2)}
       <!-- FINANCIAL POSITION -->
       <div class="dash-section-title">Financial position</div>
       <div id="dash-net-position"></div>
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+          <div class="card-title" style="margin-bottom:0">Net position, day by day</div>
+          <div style="display:flex;align-items:center;gap:4px"><button class="btn sm" onclick="netYearStep(-1)">‹</button><span id="net-year-label" style="font-size:11px;color:var(--muted);min-width:40px;text-align:center"></span><button class="btn sm" id="net-year-fwd" onclick="netYearStep(1)">›</button></div>
+        </div>
+        <div id="net-timeline-summary" style="font-size:12px;color:var(--muted);margin-bottom:6px"></div>
+        <div class="legend" id="net-timeline-legend"></div>
+        <div style="position:relative;height:220px"><canvas id="netTimelineChart"></canvas></div>
+      </div>
       <div id="dash-fin-metrics" style="display:none;margin-top:10px"></div>
 
       <!-- TAX YEAR -->
@@ -424,6 +433,7 @@ tr:hover td{background:var(--surface2)}
           <div class="pkg-item gq-panel" onclick="gqIncrement('gq-mtg_hobbit')" style="cursor:pointer"><label style="pointer-events:none">MTG Hobbit</label><input type="number" min="0" value="0" id="gq-mtg_hobbit" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
           <div class="pkg-item gq-panel" onclick="gqIncrement('gq-mtg')" style="cursor:pointer"><label style="pointer-events:none">MTG Other</label><input type="number" min="0" value="0" id="gq-mtg" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
           <div class="pkg-item gq-panel" onclick="gqIncrement('gq-pokemon')" style="cursor:pointer"><label style="pointer-events:none">Pokémon</label><input type="number" min="0" value="0" id="gq-pokemon" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
+          <div class="pkg-item gq-panel" onclick="gqIncrement('gq-pokemon_jp')" style="cursor:pointer"><label style="pointer-events:none">Pokémon JP</label><input type="number" min="0" value="0" id="gq-pokemon_jp" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
           <div class="pkg-item gq-panel" onclick="gqIncrement('gq-onepiece')" style="cursor:pointer"><label style="pointer-events:none">One Piece</label><input type="number" min="0" value="0" id="gq-onepiece" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
           <div class="pkg-item gq-panel" onclick="gqIncrement('gq-dbz')" style="cursor:pointer"><label style="pointer-events:none">Dragon Ball Z</label><input type="number" min="0" value="0" id="gq-dbz" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
           <div class="pkg-item gq-panel" onclick="gqIncrement('gq-riftbound')" style="cursor:pointer"><label style="pointer-events:none">Riftbound</label><input type="number" min="0" value="0" id="gq-riftbound" oninput="updateSalePreview()" onclick="event.stopPropagation()"></div>
@@ -472,7 +482,7 @@ tr:hover td{background:var(--surface2)}
           <div class="form-group">
             <label style="font-size:11px">Category</label>
             <select id="p-category" style="width:100%;padding:5px 8px;font-size:13px">
-              <option value="pokemon">Pokémon</option><option value="mtg">MTG</option>
+              <option value="pokemon">Pokémon</option><option value="pokemon_jp">Pokémon (JP)</option><option value="mtg">MTG</option>
               <option value="onepiece">One Piece</option><option value="dbz">Dragon Ball Z</option>
               <option value="riftbound">Riftbound</option><option value="yugioh">Yu-Gi-Oh!</option><option value="cyberpunk">Cyberpunk</option><option value="palworld">Palworld</option><option value="gundam">Gundam</option><option value="marvel">Marvel</option>
               <option value="supplies">Supplies</option><option value="equipment">Equipment</option>
@@ -526,6 +536,7 @@ tr:hover td{background:var(--surface2)}
         <button class="tab active" onclick="showPurchaseTab('all')" id="ptab-all">All</button>
         <div style="width:1px;height:16px;background:var(--border)"></div>
         <button class="tab" onclick="showPurchaseTab('pokemon')" id="ptab-pokemon">Pokémon</button>
+        <button class="tab" onclick="showPurchaseTab('pokemon_jp')" id="ptab-pokemon_jp">Pokémon (JP)</button>
         <button class="tab" onclick="showPurchaseTab('mtg')" id="ptab-mtg">MTG</button>
         <button class="tab" onclick="showPurchaseTab('onepiece')" id="ptab-onepiece">One Piece</button>
         <button class="tab" onclick="showPurchaseTab('dbz')" id="ptab-dbz">DBZ</button>
@@ -576,6 +587,7 @@ tr:hover td{background:var(--surface2)}
         <div style="display:flex;gap:3px;flex-wrap:wrap">
           <button class="btn sm active-snap" id="movers-tcg-all" onclick="setMoversTcg('all')">All</button>
           <button class="btn sm" id="movers-tcg-pokemon" onclick="setMoversTcg('pokemon')">Pokémon</button>
+          <button class="btn sm" id="movers-tcg-pokemon_jp" onclick="setMoversTcg('pokemon_jp')">Pokémon (JP)</button>
           <button class="btn sm" id="movers-tcg-mtg" onclick="setMoversTcg('mtg')">MTG</button>
           <button class="btn sm" id="movers-tcg-onepiece" onclick="setMoversTcg('onepiece')">One Piece</button>
           <button class="btn sm" id="movers-tcg-dbz" onclick="setMoversTcg('dbz')">DBZ</button>
@@ -616,7 +628,7 @@ tr:hover td{background:var(--surface2)}
           </div>
           <div class="form-group"><label style="font-size:11px">Game / category</label>
             <select id="ci-game" style="width:100%;padding:5px 8px;font-size:13px">
-              <option value="pokemon">Pokémon</option><option value="mtg">MTG</option>
+              <option value="pokemon">Pokémon</option><option value="pokemon_jp">Pokémon (JP)</option><option value="mtg">MTG</option>
               <option value="onepiece">One Piece</option><option value="dbz">Dragon Ball Z</option>
               <option value="riftbound">Riftbound</option><option value="yugioh">Yu-Gi-Oh!</option><option value="cyberpunk">Cyberpunk</option><option value="palworld">Palworld</option><option value="gundam">Gundam</option><option value="marvel">Marvel</option>
               <option value="other">Other</option>
@@ -744,8 +756,8 @@ tr:hover td{background:var(--surface2)}
 
 <script>
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbych_44YhqvkW1U3YGqR6MTSzf-H4mbacany9X2xHr233vKXFw7k2WpARmhl56gTlje/exec';
-const CAT_LABELS = {pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',palworld:'Palworld',gundam:'Gundam',marvel:'Marvel',supplies:'Supplies',equipment:'Equipment',other:'Other'};
-const CAT_COLORS = {gundam:'#64748B',palworld:'#EC4899',cyberpunk:'#E8B84B',pokemon:'#185FA5',mtg:'#534AB7',onepiece:'#D85A30',marvel:'#A32D2D',supplies:'#1D9E75',equipment:'#7a7874',other:'#BA7517'};
+const CAT_LABELS = {pokemon:'Pokémon',pokemon_jp:'Pokémon (JP)',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',palworld:'Palworld',gundam:'Gundam',marvel:'Marvel',supplies:'Supplies',equipment:'Equipment',other:'Other'};
+const CAT_COLORS = {pokemon_jp:'#60A5FA',gundam:'#64748B',palworld:'#EC4899',cyberpunk:'#E8B84B',pokemon:'#185FA5',mtg:'#534AB7',onepiece:'#D85A30',marvel:'#A32D2D',supplies:'#1D9E75',equipment:'#7a7874',other:'#BA7517'};
 const GAME_LABELS = {pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',marvel:'Marvel',other:'Other'};;
 
 const DEFAULTS = {
@@ -835,7 +847,7 @@ async function loadFromSheets(){
           actualCommission:(()=>{const i=ci('actualcommission');return i>=0&&r[i]!==undefined&&r[i]!==''?parseFloat(r[i]):null;})(),
           promotedFee:f('promotedfee'),
           gameQty:{
-            pokemon:g('pokemonqty'),mtg:g('mtgqty'),onepiece:g('onepieceqty'),
+            pokemon:g('pokemonqty'),pokemon_jp:g('pokemonjpqty'),mtg:g('mtgqty'),onepiece:g('onepieceqty'),
             marvel:g('marvelqty'),other:g('otherqty'),dbz:g('dbzqty'),
             riftbound:g('riftboundqty'),mtg_hobbit:g('mtghobbitqty'),
             mtg_avatar_tla:g('mtgavatartlaqty'),mtg_avatar_tle:g('mtgavatartleqty'),
@@ -921,7 +933,7 @@ function scheduleSave(sheetName){saveQueue[sheetName]=true;clearTimeout(saveTime
 async function flushSaves(){
   const sheets=Object.keys(saveQueue);saveQueue={};
   for(const sheet of sheets){
-    if(sheet==='Sales') await saveSheetData('Sales',['Date','Item','Platform','Price','ShippingCharged','PostageCost','Packaging','ArticleCount','ActualCommission','PromotedFee','PokemonQty','MTGQty','OnePieceQty','MarvelQty','OtherQty','DBZQty','RiftboundQty','MTGHobbitQty','MTGAvatarTLAQty','MTGAvatarTLEQty','MTGStrixhavenQty','MTGMarvelQty','MTGFFQty','BuyerUsername','YugiohQty','CyberpunkQty','MTGRealityFractureQty','PalworldQty','GundamQty','GradedQty'],state.sales.map(s=>[s.date,s.item,s.platform,s.price,s.shippingCharged||0,s.postageCost,JSON.stringify(s.packaging||[]),s.articleCount||1,s.actualCommission!==null&&s.actualCommission!==undefined?s.actualCommission:'',s.promotedFee||0,(s.gameQty?.pokemon||0),(s.gameQty?.mtg||0),(s.gameQty?.onepiece||0),(s.gameQty?.marvel||0),(s.gameQty?.other||0),(s.gameQty?.dbz||0),(s.gameQty?.riftbound||0),(s.gameQty?.mtg_hobbit||0),(s.gameQty?.mtg_avatar_tla||0),(s.gameQty?.mtg_avatar_tle||0),(s.gameQty?.mtg_strixhaven||0),(s.gameQty?.mtg_marvel||0),(s.gameQty?.mtg_ff||0),s.username||'',(s.gameQty?.yugioh||0),(s.gameQty?.cyberpunk||0),(s.gameQty?.mtg_fra||0),(s.gameQty?.palworld||0),(s.gameQty?.gundam||0),(s.gradedQty||0)]));
+    if(sheet==='Sales') await saveSheetData('Sales',['Date','Item','Platform','Price','ShippingCharged','PostageCost','Packaging','ArticleCount','ActualCommission','PromotedFee','PokemonQty','MTGQty','OnePieceQty','MarvelQty','OtherQty','DBZQty','RiftboundQty','MTGHobbitQty','MTGAvatarTLAQty','MTGAvatarTLEQty','MTGStrixhavenQty','MTGMarvelQty','MTGFFQty','BuyerUsername','YugiohQty','CyberpunkQty','MTGRealityFractureQty','PalworldQty','GundamQty','GradedQty','PokemonJPQty'],state.sales.map(s=>[s.date,s.item,s.platform,s.price,s.shippingCharged||0,s.postageCost,JSON.stringify(s.packaging||[]),s.articleCount||1,s.actualCommission!==null&&s.actualCommission!==undefined?s.actualCommission:'',s.promotedFee||0,(s.gameQty?.pokemon||0),(s.gameQty?.mtg||0),(s.gameQty?.onepiece||0),(s.gameQty?.marvel||0),(s.gameQty?.other||0),(s.gameQty?.dbz||0),(s.gameQty?.riftbound||0),(s.gameQty?.mtg_hobbit||0),(s.gameQty?.mtg_avatar_tla||0),(s.gameQty?.mtg_avatar_tle||0),(s.gameQty?.mtg_strixhaven||0),(s.gameQty?.mtg_marvel||0),(s.gameQty?.mtg_ff||0),s.username||'',(s.gameQty?.yugioh||0),(s.gameQty?.cyberpunk||0),(s.gameQty?.mtg_fra||0),(s.gameQty?.palworld||0),(s.gameQty?.gundam||0),(s.gradedQty||0),(s.gameQty?.pokemon_jp||0)]));
     if(sheet==='Purchases') await saveSheetData('Purchases',['Date','Description','Category','Amount','Supplier','Set'],state.purchases.map(p=>[p.date,p.description,p.category,p.amount,p.supplier||'',p.set||'']));
     if(sheet==='Collection') await saveSheetData('Collection',['ID','Name','Type','Game','Status','Set','CN','Cost','MarketValue','PriceUrl','Notes','Added'],state.collection.map(c=>[c.id,c.name,c.type,c.game,c.status,c.set||'',c.cn||'',c.cost,c.marketValue,c.priceUrl||'',c.notes||'',c.added||'']));
     if(sheet==='Games') await saveSheetData('Games',['ID','Name','Platform','Condition','Cost','Value','Added'],state.games.map(g=>[g.id,g.name,g.platform,g.condition||'',g.cost,g.value,g.added]));
@@ -1139,6 +1151,77 @@ function toggleInventoryInput(){
   }
 }
 
+function commitInventoryValue(){
+  const input=document.getElementById('nav-inventory-input');if(!input)return;
+  state.settings.inventoryValue=parseFloat(input.value)||0;
+  scheduleSave('Settings');
+  document.getElementById('nav-inventory-panel').style.display='none';
+  renderDashboard();
+  showToast(`Inventory value saved: ${fm(state.settings.inventoryValue)}`);
+}
+
+// ===== Net position, day by day (profit − spend + collection value) =====
+let netTimelineInst=null,netYearOffset=0;
+function netYearStep(d){netYearOffset=Math.min(0,netYearOffset+d);renderNetTimeline();}
+function renderNetTimeline(){
+  const canvas=document.getElementById('netTimelineChart');if(!canvas||typeof Chart==='undefined')return;
+  const DAY=86400000,now=new Date(),year=now.getFullYear()+netYearOffset;
+  const start=new Date(year,0,1),endDay=netYearOffset===0?new Date(now.getFullYear(),now.getMonth(),now.getDate()):new Date(year,11,31);
+  document.getElementById('net-year-label').textContent=String(year);
+  const fwd=document.getElementById('net-year-fwd');if(fwd)fwd.disabled=netYearOffset===0;
+  // daily totals, plus everything before 1 Jan as the starting balance
+  const prof={},spend={};let baseP=0,baseS=0;
+  state.sales.forEach(x=>{const d=parseDateToObj(x.date);if(!d)return;const v=calcSaleProfit(x);if(d<start)baseP+=v;else{const k=dayKey(d);prof[k]=(prof[k]||0)+v;}});
+  state.purchases.forEach(x=>{const d=parseDateToObj(x.date);if(!d)return;const v=parseFloat(x.amount)||0;if(d<start)baseS+=v;else{const k=dayKey(d);spend[k]=(spend[k]||0)+v;}});
+  const snaps=(state.snapshots||[]).map(x=>({d:parseDateToObj(x.Date||x.date),v:parseFloat(x.TotalMarket)||0})).filter(x=>x.d).sort((a,b)=>a.d-b.d);
+  const currentColl=state.collection.reduce((a,c)=>a+(parseFloat(c.marketValue)||0),0);
+  const labels=[],net=[],trade=[],coll=[],dayP=[],dayS=[];
+  let cp=baseP,cs=baseS,si=-1;
+  const endKey=dayKey(endDay);
+  for(let d=new Date(start);d<=endDay;d.setDate(d.getDate()+1)){
+    const dd=new Date(d.getFullYear(),d.getMonth(),d.getDate(),12);const k=dayKey(dd);
+    cp+=prof[k]||0;cs+=spend[k]||0;
+    while(si+1<snaps.length&&snaps[si+1].d<=dd)si++;
+    let cv=si>=0?snaps[si].v:null;
+    if(netYearOffset===0&&k===endKey&&(cv!==null||currentColl>0))cv=currentColl; // today matches the tile
+    labels.push(dd.toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
+    trade.push(+(cp-cs).toFixed(2));coll.push(cv);net.push(cv===null?null:+(cp-cs+cv).toFixed(2));
+    dayP.push(prof[k]||0);dayS.push(spend[k]||0);
+  }
+  // summary: start → now, best/worst days
+  const series=net.map((v,i)=>v===null?trade[i]:v);
+  const first=series[0],last=series[series.length-1],chg=last-first;
+  let best=-1,worst=-1;for(let i=1;i<series.length;i++){if((coll[i]===null)!==(coll[i-1]===null))continue;const dlt=series[i]-series[i-1];if(best<0||dlt>series[best]-series[best-1])best=i;if(worst<0||dlt<series[worst]-series[worst-1])worst=i;}
+  const firstColl=coll.findIndex(v=>v!==null);
+  const inv=parseFloat(state.settings.inventoryValue)||0;
+  const sum=document.getElementById('net-timeline-summary');
+  const chgTxt=(x,y)=>{const c=y-x;return`<b style="color:var(--text)">${fm(x)}</b> → <b style="color:var(--text)">${fm(y)}</b> (<b style="color:${c>=0?'var(--green)':'var(--red)'}">${c>=0?'+':''}${fm(c)}</b>)`;};
+  const endLbl=netYearOffset===0?'today':'31 Dec';
+  const fn=firstColl>=0?firstColl:null;
+  if(sum) sum.innerHTML=series.length>1?
+    (fn!==null?`Net position ${fn===0?'1 Jan':labels[fn]} → ${endLbl}: ${chgTxt(net[fn],net[net.length-1])}`:'')
+    +`${fn!==null?' · ':''}Profit − spend 1 Jan → ${endLbl}: ${chgTxt(trade[0],trade[trade.length-1])}`
+    +(best>0?` · best day ${labels[best]} (${series[best]-series[best-1]>=0?'+':''}${fm(series[best]-series[best-1])})`:'')+(worst>0?` · worst day ${labels[worst]} (${fm(series[worst]-series[worst-1])})`:'')
+    +`<div style="font-size:11px;margin-top:2px">Net position = profit − spend + collection value${inv?` · excludes your ${fm(inv)} inventory value (no history)`:''}${firstColl>0?` · collection value tracked from ${labels[firstColl]} (first Collectr import)`:''}</div>`:'';
+  const lg=document.getElementById('net-timeline-legend');
+  if(lg) lg.innerHTML=`<span><span class="lsq" style="background:#1D9E75"></span>Net position</span><span><span class="lsq" style="background:#888"></span>Profit − spend only</span>`;
+  if(netTimelineInst)netTimelineInst.destroy();
+  netTimelineInst=new Chart(canvas.getContext('2d'),{type:'line',
+    data:{labels,datasets:[
+      {label:'Net position',data:net,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.10)',fill:'origin',pointRadius:0,pointHoverRadius:4,borderWidth:2,tension:0.15,spanGaps:false},
+      {label:'Profit − spend',data:trade,borderColor:'#888',borderDash:[4,4],pointRadius:0,pointHoverRadius:3,borderWidth:1.5,tension:0.15}]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        title:it=>it.length?`${labels[it[0].dataIndex]} ${year}`:'',
+        label:c=>c.raw===null?null:`${c.dataset.label}: ${fm(c.raw)}`,
+        afterBody:it=>{const i=it[0]?.dataIndex;if(i===undefined)return[];const out=[];
+          if(coll[i]!==null)out.push(`Collection: ${fm(coll[i])}`);
+          if(dayP[i])out.push(`That day's sales profit: ${fm(dayP[i])}`);
+          if(dayS[i])out.push(`That day's spend: ${fm(dayS[i])}`);return out;}}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:11},maxTicksLimit:12,autoSkip:true}},
+        y:{grid:{color:'rgba(128,128,128,0.08)'},ticks:{callback:v=>(v<0?'−':'')+'£'+Math.abs(v).toLocaleString('en-GB'),font:{size:11}}}}}});
+}
+
 let collView='chart';
 let collByPortfolioChartInst=null;
 
@@ -1268,7 +1351,7 @@ function showSaleToast(sale, profit, articleCount){
 
   // Game breakdown tips
   const gq=sale.gameQty||{};
-  const GLABELS={pokemon:'Pokémon',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',palworld:'Palworld',gundam:'Gundam',other:'Other',mtg_hobbit:'MTG Hobbit',mtg_avatar_tla:'Avatar TLA',mtg_avatar_tle:'Avatar TLE',mtg_strixhaven:'Strixhaven',mtg_fra:'Reality Fracture',mtg_marvel:'Marvel MTG',mtg_ff:'Final Fantasy'};
+  const GLABELS={pokemon:'Pokémon',pokemon_jp:'Pokémon (JP)',mtg:'MTG',onepiece:'One Piece',dbz:'Dragon Ball Z',riftbound:'Riftbound',yugioh:'Yu-Gi-Oh!',cyberpunk:'Cyberpunk',palworld:'Palworld',gundam:'Gundam',other:'Other',mtg_hobbit:'MTG Hobbit',mtg_avatar_tla:'Avatar TLA',mtg_avatar_tle:'Avatar TLE',mtg_strixhaven:'Strixhaven',mtg_fra:'Reality Fracture',mtg_marvel:'Marvel MTG',mtg_ff:'Final Fantasy'};
   const topGame=Object.entries(gq).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])[0];
   if(topGame){
     const gameName=GLABELS[topGame[0]]||topGame[0];
@@ -1605,6 +1688,7 @@ function renderDashboard(){
   renderSetPerformance();
   try{renderTaxYear();}catch(e){console.error(e);}
   try{renderDashSummary();}catch(e){console.error(e);}
+  try{renderNetTimeline();}catch(e){console.error(e);}
   try{renderSpendVsReturn();}catch(e){console.error(e);}
   renderTopBuyers();
   renderCollectionDashboard(bestColl,unrealisedPct);
@@ -1692,7 +1776,7 @@ function sparkSvg(vals,color){
 function renderSalesKpis(){
   const el=document.getElementById('dash-sales-metrics');if(!el)return;
   const now=new Date();const curKey=payPeriodKey(now);const cur=payPeriodRange(curKey);
-  const DAY=86400000;const elapsed=Math.max(1,Math.floor((new Date(now.getFullYear(),now.getMonth(),now.getDate())-cur.start)/DAY)+1);
+  const DAY=86400000;const elapsed=Math.max(1,Math.round((new Date(now.getFullYear(),now.getMonth(),now.getDate())-cur.start)/DAY)+1);
   const total=Math.round((cur.end-cur.start)/DAY);
   const prev=payPeriodRange(shiftPeriodKey(curKey,-1));
   const prevCut=new Date(prev.start.getTime()+elapsed*DAY);
@@ -1732,7 +1816,7 @@ function renderDashSummary(){
   // Today
   const today=state.sales.filter(s=>inRange(s.date,t0,new Date(t0.getTime()+DAY)));
   const curKey=payPeriodKey(now),cur=payPeriodRange(curKey);
-  const elapsed=Math.max(1,Math.floor((t0-cur.start)/DAY)+1),total=Math.round((cur.end-cur.start)/DAY);
+  const elapsed=Math.max(1,Math.round((t0-cur.start)/DAY)+1),total=Math.round((cur.end-cur.start)/DAY);
   const periodSales=state.sales.filter(s=>inRange(s.date,cur.start,cur.end));
   const periodProfit=sum(periodSales,calcSaleProfit);
   const avgDay=periodProfit/elapsed;
@@ -1838,11 +1922,11 @@ function retagMany(from){
   if(!to||!idxs.length){alert('Tick at least one sale first.');return;}
   let cards=0;
   const plan=idxs.map(i=>{const s=state.sales[i];const gq=s.gameQty||{};const q=from==='untagged'?(parseInt(s.articleCount)||1):(gq.other||0);cards+=q;return[s,q];});
-  if(!confirm(`Move ${idxs.length} sale${idxs.length===1?'':'s'} (${cards} cards) to ${SVR_LBL[to]}?\n\nThis updates your Sales sheet.`))return;
-  plan.forEach(([s,q])=>{if(!q)return;const gq=s.gameQty||{};gq[to]=(gq[to]||0)+q;if(from==='other')gq.other=0;s.gameQty=gq;});
+  if(!confirm(`Move ${idxs.length} sale${idxs.length===1?'':'s'} (${cards} cards) to ${SVR_LBL[to]||CAT_LABELS[to]}?\n\nThis updates your Sales sheet.`))return;
+  plan.forEach(([s,q])=>{if(!q)return;const gq=s.gameQty||{};gq[to]=(gq[to]||0)+q;if(to==='pokemon_jp')gq.pokemon=(gq.pokemon||0)+q;if(from==='other')gq.other=0;s.gameQty=gq;});
   scheduleSave('Sales');
   renderSpendVsReturn();renderGameBreakdown();
-  showToast(`Moved ${idxs.length} sales (${cards} cards) to ${SVR_LBL[to]}`);
+  showToast(`Moved ${idxs.length} sales (${cards} cards) to ${SVR_LBL[to]||CAT_LABELS[to]}`);
 }
 function retagSale(idx,from){
   const sel=document.getElementById('retag-'+idx);const to=sel&&sel.value;
@@ -1887,10 +1971,12 @@ function renderSpendVsReturn(){
   const keys=Object.keys(SVR_LBL);
   const st={};keys.forEach(k=>st[k]={spent:0,back:0,holding:0,cards:0,sales:[]});
   let overheads=0;
+  const jp={spent:0,back:0,holding:0,cards:0};
   state.purchases.forEach(p=>{
     const amt=parseFloat(p.amount)||0;let c=p.category||'other';
     if(c==='supplies'||c==='equipment'){overheads+=amt;return;}
     if(c==='marvel')c='mtg';
+    if(c==='pokemon_jp'){jp.spent+=amt;c='pokemon';}
     (st[c]||st.other).spent+=amt;
   });
   state.sales.forEach((s,idx)=>{
@@ -1899,8 +1985,9 @@ function renderSpendVsReturn(){
     const moneyIn=(parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0);
     if(!tot){st.untagged.back+=kept;st.untagged.cards+=parseInt(s.articleCount)||1;st.untagged.sales.push({s,idx,q:parseInt(s.articleCount)||1,tot:parseInt(s.articleCount)||1,share:1,kept,moneyIn});return;}
     Object.entries(m).forEach(([g,q])=>{if(!q)return;const share=q/tot;st[g].back+=kept*share;st[g].cards+=q;st[g].sales.push({s,idx,q,tot,share,kept,moneyIn});});
+    const jq=(s.gameQty||{}).pokemon_jp||0;if(jq){jp.back+=kept*jq/tot;jp.cards+=jq;}
   });
-  state.collection.forEach(c=>{(st[collGame(c)]||st.other).holding+=parseFloat(c.marketValue)||0;});
+  state.collection.forEach(c=>{let g=collGame(c);const v=parseFloat(c.marketValue)||0;if(g==='pokemon_jp'){jp.holding+=v;g='pokemon';}(st[g]||st.other).holding+=v;});
   const rows=keys.filter(k=>st[k].spent||st[k].back||st[k].holding||st[k].cards).map(k=>({k,...st[k],total:st[k].back+st[k].holding}))
     .sort((a,b)=>(a.k==='untagged')-(b.k==='untagged')||b.spent-a.spent);
   if(!rows.length){el.innerHTML='<div class="empty">No purchases or sales yet.</div>';return;}
@@ -1912,7 +1999,7 @@ function renderSpendVsReturn(){
   const Gp=gradedPicture();
   const maxV=Math.max(...rows.map(r=>Math.max(r.spent,r.total)),Gp.spent,Gp.total,1);
   const bar=(v,c)=>`<div style="height:6px;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${Math.max(0,Math.min(v/maxV*100,100))}%;background:${c}"></div></div>`;
-  const opts=k=>Object.keys(SVR_LBL).filter(g=>g!==k&&g!=='untagged').map(g=>`<option value="${g}">${SVR_LBL[g]}</option>`).join('');
+  const opts=k=>Object.keys(SVR_LBL).filter(g=>g!==k&&g!=='untagged').map(g=>`<option value="${g}">${SVR_LBL[g]}</option>`).join('')+'<option value="pokemon_jp">Pokémon (JP)</option>';
   const detail=r=>{
     const all=[...r.sales].sort((a,b)=>(parseDateToObj(b.s.date)||0)-(parseDateToObj(a.s.date)||0));
     const months=[...new Set(all.map(x=>dayKey(x.s.date).slice(0,7)).filter(Boolean))].sort().reverse();
@@ -1938,6 +2025,10 @@ function renderSpendVsReturn(){
         </table></div>
       </div></td></tr>`;
   };
+  const jpRow=bar=>{const tot=jp.back+jp.holding,p=jp.spent>0?Math.round(tot/jp.spent*100):null;
+    const res=p===null?'<span style="color:var(--green)">all profit</span>':`<span style="color:${p>=100?'var(--green)':p>=75?'#f59e0b':'var(--red)'};font-weight:600">${p}% back${p>=100?' ✓':''}</span>`;
+    return`<tr style="font-size:12px;color:var(--muted)"><td style="padding-left:28px">↳ Japanese</td><td>${jp.cards}</td><td>${fm(jp.spent)}</td><td>${fm(jp.back)}</td><td>${fm(jp.holding)}</td>
+      <td><div style="display:flex;flex-direction:column;gap:3px;opacity:.7">${bar(jp.spent,'var(--red)')}${bar(tot,'var(--green)')}</div></td><td>${res}</td></tr>`;};
   const G=gradedPicture();
   const gradedRowHtml=bar=>{
     if(!G.fees.length&&!G.slabs.length&&!G.sales.length) return '';
@@ -1973,7 +2064,7 @@ function renderSpendVsReturn(){
         <td style="${r.back<0?'color:var(--red)':''}">${fm(r.back)}</td>
         <td style="color:var(--muted)">${fm(r.holding)}</td>
         <td><div style="display:flex;flex-direction:column;gap:3px">${bar(r.spent,'var(--red)')}${bar(r.total,'var(--green)')}</div></td>
-        <td>${verdict(r)}</td></tr>${svrOpen===r.k?detail(r):''}`).join('')}${gradedRowHtml(bar)}</tbody>
+        <td>${verdict(r)}</td></tr>${svrOpen===r.k?detail(r):''}${r.k==='pokemon'&&(jp.spent||jp.cards||jp.holding)?jpRow(bar):''}`).join('')}${gradedRowHtml(bar)}</tbody>
     </table></div>
     <div style="font-size:11px;color:var(--muted);padding:8px 12px;border-top:1px solid var(--border)">
       Click a row to see exactly what's counted. Graded cards are also included in their game's row above. <span style="color:var(--red)">■</span> spent &nbsp;<span style="color:var(--green)">■</span> back from sales + still holding · "Back" is what you kept after postage, packaging &amp; fees; orders with more than one game are split by number of cards${overheads?` · ${fm(overheads)} on supplies &amp; equipment not split by game`:''}
@@ -2009,6 +2100,9 @@ function renderGameBreakdown(){
     });
   });
 
+  const jpS={cards:0,revenue:0,profit:0};
+  state.sales.forEach(s=>{const jq=(s.gameQty||{}).pokemon_jp||0;if(!jq)return;const m=saleGameMix(s);const tot=Object.values(m).reduce((a,b)=>a+b,0)||jq;
+    jpS.cards+=jq;jpS.revenue+=((parseFloat(s.price)||0)+(parseFloat(s.shippingCharged)||0))*jq/tot;jpS.profit+=calcSaleProfit(s)*jq/tot;});
   const hasData=games.some(g=>stats[g].cards>0);
   const el=document.getElementById('dash-game-breakdown');
   if(!hasData){el.innerHTML='<div class="empty" style="margin-bottom:14px">No game data yet — add game breakdowns when logging sales.</div>';return;}
@@ -2061,7 +2155,7 @@ function renderGameBreakdown(){
           <td>${fm(avgPrice)}</td>
           <td class="${profPerCard>=0?'profit-pos':'profit-neg'}">${profPerCard>=0?'+':''}${fm(profPerCard)}</td>
           <td class="${s.profit>=0?'profit-pos':'profit-neg'}">${s.profit>=0?'+':''}${fm(s.profit)}</td>
-        </tr>`;
+        </tr>${g==='pokemon'&&jpS.cards?`<tr style="font-size:12px;color:var(--muted)"><td style="padding-left:28px">↳ Japanese</td><td>${jpS.cards.toLocaleString()}</td><td>${fm(jpS.revenue/jpS.cards)}</td><td>${fm(jpS.profit/jpS.cards)}</td><td>${jpS.profit>=0?'+':''}${fm(jpS.profit)}</td></tr>`:''}`;
       }).join('')}</tbody>
     </table>
     ${coverageNote}
@@ -2702,7 +2796,8 @@ function logSale(){
   }
   const packaging=state.packaging.map(p=>({name:p.name,qty:parseInt(document.getElementById('pkg-'+p.name.replace(/\W+/g,'_'))?.value||0)})).filter(p=>p.qty>0);
   const gameQty={
-    pokemon:parseInt(document.getElementById('gq-pokemon')?.value)||0,
+    pokemon:(parseInt(document.getElementById('gq-pokemon')?.value)||0)+(parseInt(document.getElementById('gq-pokemon_jp')?.value)||0),
+    pokemon_jp:parseInt(document.getElementById('gq-pokemon_jp')?.value)||0,
     mtg:(parseInt(document.getElementById('gq-mtg')?.value)||0)+(parseInt(document.getElementById('gq-mtg_avatar_tla')?.value)||0)+(parseInt(document.getElementById('gq-mtg_avatar_tle')?.value)||0)+(parseInt(document.getElementById('gq-mtg_marvel')?.value)||0)+(parseInt(document.getElementById('gq-mtg_strixhaven')?.value)||0)+(parseInt(document.getElementById('gq-mtg_fra')?.value)||0)+(parseInt(document.getElementById('gq-mtg_ff')?.value)||0)+(parseInt(document.getElementById('gq-mtg_hobbit')?.value)||0),
     mtg_hobbit:parseInt(document.getElementById('gq-mtg_hobbit')?.value)||0,
     mtg_avatar_tla:parseInt(document.getElementById('gq-mtg_avatar_tla')?.value)||0,
@@ -2736,7 +2831,7 @@ function logSale(){
   const da=document.getElementById('s-dup-alert');if(da)da.style.display='none';const si=document.getElementById('s-item');if(si)si.style.borderColor='';
   const va=document.getElementById('s-vip-alert');if(va)va.style.display='none';
   {const gs=document.getElementById('s-graded-qty');if(gs)gs.value=0;}
-  ['gq-pokemon','gq-mtg','gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_marvel','gq-mtg_strixhaven','gq-mtg_fra','gq-mtg_ff','gq-mtg_hobbit','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-cyberpunk','gq-palworld','gq-gundam','gq-other'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=0;});
+  ['gq-pokemon','gq-pokemon_jp','gq-mtg','gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_marvel','gq-mtg_strixhaven','gq-mtg_fra','gq-mtg_ff','gq-mtg_hobbit','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-cyberpunk','gq-palworld','gq-gundam','gq-other'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=0;});
   syncArticleCount();
   const defaults={'Thermal label':1,'Promotional sticker':1,'A6 envelope':1};
   state.packaging.forEach(p=>{const inp=document.getElementById('pkg-'+p.name.replace(/\W+/g,'_'));if(inp)inp.value=pkgDefault(p.name);});
@@ -3386,7 +3481,7 @@ function syncArticleCount(){
 }
 
 function getTotalGameQty(){
-  const ids=['gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_strixhaven','gq-mtg_fra','gq-mtg_marvel','gq-mtg_ff','gq-mtg_hobbit','gq-mtg','gq-pokemon','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-cyberpunk','gq-palworld','gq-gundam','gq-other'];
+  const ids=['gq-mtg_avatar_tla','gq-mtg_avatar_tle','gq-mtg_strixhaven','gq-mtg_fra','gq-mtg_marvel','gq-mtg_ff','gq-mtg_hobbit','gq-mtg','gq-pokemon','gq-pokemon_jp','gq-onepiece','gq-dbz','gq-riftbound','gq-yugioh','gq-cyberpunk','gq-palworld','gq-gundam','gq-other'];
   return ids.reduce((a,id)=>{const el=document.getElementById(id);return a+(parseInt(el?.value)||0);},0);
 }
 
@@ -3473,7 +3568,7 @@ function renderBudgetBreakdown(){
 
   // Return from top category: sales profit attributed to that game
   const catKey=topCat?.[0];
-  const GAME_MAP={pokemon:'pokemon',mtg:'mtg',onepiece:'onepiece',dbz:'dbz',riftbound:'riftbound',yugioh:'yugioh',marvel:'marvel'};
+  const GAME_MAP={pokemon_jp:'pokemon_jp',pokemon:'pokemon',mtg:'mtg',onepiece:'onepiece',dbz:'dbz',riftbound:'riftbound',yugioh:'yugioh',marvel:'marvel'};
   let catReturn=null;
   if(catKey&&GAME_MAP[catKey]){
     let profit=0;
@@ -3483,7 +3578,7 @@ function renderBudgetBreakdown(){
       const mix=saleGameMix(s);
       const total=Object.values(mix).reduce((a,b)=>a+(b||0),0);
       if(!total) return;
-      const gameQty=mix[catKey==='marvel'?'mtg':catKey]||0;
+      const gameQty=catKey==='pokemon_jp'?((s.gameQty||{}).pokemon_jp||0):(mix[catKey==='marvel'?'mtg':catKey]||0);
       if(!gameQty) return;
       profit+=calcSaleProfit(s)*(gameQty/total);
     });
@@ -3545,7 +3640,7 @@ function renderBudgetBreakdown(){
 function showPurchaseTab(cat){purchaseTab=cat;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('ptab-'+cat).classList.add('active');renderPurchasesTable(cat);}
 function renderPurchasesTable(cat){
   const tbody=document.getElementById('purchases-tbody');
-  const list=cat==='all'?[...state.purchases].reverse():[...state.purchases].filter(p=>p.category===cat).reverse();
+  const list=cat==='all'?[...state.purchases].reverse():[...state.purchases].filter(p=>p.category===cat||(cat==='pokemon'&&p.category==='pokemon_jp')).reverse();
   if(!list.length){tbody.innerHTML='<tr><td colspan="6" class="empty">No purchases here yet.</td></tr>';return;}
   tbody.innerHTML=list.map(p=>{const realIdx=state.purchases.indexOf(p);return`<tr><td>${fd(p.date)}</td><td>${p.description||'—'}</td><td><select title="Change category" onchange="setPurchaseCategory(${realIdx},this.value)" style="font-size:12px;padding:2px 4px;border-radius:var(--radius-sm)">${Object.entries(CAT_LABELS).map(([k,l])=>`<option value="${k}" ${(p.category||'other')===k?'selected':''}>${l}</option>`).join('')}</select></td><td>${p.supplier||'—'}</td><td>${fm(p.amount)}</td><td><button class="btn sm danger" onclick="deletePurchase(${realIdx})"><i class="ti ti-trash"></i></button></td></tr>`;}).join('');
 }
@@ -3594,7 +3689,7 @@ let moverCharts={};
 
 function setMoversTcg(t){
   moversTcg=t;
-  ['all','pokemon','mtg','onepiece','dbz','riftbound','yugioh','cyberpunk','palworld','gundam'].forEach(k=>{
+  ['all','pokemon','pokemon_jp','mtg','onepiece','dbz','riftbound','yugioh','cyberpunk','palworld','gundam'].forEach(k=>{
     const el=document.getElementById('movers-tcg-'+k);
     if(el) el.className='btn sm'+(k===t?' active-snap':'');
   });
@@ -3643,7 +3738,7 @@ function renderMoversPage(){
 
   let filtered=items.filter(c=>{
     if(search&&!c.name.toLowerCase().includes(search)) return false;
-    if(moversTcg!=='all'&&(c.game||'')!==moversTcg) return false;
+    if(moversTcg!=='all'&&(c.game||'')!==moversTcg&&!(moversTcg==='pokemon'&&c.game==='pokemon_jp')) return false;
     if(moversFilter==='gains') return c.absChange!==null&&c.absChange>0;
     if(moversFilter==='losses') return c.absChange!==null&&c.absChange<0;
     if(moversFilter==='history') return c.hasHistory;
@@ -3998,7 +4093,7 @@ function importCollectrCsv(input){
 
       function mapGame(cat,port){
         const c=String(cat).toLowerCase(),p=String(port).toLowerCase();
-        if(c.includes('pokemon')) return 'pokemon';
+        if(c.includes('pokemon')) return (c.includes('japan')||/\bjp\b|japanese/.test(p))?'pokemon_jp':'pokemon';
         if(c.includes('one piece')) return 'onepiece';
         if(c.includes('palworld')) return 'palworld';
         if(c.includes('gundam')) return 'gundam';
