@@ -219,7 +219,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 23 Oct 2026 (d)</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 24 Oct 2026</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
       <button class="btn sm" onclick="lockTracker()" title="Forget the passcode and clear saved data on this device"><i class="ti ti-lock"></i> Lock</button>
@@ -920,6 +920,7 @@ async function loadFromSheets(){
     setSyncStatus('Synced with Google Sheets','ok');
     buildBuyersFromSales();
     repairOrphanedSnapshots();
+    try{fixInventoryHistoryOct2026();}catch(e){console.error(e);}
   }catch(e){
     if(e instanceof AuthError){setSyncStatus('Locked','err');throw e;}
     setSyncStatus('Offline — changes saved locally','err');
@@ -1154,10 +1155,23 @@ function toggleInventoryInput(){
   }
 }
 
+// ONE-OFF (24 Oct 2026) — remove in the next file. Adds the pre-24-Oct inventory value (£2,429.34)
+// if the history starts on 23/24 Oct without it. Does nothing once it's there.
+function fixInventoryHistoryOct2026(){
+  const h=(state.settings.inventoryHistory||[]).filter(x=>x&&x.d).sort((a,b)=>a.d.localeCompare(b.d));
+  if(!h.length||h[0].d<'2026-10-23'||h.some(x=>Math.abs(x.v-2429.34)<0.005)) return;
+  const d=parseDateToObj(h[0].d);d.setDate(d.getDate()-1);
+  h.unshift({d:dayKey(d),v:2429.34});
+  state.settings.inventoryHistory=h;
+  scheduleSave('Settings');
+}
+
 function commitInventoryValue(){
   const input=document.getElementById('nav-inventory-input');if(!input)return;
+  const oldVal=parseFloat(state.settings.inventoryValue)||0;
   state.settings.inventoryValue=parseFloat(input.value)||0;
   const h=(state.settings.inventoryHistory||[]).filter(x=>x.d!==today());
+  if(!h.length&&oldVal>0&&oldVal!==state.settings.inventoryValue){const y=new Date();y.setDate(y.getDate()-1);h.push({d:dayKey(y),v:oldVal});}
   h.push({d:today(),v:state.settings.inventoryValue});h.sort((a,b)=>a.d.localeCompare(b.d));
   state.settings.inventoryHistory=h;
   scheduleSave('Settings');
