@@ -16,6 +16,42 @@
   --green:#1D9E75;--blue:#185FA5;--red:#D85A30;--purple:#534AB7;--amber:#BA7517;
   --radius:10px;--radius-sm:6px;
 }
+/* Release calendar */
+.rel-strip-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.rel-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media(max-width:900px){.rel-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.rel-tile{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px 12px 16px;cursor:pointer;overflow:hidden;transition:border-color .15s,transform .15s;min-height:112px;display:flex;flex-direction:column}
+.rel-tile:hover{border-color:var(--gc);transform:translateY(-1px)}
+.rel-tile::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gc)}
+.rel-tile-game{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gc)}
+.rel-tile-when{font-size:22px;font-weight:600;line-height:1.1;margin-top:4px;font-variant-numeric:tabular-nums}
+.rel-tile-date{font-size:11px;color:var(--muted);margin-top:1px}
+.rel-tile-title{font-size:12.5px;margin-top:8px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rel-tile-more{font-size:11px;color:var(--muted);margin-top:auto;padding-top:4px}
+.rel-tile.empty{text-align:left;align-items:stretch;justify-content:flex-start;padding:12px 14px 12px 16px}
+.rel-tile.empty .rel-tile-when{font-size:14px;color:var(--muted);font-weight:500}
+.rel-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.rel-chip{font-size:12px;padding:5px 11px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer}
+.rel-chip.on{background:var(--text);color:var(--surface);border-color:var(--text)}
+.rel-chip .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.rel-month{font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:18px 0 6px}
+.rel-month:first-child{margin-top:0}
+.rel-row{display:grid;grid-template-columns:52px 1fr auto;gap:14px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)}
+.rel-row:last-child{border-bottom:none}
+.rel-row.past{opacity:.5}
+.rel-day{width:52px;text-align:center;border-radius:8px;background:var(--surface2);padding:5px 0;line-height:1.1}
+.rel-day b{display:block;font-size:18px;font-variant-numeric:tabular-nums}
+.rel-day span{font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.04em}
+.rel-title{font-size:13.5px;min-width:0}
+.rel-title a{color:inherit;text-decoration:none}
+.rel-title a:hover{text-decoration:underline}
+.rel-sub{font-size:11.5px;color:var(--muted);margin-top:2px}
+.rel-pill{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px;margin-right:6px;color:#fff;vertical-align:1px}
+.rel-pill.other{background:transparent;border:1px solid var(--border);color:var(--muted)}
+.rel-count{font-size:11.5px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.rel-count.soon{color:var(--text);font-weight:600}
+.rel-sources{font-size:12px;color:var(--muted)}
+.rel-sources div{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--border)}
 @media(prefers-color-scheme:dark){
   :root{--bg:#18181a;--surface:#222224;--surface2:#2a2a2c;--border:#333336;--text:#f0efec;--muted:#88877f;}
 }
@@ -183,6 +219,7 @@ tr:hover td{background:var(--surface2)}
     <!-- CARDS NAV -->
     <div id="nav-cards-section">
       <button class="nav-btn active" onclick="showPage('dashboard')" id="nav-dashboard"><i class="ti ti-chart-bar"></i> Dashboard</button>
+      <button class="nav-btn" onclick="showPage('releases')" id="nav-releases"><i class="ti ti-calendar-event"></i> Release calendar</button>
       <div class="nav-section">
         <button class="nav-btn nav-btn-action" onclick="showPage('log-sale')" id="nav-log-sale"><i class="ti ti-plus"></i> Log sale</button>
         <button class="nav-btn" onclick="showPage('sales')" id="nav-sales"><i class="ti ti-receipt"></i> Sales</button>
@@ -196,6 +233,7 @@ tr:hover td{background:var(--surface2)}
         <button class="nav-btn" onclick="showPage('collection-movers')" id="nav-collection-movers"><i class="ti ti-trending-up"></i> Price movers</button>
         <button class="nav-btn nav-btn-action" onclick="document.getElementById('collectr-csv-input').click()"><i class="ti ti-upload"></i> Import Collectr CSV</button>
         <input type="file" id="collectr-csv-input" accept=".csv" style="display:none" onchange="importCollectrCsv(this)">
+        <button class="nav-btn nav-btn-action" onclick="showPage('add-item')" id="nav-add-item" title="For things Collectr doesn't have yet"><i class="ti ti-pencil-plus"></i> Add item by hand</button>
         <button class="nav-btn" onclick="toggleInventoryInput()" id="nav-inventory-btn"><i class="ti ti-building-store"></i> Inventory value</button>
         <div id="nav-inventory-panel" style="display:none;padding:4px 10px 8px">
           <input type="number" id="nav-inventory-input" step="0.01" min="0" placeholder="£0.00" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text);font-size:13px" onkeydown="if(event.key==='Enter'){event.preventDefault();commitInventoryValue();}else if(event.key==='Escape'){toggleInventoryInput();}"><div style="font-size:10px;color:var(--muted);margin-top:3px">Press Enter to save · Esc to cancel</div>
@@ -219,7 +257,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 2 Nov 2026c</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 2 Nov 2026f</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
       <button class="btn sm" onclick="lockTracker()" title="Forget the passcode and clear saved data on this device"><i class="ti ti-lock"></i> Lock</button>
@@ -586,6 +624,12 @@ tr:hover td{background:var(--surface2)}
       </div>
     </div>
 
+    <!-- RELEASE CALENDAR -->
+    <div id="page-releases" class="page">
+      <div class="page-title">Release calendar</div>
+      <div id="releases-page"></div>
+    </div>
+
     <div id="page-collection-movers" class="page">
       <div class="page-title">Price movers</div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
@@ -621,7 +665,8 @@ tr:hover td{background:var(--surface2)}
       <div id="movers-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
     </div>
     <div id="page-add-item" class="page">
-      <div class="page-title">Add to collection</div>
+      <div class="page-title">Add item by hand</div>
+      <div style="font-size:12.5px;color:var(--muted);margin:-6px 0 12px;max-width:640px">For cards or products Collectr doesn’t list yet. They count towards your collection value straight away and stay put when you import from Collectr. Once Collectr has the item (same name), the import swaps your hand-added one for Collectr’s and tells you.</div>
       <div class="card">
         <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:6px;margin-bottom:6px">
           <div class="form-group"><label style="font-size:11px">Type</label>
@@ -869,7 +914,7 @@ async function loadFromSheets(){
       state.purchases=data.Purchases.slice(1).map(r=>({date:r[0],description:r[1],category:r[2],amount:parseFloat(r[3])||0,supplier:r[4]||'',set:r[5]||''})).filter(p=>p.description);
     }
     if(data.Collection&&data.Collection.length>1){
-      state.collection=data.Collection.slice(1).map(r=>({id:r[0],name:r[1],type:r[2],game:r[3],status:r[4],set:r[5]||'',cn:r[6]||'',cost:parseFloat(r[7])||0,marketValue:parseFloat(r[8])||0,priceUrl:r[9]||'',notes:r[10]||'',added:r[11]?dayKey(r[11]):''})).filter(c=>c.name);
+      state.collection=data.Collection.slice(1).map(r=>({id:r[0],name:r[1],type:r[2],game:r[3],status:r[4],set:r[5]||'',cn:r[6]||'',cost:parseFloat(r[7])||0,marketValue:parseFloat(r[8])||0,priceUrl:r[9]||'',notes:r[10]||'',added:r[11]?dayKey(r[11]):'',source:r[12]||''})).filter(c=>c.name);
     }
     if(data.Settings&&data.Settings.length>1){const map={};data.Settings.slice(1).forEach(r=>{if(r[0])map[r[0]]=r[1];});if(map.cmFee!==undefined)state.settings.cmFee=parseFloat(map.cmFee)||5;if(map.ebFee!==undefined)state.settings.ebFee=parseFloat(map.ebFee)||12;if(map.otFee!==undefined)state.settings.otFee=parseFloat(map.otFee)||0;if(map.inventoryValue!==undefined)state.settings.inventoryValue=parseFloat(map.inventoryValue)||0;try{state.settings.inventoryHistory=map.inventoryHistory?JSON.parse(map.inventoryHistory):[];}catch(e){state.settings.inventoryHistory=[];}try{if(map.releaseFeeds)state.settings.releaseFeeds=JSON.parse(map.releaseFeeds);}catch(e){}}
     if(data.Packaging&&data.Packaging.length>1){state.packaging=data.Packaging.slice(1).map(r=>({name:r[0],cost:parseFloat(r[1])||0})).filter(p=>p.name);}
@@ -940,7 +985,7 @@ async function flushSaves(){
   for(const sheet of sheets){
     if(sheet==='Sales') await saveSheetData('Sales',['Date','Item','Platform','Price','ShippingCharged','PostageCost','Packaging','ArticleCount','ActualCommission','PromotedFee','PokemonQty','MTGQty','OnePieceQty','MarvelQty','OtherQty','DBZQty','RiftboundQty','MTGHobbitQty','MTGAvatarTLAQty','MTGAvatarTLEQty','MTGStrixhavenQty','MTGMarvelQty','MTGFFQty','BuyerUsername','YugiohQty','CyberpunkQty','MTGRealityFractureQty','PalworldQty','GundamQty','GradedQty','PokemonJPQty'],state.sales.map(s=>[s.date,s.item,s.platform,s.price,s.shippingCharged||0,s.postageCost,JSON.stringify(s.packaging||[]),s.articleCount||1,s.actualCommission!==null&&s.actualCommission!==undefined?s.actualCommission:'',s.promotedFee||0,(s.gameQty?.pokemon||0),(s.gameQty?.mtg||0),(s.gameQty?.onepiece||0),(s.gameQty?.marvel||0),(s.gameQty?.other||0),(s.gameQty?.dbz||0),(s.gameQty?.riftbound||0),(s.gameQty?.mtg_hobbit||0),(s.gameQty?.mtg_avatar_tla||0),(s.gameQty?.mtg_avatar_tle||0),(s.gameQty?.mtg_strixhaven||0),(s.gameQty?.mtg_marvel||0),(s.gameQty?.mtg_ff||0),s.username||'',(s.gameQty?.yugioh||0),(s.gameQty?.cyberpunk||0),(s.gameQty?.mtg_fra||0),(s.gameQty?.palworld||0),(s.gameQty?.gundam||0),(s.gradedQty||0),(s.gameQty?.pokemon_jp||0)]));
     if(sheet==='Purchases') await saveSheetData('Purchases',['Date','Description','Category','Amount','Supplier','Set'],state.purchases.map(p=>[p.date,p.description,p.category,p.amount,p.supplier||'',p.set||'']));
-    if(sheet==='Collection') await saveSheetData('Collection',['ID','Name','Type','Game','Status','Set','CN','Cost','MarketValue','PriceUrl','Notes','Added'],state.collection.map(c=>[c.id,c.name,c.type,c.game,c.status,c.set||'',c.cn||'',c.cost,c.marketValue,c.priceUrl||'',c.notes||'',c.added||'']));
+    if(sheet==='Collection') await saveSheetData('Collection',['ID','Name','Type','Game','Status','Set','CN','Cost','MarketValue','PriceUrl','Notes','Added','Source'],state.collection.map(c=>[c.id,c.name,c.type,c.game,c.status,c.set||'',c.cn||'',c.cost,c.marketValue,c.priceUrl||'',c.notes||'',c.added||'',c.source||'']));
     if(sheet==='Games') await saveSheetData('Games',['ID','Name','Platform','Condition','Cost','Value','Added'],state.games.map(g=>[g.id,g.name,g.platform,g.condition||'',g.cost,g.value,g.added]));
     if(sheet==='ItemSnapshots'){
       if(state.itemSnapshots&&Object.keys(state.itemSnapshots).length){
@@ -1163,8 +1208,33 @@ const RELEASE_GAMES=[['pokemon',/pok[eé]mon/i,'Pokémon','#185FA5'],['mtg',/mag
 const BANDAI_OP_URL='https://en.onepiece-cardgame.com/products/?view=detail';
 const OP_SKIP_RE=/sleeve|playmat|storage box|card case|deck case|binder|play sheet|dice/i;
 const POKECOTTAGE_URL='https://pokecottage.com/pokemon-set-release-calendar';
-const EXTRA_SOURCES=[[BANDAI_OP_URL,'Bandai One Piece list',h=>parseBandaiOP(h)],[POKECOTTAGE_URL,'PokéCottage Pokémon calendar',h=>parsePokeCottage(h)]];
-let releasesState={events:null,errors:[],showOthers:false,editing:false};
+const CHOOMDEX_URL='https://choomdex.com/calendar';
+const EXTRA_SOURCES=[[BANDAI_OP_URL,'Bandai One Piece list',h=>parseBandaiOP(h)],[POKECOTTAGE_URL,'PokéCottage Pokémon calendar',h=>parsePokeCottage(h)],[CHOOMDEX_URL,'Choomdex Cyberpunk calendar',h=>parseChoomdex(h)]];
+function parseChoomdex(html){
+  const doc=new DOMParser().parseFromString(String(html),'text/html');
+  const MON={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+  const seen={},out=[];
+  doc.querySelectorAll('a[href*="/item/"]').forEach(a=>{
+    const href=a.getAttribute('href')||'';
+    if(/\/item\/tcg-card-/i.test(href))return; // single cards — sealed products only
+    // Read the link's pieces (date / name / category / countdown) separately
+    const c=a.cloneNode(true);c.querySelectorAll('*').forEach(el=>el.appendChild(doc.createTextNode(' | ')));
+    const t=(c.textContent||'').replace(/\s+/g,' ');
+    if(!/Trading Card Game|\bTCG\b/i.test(t))return;
+    const m=t.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{4})/i);if(!m)return;
+    const rest=t.slice(t.indexOf(m[0])+m[0].length);
+    let title=(rest.split('|').map(x=>x.trim()).find(Boolean)||'');
+    const ci=title.search(/Trading Card Game/i);if(ci>0)title=title.slice(0,ci);
+    title=title.replace(/(today|tomorrow|yesterday|in \d+ days?|\d+ days? ago)\s*$/i,'').trim();
+    if(!title)return;
+    const setM=t.match(/Trading Card Game\s*·\s*([^|]+?)(?:today|tomorrow|yesterday|in \d+ days?|\d+ days? ago)?\s*(\||$)/i);
+    const url=/^https?:/i.test(href)?href:'https://choomdex.com'+(href.startsWith('/')?'':'/')+href;
+    if(seen[url])return;seen[url]=1;
+    out.push({uid:'choomdex:'+url,date:new Date(+m[3],MON[m[2].slice(0,3).toLowerCase()],+m[1],12),title,publisher:setM?setM[1].replace(/^Cyberpunk TCG:\s*/i,'').trim():'',game:'Cyberpunk',mine:true,color:'#B8860B',url,src:'choomdex'});
+  });
+  return out;
+}
+let releasesState={events:null,errors:[],sources:[],filter:'mine',editing:false,showPast:false};
 function parsePokeCottage(html){
   const doc=new DOMParser().parseFromString(String(html),'text/html');
   const MONTHS=['january','february','march','april','may','june','july','august','september','october','november','december'];
@@ -1226,61 +1296,99 @@ function parseIcs(text){
 }
 async function loadReleases(){
   const feeds=(state.settings.releaseFeeds&&state.settings.releaseFeeds.length)?state.settings.releaseFeeds:DEFAULT_FEEDS;
-  const seen={},events=[],errors=[];
+  const seen={},events=[],errors=[],sources=[];
   const extra=url=>EXTRA_SOURCES.find(x=>x[0]===url);
-  const label=url=>extra(url)?extra(url)[1]:url.split('/').pop();
+  const label=url=>extra(url)?extra(url)[1]:/cardatlas\.app\/.*category-tcg\.ics$/i.test(url)?'Card Atlas TCG calendar':url.split('/').pop();
   const why=err=>err==='Unknown action'?'update your Apps Script to the latest version':err==='feed not allowed'?'update your Apps Script to the latest version (it needs the new allowed sites)':err;
   await Promise.all([...feeds,...EXTRA_SOURCES.map(x=>x[0])].map(async url=>{
     try{const j=await sheetsCall({action:'feed',url});
-      if(!j.ok){errors.push(`${label(url)}: ${why(j.error)}`);return;}
+      if(!j.ok){errors.push(`${label(url)}: ${why(j.error)}`);sources.push({label:label(url),error:why(j.error)});return;}
       const list=extra(url)?extra(url)[2](j.text):parseIcs(j.text);
-      if(extra(url)&&!list.length){errors.push(`${label(url)}: no release dates found — the site may have changed its page`);return;}
+      if(extra(url)&&!list.length){errors.push(`${label(url)}: no release dates found — the site may have changed its page`);sources.push({label:label(url),error:'no release dates found'});return;}
       list.forEach(e=>{if(!seen[e.uid]){seen[e.uid]=1;events.push(e);}});
-    }catch(e){errors.push(`${label(url)}: ${e.message||e}`);}
+      sources.push({label:label(url),count:list.length});
+    }catch(e){errors.push(`${label(url)}: ${e.message||e}`);sources.push({label:label(url),error:String(e.message||e)});}
   }));
   // If Card Atlas also lists a One Piece set Bandai already gave us, keep Bandai's row
   const bandai=events.filter(e=>e.src==='bandai');
   const codeOf=t=>(String(t).match(/\b([A-Z]{2,3})-?(\d{2})\b/)||[]).slice(1).join('');
   for(let i=events.length-1;i>=0;i--){const e=events[i];
     if(e.src!=='bandai'&&e.game==='One Piece'&&bandai.some(b=>b.date.getTime()===e.date.getTime()&&(codeOf(b.title)&&codeOf(b.title)===codeOf(e.title))))events.splice(i,1);}
+  const SMALL=/^(of|the|and|a|an|to|in|on|for|x)$/i;
+  events.forEach(e=>{const letters=e.title.replace(/[^A-Za-z]/g,'');
+    if(letters.length>6&&letters.replace(/[^A-Z]/g,'').length/letters.length>0.8)
+      e.title=e.title.toLowerCase().replace(/[a-z][a-z']*/g,(w,i,str)=>i>0&&str[i-1]===' '&&SMALL.test(w)?w:w[0].toUpperCase()+w.slice(1))
+        .replace(/\b(op|st|eb|dp|gc|prb|tcg|mtg|psa|me)(?=\b|-?\d)/gi,m=>m.toUpperCase());});
   events.sort((a,b)=>a.date-b.date);
-  releasesState.events=events;releasesState.errors=errors;
-  renderReleases();try{renderDashSummary();}catch(e){}
+  releasesState.events=events;releasesState.errors=errors;releasesState.sources=sources;
+  renderReleases();try{renderReleasesPage();}catch(e){}try{renderDashSummary();}catch(e){}
 }
-function toggleReleaseOthers(){releasesState.showOthers=!releasesState.showOthers;renderReleases();}
-function toggleReleaseFeeds(){releasesState.editing=!releasesState.editing;renderReleases();}
+const relEsc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const relSafeUrl=u=>/^https:\/\//i.test(String(u||''))?relEsc(u):'';
+function relToday(){const t=new Date();t.setHours(12,0,0,0);return t;}
+function relDays(d){return Math.round((d-relToday())/86400000);}
+function relWhen(n){return n===0?'Today':n===1?'Tomorrow':n===-1?'Yesterday':n<0?`${-n} days ago`:n<=60?`${n} days`:n<=120?`${Math.round(n/7)} weeks`:`${Math.round(n/30)} months`;}
+// Booster boxes / main sets first when several products land the same day
+function relRank(e){return /booster (box|display)/i.test(e.title)?0:/booster|expansion|\bset\b/i.test(e.title)?1:/starter|deck/i.test(e.title)?2:3;}
+function toggleReleaseFeeds(){releasesState.editing=!releasesState.editing;renderReleasesPage();}
+function setReleaseFilter(f){releasesState.filter=f;renderReleasesPage();}
+function toggleReleasePast(){releasesState.showPast=!releasesState.showPast;renderReleasesPage();}
 function saveReleaseFeeds(){
   const v=(document.getElementById('release-feeds-input')?.value||'').split(/\s+/).map(x=>x.trim()).filter(x=>/^https:\/\/cardatlas\.app\//i.test(x));
   state.settings.releaseFeeds=v.length?v:DEFAULT_FEEDS;scheduleSave('Settings');
-  releasesState.editing=false;releasesState.events=null;renderReleases();loadReleases();
+  releasesState.editing=false;releasesState.events=null;renderReleases();renderReleasesPage();loadReleases();
 }
+// Dashboard: one tile per game — the next thing coming out
 function renderReleases(){
   const el=document.getElementById('dash-releases');if(!el)return;
-  const today=new Date();today.setHours(12,0,0,0);const DAY=86400000;
-  const head=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
-    <div class="card-title" style="margin-bottom:0">Upcoming releases ${infoTip('From the Card Atlas release calendar plus Bandai’s official One Piece product list (English edition dates) and the PokéCottage Pokémon calendar (English, Japanese and other regions — the region is in the name where they give it), refreshed every 6 hours. Pokémon, MTG, One Piece and Cyberpunk are highlighted. Sleeves and playmats are left out.')}</div>
-    <button class="btn sm" onclick="toggleReleaseFeeds()">Feeds</button></div>`;
-  const feedsEditor=releasesState.editing?`<div style="margin-bottom:10px;font-size:12px">
-      <div style="color:var(--muted);margin-bottom:4px">One calendar (.ics) link per line — must be on cardatlas.app. Use the “Copy feed URL” button on a Card Atlas release page.</div>
-      <textarea id="release-feeds-input" rows="3" style="width:100%;font-size:12px;padding:6px">${((state.settings.releaseFeeds&&state.settings.releaseFeeds.length)?state.settings.releaseFeeds:DEFAULT_FEEDS).join('\n')}</textarea>
-      <div style="margin-top:6px;display:flex;gap:6px"><button class="btn sm primary" onclick="saveReleaseFeeds()">Save feeds</button><button class="btn sm" onclick="toggleReleaseFeeds()">Cancel</button></div></div>`:'';
-  if(releasesState.events===null){el.innerHTML=`<div class="card" style="padding:14px 18px">${head}${feedsEditor}<div style="color:var(--muted);font-size:12px">Loading release calendar…</div></div>`;return;}
-  const from=new Date(today.getTime()-14*DAY),to=new Date(today.getTime()+120*DAY);
-  const win=releasesState.events.filter(e=>e.date>=from&&e.date<=to);
-  const mine=win.filter(e=>e.mine),others=win.filter(e=>!e.mine);
-  const when=d=>{const n=Math.round((d-today)/DAY);return n===0?'today':n===1?'tomorrow':n>0?`in ${n} days`:n===-1?'yesterday':`${-n} days ago`;};
-  const row=e=>{const past=e.date<today;return`<div style="display:grid;grid-template-columns:92px 86px 1fr;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;${past?'opacity:.55':''}">
-      <div style="font-variant-numeric:tabular-nums">${e.date.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</div>
-      <div style="font-size:11px;color:${!past&&Math.round((e.date-today)/DAY)<=7?'var(--text)':'var(--muted)'};font-weight:${!past&&Math.round((e.date-today)/DAY)<=7?600:400}">${when(e.date)}</div>
-      <div style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-        <span style="display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-right:6px;${e.mine?`background:${e.color};color:#fff`:'border:1px solid var(--border);color:var(--muted)'}">${e.game}</span>${e.url?`<a href="${e.url}" target="_blank" rel="noopener" style="color:inherit">${e.title}</a>`:e.title}${e.publisher?` <span style="color:var(--muted);font-size:11px">· ${e.publisher}</span>`:''}</div></div>`;};
-  const missing=(releasesState.errors.length&&!releasesState.events.length)?[]:RELEASE_GAMES.filter(g=>!releasesState.events.some(e=>e.game===g[2])).map(g=>g[2]);
-  el.innerHTML=`<div class="card" style="padding:14px 18px">${head}${feedsEditor}
-    ${releasesState.errors.length?`<div style="font-size:12px;color:var(--red);margin-bottom:8px">Couldn’t load: ${releasesState.errors.join(' · ')}</div>`:''}
-    ${mine.length?mine.map(row).join(''):(releasesState.errors.length&&!releasesState.events.length)?'':`<div style="font-size:12px;color:var(--muted);padding:4px 0">No Pokémon, MTG, One Piece or Cyberpunk releases in the next 4 months on your feeds.</div>`}
-    ${missing.length?`<div style="font-size:11px;color:var(--muted);margin-top:6px">Not on your feeds: ${missing.join(', ')} — no source for these yet.</div>`:''}
-    ${others.length?`<div style="margin-top:8px"><a href="#" onclick="event.preventDefault();toggleReleaseOthers()" style="font-size:12px;color:var(--muted)">${releasesState.showOthers?'▾ Hide':'▸ Show'} ${others.length} release${others.length===1?'':'s'} from other games</a>${releasesState.showOthers?`<div style="margin-top:4px">${others.map(row).join('')}</div>`:''}</div>`:''}
-  </div>`;
+  const head=`<div class="rel-strip-head"><div class="dash-section-title" style="margin:0">Next releases</div><a href="#" onclick="event.preventDefault();showPage('releases')" style="font-size:12px;color:var(--muted)">Full calendar →</a></div>`;
+  if(releasesState.events===null){el.innerHTML=`${head}<div class="rel-strip">${RELEASE_GAMES.map(g=>`<div class="rel-tile empty" style="--gc:${g[3]}"><div class="rel-tile-game">${g[2]}</div><div class="rel-tile-when">Loading…</div></div>`).join('')}</div>`;return;}
+  const t=relToday();
+  const tiles=RELEASE_GAMES.map(g=>{
+    const up=releasesState.events.filter(e=>e.game===g[2]&&e.date>=t);
+    if(!up.length)return`<div class="rel-tile empty" style="--gc:${g[3]}" onclick="showPage('releases')"><div class="rel-tile-game">${g[2]}</div><div class="rel-tile-when">No dates yet</div></div>`;
+    const day=up.filter(e=>e.date.getTime()===up[0].date.getTime()).sort((a,b)=>relRank(a)-relRank(b));
+    const e=day[0],n=relDays(e.date);
+    return`<div class="rel-tile" style="--gc:${g[3]}" onclick="releasesState.filter='${g[0]}';showPage('releases')" title="${relEsc(day.map(x=>x.title).join('\n'))}">
+      <div class="rel-tile-game">${g[2]}</div>
+      <div class="rel-tile-when">${relWhen(n)}</div>
+      <div class="rel-tile-date">${e.date.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</div>
+      <div class="rel-tile-title">${relEsc(e.title)}</div>
+      ${day.length>1?`<div class="rel-tile-more">+${day.length-1} more that day</div>`:''}</div>`;}).join('');
+  const err=releasesState.errors.length?`<div style="font-size:11px;color:var(--red);margin-top:6px">Some release sources didn’t load — see the Release calendar page.</div>`:'';
+  el.innerHTML=`${head}<div class="rel-strip">${tiles}</div>${err}`;
+}
+// Full page: filter chips, grouped by month
+function renderReleasesPage(){
+  const el=document.getElementById('releases-page');if(!el)return;
+  const st=releasesState;
+  const feedsEditor=st.editing?`<div style="margin-top:10px;font-size:12px">
+      <div style="color:var(--muted);margin-bottom:4px">Extra Card Atlas calendars (.ics), one per line — must be on cardatlas.app.</div>
+      <textarea id="release-feeds-input" rows="3" style="width:100%;font-size:12px;padding:6px">${relEsc(((state.settings.releaseFeeds&&state.settings.releaseFeeds.length)?state.settings.releaseFeeds:DEFAULT_FEEDS).join('\n'))}</textarea>
+      <div style="margin-top:6px;display:flex;gap:6px"><button class="btn sm primary" onclick="saveReleaseFeeds()">Save</button><button class="btn sm" onclick="toggleReleaseFeeds()">Cancel</button></div></div>`:'';
+  const sourcesCard=`<div class="card" style="margin-top:16px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="card-title" style="margin:0">Sources</div><button class="btn sm" onclick="toggleReleaseFeeds()">Edit Card Atlas feeds</button></div>
+    <div class="rel-sources">${(st.sources||[]).length?st.sources.map(x=>`<div><span>${relEsc(x.label)}</span><span style="color:${x.error?'var(--red)':'var(--muted)'}">${x.error?relEsc(x.error):`${x.count} dates`}</span></div>`).join(''):'<div><span>Loading…</span></div>'}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">Refreshed every 6 hours. One Piece dates are Bandai’s English-edition dates; Cyberpunk shows sealed products only; sleeves and playmats are left out.</div>${feedsEditor}</div>`;
+  if(st.events===null){el.innerHTML=`<div class="card" style="color:var(--muted);font-size:13px">Loading release calendar…</div>${sourcesCard}`;return;}
+  const t=relToday(),DAY=86400000,from=new Date(t.getTime()-30*DAY);
+  const inWin=st.events.filter(e=>e.date>=from);
+  const counts={mine:inWin.filter(e=>e.mine&&e.date>=t).length,other:inWin.filter(e=>!e.mine&&e.date>=t).length};
+  RELEASE_GAMES.forEach(g=>counts[g[0]]=inWin.filter(e=>e.game===g[2]&&e.date>=t).length);
+  const chip=(f,label,color)=>`<button class="rel-chip ${st.filter===f?'on':''}" onclick="setReleaseFilter('${f}')">${color?`<span class="dot" style="background:${color}"></span>`:''}${label} <span style="opacity:.6">${counts[f]||0}</span></button>`;
+  const chips=`<div class="rel-chips">${chip('mine','My games')}${RELEASE_GAMES.map(g=>chip(g[0],g[2],g[3])).join('')}${chip('other','Other games')}</div>`;
+  const gameOf=Object.fromEntries(RELEASE_GAMES.map(g=>[g[0],g[2]]));
+  const match=e=>st.filter==='mine'?e.mine:st.filter==='other'?!e.mine:e.game===gameOf[st.filter];
+  const list=inWin.filter(match);
+  const past=list.filter(e=>e.date<t).reverse(),up=list.filter(e=>e.date>=t);
+  const row=e=>{const n=relDays(e.date),u=relSafeUrl(e.url);return`<div class="rel-row ${n<0?'past':''}">
+      <div class="rel-day"><b>${e.date.getDate()}</b><span>${e.date.toLocaleDateString('en-GB',{weekday:'short'})}</span></div>
+      <div class="rel-title"><span class="rel-pill ${e.mine?'':'other'}" style="${e.mine?`background:${e.color}`:''}">${relEsc(e.game)}</span>${u?`<a href="${u}" target="_blank" rel="noopener">${relEsc(e.title)}</a>`:relEsc(e.title)}
+        ${e.publisher?`<div class="rel-sub">${relEsc(e.publisher)}</div>`:''}</div>
+      <div class="rel-count ${n>=0&&n<=7?'soon':''}">${relWhen(n)}</div></div>`;};
+  const byMonth=arr=>{const out=[];let cur='';arr.forEach(e=>{const m=e.date.toLocaleDateString('en-GB',{month:'long',year:'numeric'});if(m!==cur){if(cur)out.push('</div>');out.push(`<div class="rel-month">${m}</div><div>`);cur=m;}out.push(row(e));});if(cur)out.push('</div>');return out.join('');};
+  const errs=st.errors.length?`<div style="font-size:12px;color:var(--red);margin-bottom:10px">Couldn’t load: ${relEsc(st.errors.join(' · '))}</div>`:'';
+  el.innerHTML=`${errs}${chips}<div class="card">${up.length?byMonth(up):`<div style="color:var(--muted);font-size:13px">Nothing coming up for this filter.</div>`}
+    ${past.length?`<div style="margin-top:12px"><a href="#" onclick="event.preventDefault();toggleReleasePast()" style="font-size:12px;color:var(--muted)">${st.showPast?'▾ Hide':'▸ Show'} ${past.length} release${past.length===1?'':'s'} from the last 30 days</a>${st.showPast?`<div style="margin-top:6px">${past.map(row).join('')}</div>`:''}</div>`:''}</div>${sourcesCard}`;
 }
 
 function commitInventoryValue(){
@@ -1612,6 +1720,7 @@ function showPage(id){
   if(id==='purchases'){renderPurchasesTable(purchaseTab);renderSupplierSummary();renderMonthlyBudget();renderRecentPurchases();renderBudgetBreakdown();}
   if(id==='collection')renderCollectionTable(collTab);
   if(id==='collection-movers') renderMoversPage();
+  if(id==='releases') renderReleasesPage();
   if(id==='games'||id==='add-game') setNavMode('games',false);
   else if(id!=='settings') setNavMode('cards',false);
   if(id==='games')renderGamesPage();
@@ -1989,8 +2098,7 @@ function renderDashSummary(){
     coll=`Worth ${b(fm(last.v))}, ${ch>=0?'up '+b(fm(ch)):'down '+fm(-ch)} since payday (last import ${last.d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}).`;}
   if(graded.length) coll+=` ${graded.length} graded card${graded.length===1?'':'s'} added this period, worth ${b(fm(sum(graded,g=>g.value)))}.`;
   if(coll) lines.push(['Collection',coll.trim()]);
-  if(releasesState.events){const t=new Date();t.setHours(0,0,0,0);const nx=releasesState.events.filter(e=>e.mine&&e.date>=t).slice(0,2);
-    if(nx.length)lines.push(['Coming up',nx.map(e=>`${e.game} <b style="color:var(--text)">${e.title}</b> ${e.date.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} (${Math.round((e.date-t)/86400000)===0?'today':'in '+Math.round((new Date(e.date).setHours(0,0,0,0)-t)/86400000)+' days'})`).join(' · ')]);}
+  // Upcoming releases now live in the Next releases tiles below, one per game
   // Housekeeping nudge
   const untagged=periodSales.filter(s=>!Object.values(saleGameMix(s)).some(q=>q>0)).length;
   if(untagged) lines.push(['To tidy',`${untagged} sale${untagged===1?'':'s'} this period ${untagged===1?'has':'have'} no game set — see Spent vs back → Not tagged.`]);
@@ -2576,10 +2684,38 @@ function renderCollSection(elId,items,showStatus=false){
   }).join('');
 }
 
+// Hand-added items: record their value history and keep today's collection total in step
+function logItemValue(item){
+  state.itemSnapshots=state.itemSnapshots||{};
+  const arr=state.itemSnapshots[item.id]=state.itemSnapshots[item.id]||[];
+  const t=parseDateToObj(today());
+  const i=arr.findIndex(x=>{const d=parseDateToObj(x.date);return d&&t&&d.toDateString()===t.toDateString();});
+  if(i>=0)arr[i].value=item.marketValue;else arr.push({date:today(),value:item.marketValue,name:item.name});
+  scheduleSave('ItemSnapshots');
+}
+const COLL_PORTFOLIOS=['Avatar TLA','Avatar TLE','Avatar ART','Hobbit ART','Singles One Piece','Singles DBZ','Singles Pokemon','Singles MTG SOS','Singles MTG','Sealed'];
+function refreshTodaySnapshot(){
+  const pt={},tt={sealed:0,single:0,graded:0};let tm=0,tc=0;
+  state.collection.forEach(c=>{const v=parseFloat(c.marketValue)||0;tm+=v;tc+=parseFloat(c.cost)||0;pt[c.set]=(pt[c.set]||0)+v;tt[c.type]=(tt[c.type]||0)+v;});
+  const snap={Date:today(),TotalMarket:round2(tm),TotalCost:round2(tc),UnrealisedGain:round2(tm-tc)};
+  COLL_PORTFOLIOS.forEach(p=>{snap['Portfolio_'+p.replace(/ /g,'_')]=round2(pt[p]||0);});
+  snap.Type_Sealed=round2(tt.sealed);snap.Type_Single=round2(tt.single);snap.Type_Graded=round2(tt.graded);
+  state.snapshots=state.snapshots||[];
+  const i=state.snapshots.findIndex(x=>x.Date===today());
+  if(i>=0)state.snapshots[i]=snap;else state.snapshots.push(snap);
+  scheduleSave('Snapshots');
+}
+function removeManualItem(id){
+  const i=state.collection.findIndex(c=>c.id===id);if(i<0)return;
+  if(!confirm(`Remove “${state.collection[i].name}” from your collection?`))return;
+  state.collection.splice(i,1);refreshTodaySnapshot();scheduleSave('Collection');
+  renderCollectionTable(collTab);renderCollectionDashboard();
+}
 function updateMarketValue(id,val){
   const item=state.collection.find(c=>c.id===id);
   if(!item)return;
   item.marketValue=parseFloat(val)||0;
+  if(item.source==='manual'){logItemValue(item);refreshTodaySnapshot();}
   scheduleSave('Collection');
   renderCollectionDashboard();
   if(document.getElementById('page-collection').classList.contains('active')) renderCollectionTable(collTab);
@@ -3978,8 +4114,10 @@ function addCollectionItem(){
     priceUrl:document.getElementById('ci-url').value.trim(),
     notes:document.getElementById('ci-notes').value.trim(),
     added:today(),
+    source:'manual',
   };
   state.collection.push(item);
+  logItemValue(item);refreshTodaySnapshot();
   scheduleSave('Collection');
   ['ci-name','ci-set','ci-cn','ci-cost','ci-value','ci-url','ci-notes'].forEach(id=>document.getElementById(id).value='');
   showPage('collection');
@@ -4037,7 +4175,7 @@ function renderCollectionTable(tab){
   if(!list.length){tbody.innerHTML=`<tr><td colspan="${cols.length}" class="empty">Nothing here yet.</td></tr>`;return;}
   if(collSort.col){const k=COLL_SORT_KEYS[collSort.col];list.sort((a,b)=>{const x=k(a),y=k(b);return(x<y?-1:x>y?1:String(a.name).localeCompare(String(b.name)))*collSort.dir;});}
   const cell={
-    name:c=>`<td style="min-width:200px;max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${nameWithGrade(c)}">${c.name}</td>`,
+    name:c=>`<td style="min-width:200px;max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${nameWithGrade(c)}">${c.source==='manual'?`<span title="Added by hand — kept when you import from Collectr" style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:var(--surface2);color:var(--muted);margin-right:6px">BY HAND</span>`:''}${c.name}${c.source==='manual'?` <a href="#" onclick="event.preventDefault();removeManualItem('${c.id}')" title="Remove" style="color:var(--muted);text-decoration:none;margin-left:4px">✕</a>`:''}</td>`,
     grade:c=>`<td style="white-space:nowrap">${gradeBadge(c)||'<span style="color:var(--muted)">—</span>'}</td>`,
     type:c=>`<td><span class="badge badge-${c.type}">${c.type==='sealed'?'Sealed':c.type==='single'?'Single':'Graded'}</span></td>`,
     set:c=>`<td style="white-space:nowrap">${c.set||'—'}${c.cn?` <span style="color:var(--muted)">#${c.cn}</span>`:''}</td>`,
@@ -4325,6 +4463,19 @@ function importCollectrCsv(input){
         }
       });
 
+      // Keep hand-added items, unless Collectr now lists the same thing
+      const normName=n=>String(n||'').toLowerCase().replace(/\(x\d+\)/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+      const collectrNames=new Set(newCollection.map(c=>normName(c.name)));
+      const nowOnCollectr=[];
+      (state.collection||[]).filter(c=>c.source==='manual').forEach(m=>{
+        if(collectrNames.has(normName(m.name))){nowOnCollectr.push(m.name);return;}
+        newCollection.push(m);
+        const v=parseFloat(m.marketValue)||0;
+        portfolioTotals[m.set]=(portfolioTotals[m.set]||0)+v;
+        typeTotals[m.type]=(typeTotals[m.type]||0)+v;
+        totalMarket+=v;totalCost+=parseFloat(m.cost)||0;
+      });
+
       // Record per-item price snapshots
       const snapDate=today();
       newCollection.forEach(item=>{
@@ -4371,8 +4522,10 @@ function importCollectrCsv(input){
       showPage('collection');
 
       const gain=totalMarket-totalCost;
+      const manualNote=(()=>{const kept=newCollection.filter(c=>c.source==='manual').length;
+        return (kept?`\n\nKept ${kept} item${kept===1?'':'s'} you added by hand.`:'')+(nowOnCollectr.length?`\n\nNow on Collectr, so your hand-added version was replaced:\n${nowOnCollectr.join('\n')}`:'');})();
       const keptNote=keptPrices.length?`\n\nCollectr had no price for ${keptPrices.length} item${keptPrices.length===1?'':'s'}, so your existing price was kept:\n${keptPrices.slice(0,8).join('\n')}${keptPrices.length>8?`\n…and ${keptPrices.length-8} more`:''}`:'';
-      alert(`Imported ${newCollection.length} items\nMarket value: ${fm(totalMarket)}\nCost paid: ${fm(totalCost)}\nGain: ${gain>=0?'+':''}${fm(gain)}${keptNote}\n\nCollection and snapshot saved.`);
+      alert(`Imported ${newCollection.length} items\nMarket value: ${fm(totalMarket)}\nCost paid: ${fm(totalCost)}\nGain: ${gain>=0?'+':''}${fm(gain)}${keptNote}${manualNote}\n\nCollection and snapshot saved.`);
 
     }catch(err){
       alert('Import error: '+err.message);
