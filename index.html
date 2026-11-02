@@ -219,7 +219,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 24 Oct 2026</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 28 Oct 2026</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
       <button class="btn sm" onclick="lockTracker()" title="Forget the passcode and clear saved data on this device"><i class="ti ti-lock"></i> Lock</button>
@@ -233,6 +233,7 @@ tr:hover td{background:var(--surface2)}
       <div class="page-title">Dashboard</div>
 
       <div id="dash-summary" style="margin-bottom:16px"></div>
+      <div id="dash-releases" style="margin-bottom:16px"></div>
 
       <!-- FINANCIAL POSITION -->
       <div class="dash-section-title">Financial position</div>
@@ -869,7 +870,7 @@ async function loadFromSheets(){
     if(data.Collection&&data.Collection.length>1){
       state.collection=data.Collection.slice(1).map(r=>({id:r[0],name:r[1],type:r[2],game:r[3],status:r[4],set:r[5]||'',cn:r[6]||'',cost:parseFloat(r[7])||0,marketValue:parseFloat(r[8])||0,priceUrl:r[9]||'',notes:r[10]||'',added:r[11]?dayKey(r[11]):''})).filter(c=>c.name);
     }
-    if(data.Settings&&data.Settings.length>1){const map={};data.Settings.slice(1).forEach(r=>{if(r[0])map[r[0]]=r[1];});if(map.cmFee!==undefined)state.settings.cmFee=parseFloat(map.cmFee)||5;if(map.ebFee!==undefined)state.settings.ebFee=parseFloat(map.ebFee)||12;if(map.otFee!==undefined)state.settings.otFee=parseFloat(map.otFee)||0;if(map.inventoryValue!==undefined)state.settings.inventoryValue=parseFloat(map.inventoryValue)||0;try{state.settings.inventoryHistory=map.inventoryHistory?JSON.parse(map.inventoryHistory):[];}catch(e){state.settings.inventoryHistory=[];}}
+    if(data.Settings&&data.Settings.length>1){const map={};data.Settings.slice(1).forEach(r=>{if(r[0])map[r[0]]=r[1];});if(map.cmFee!==undefined)state.settings.cmFee=parseFloat(map.cmFee)||5;if(map.ebFee!==undefined)state.settings.ebFee=parseFloat(map.ebFee)||12;if(map.otFee!==undefined)state.settings.otFee=parseFloat(map.otFee)||0;if(map.inventoryValue!==undefined)state.settings.inventoryValue=parseFloat(map.inventoryValue)||0;try{state.settings.inventoryHistory=map.inventoryHistory?JSON.parse(map.inventoryHistory):[];}catch(e){state.settings.inventoryHistory=[];}try{if(map.releaseFeeds)state.settings.releaseFeeds=JSON.parse(map.releaseFeeds);}catch(e){}}
     if(data.Packaging&&data.Packaging.length>1){state.packaging=data.Packaging.slice(1).map(r=>({name:r[0],cost:parseFloat(r[1])||0})).filter(p=>p.name);}
     if(data.Postage&&data.Postage.length>1){state.postage=data.Postage.slice(1).map(r=>({name:r[0],cost:parseFloat(r[1])||0})).filter(p=>p.name);}
     if(data.Buyers&&data.Buyers.length>1){
@@ -920,7 +921,6 @@ async function loadFromSheets(){
     setSyncStatus('Synced with Google Sheets','ok');
     buildBuyersFromSales();
     repairOrphanedSnapshots();
-    try{fixInventoryHistoryOct2026();}catch(e){console.error(e);}
   }catch(e){
     if(e instanceof AuthError){setSyncStatus('Locked','err');throw e;}
     setSyncStatus('Offline — changes saved locally','err');
@@ -964,7 +964,7 @@ async function flushSaves(){
         await saveSheetData('Snapshots',allKeys,dataRows);
       }
     }
-    if(sheet==='Settings') await saveSheetData('Settings',['Key','Value'],[['cmFee',state.settings.cmFee],['ebFee',state.settings.ebFee],['otFee',state.settings.otFee],['inventoryValue',state.settings.inventoryValue||0],['inventoryHistory',JSON.stringify(state.settings.inventoryHistory||[])]]);
+    if(sheet==='Settings') await saveSheetData('Settings',['Key','Value'],[['cmFee',state.settings.cmFee],['ebFee',state.settings.ebFee],['otFee',state.settings.otFee],['inventoryValue',state.settings.inventoryValue||0],['inventoryHistory',JSON.stringify(state.settings.inventoryHistory||[])],['releaseFeeds',JSON.stringify(state.settings.releaseFeeds||DEFAULT_FEEDS)]]);
     if(sheet==='Packaging') await saveSheetData('Packaging',['Name','Cost'],state.packaging.map(p=>[p.name,p.cost]));
     if(sheet==='Postage') await saveSheetData('Postage',['Name','Cost'],state.postage.map(p=>[p.name,p.cost]));
   }
@@ -1155,15 +1155,80 @@ function toggleInventoryInput(){
   }
 }
 
-// ONE-OFF (24 Oct 2026) — remove in the next file. Adds the pre-24-Oct inventory value (£2,429.34)
-// if the history starts on 23/24 Oct without it. Does nothing once it's there.
-function fixInventoryHistoryOct2026(){
-  const h=(state.settings.inventoryHistory||[]).filter(x=>x&&x.d).sort((a,b)=>a.d.localeCompare(b.d));
-  if(!h.length||h[0].d<'2026-10-23'||h.some(x=>Math.abs(x.v-2429.34)<0.005)) return;
-  const d=parseDateToObj(h[0].d);d.setDate(d.getDate()-1);
-  h.unshift({d:dayKey(d),v:2429.34});
-  state.settings.inventoryHistory=h;
-  scheduleSave('Settings');
+// ===== Upcoming releases (Card Atlas calendar feeds, fetched via the Apps Script) =====
+const DEFAULT_FEEDS=['https://cardatlas.app/blog/releases/feed/category-tcg.ics'];
+const RELEASE_GAMES=[['pokemon',/pok[eé]mon/i,'Pokémon','#185FA5'],['mtg',/magic: the gathering|\bmtg\b/i,'MTG','#534AB7'],['onepiece',/one piece/i,'One Piece','#D85A30'],['cyberpunk',/cyberpunk/i,'Cyberpunk','#B8860B']];
+let releasesState={events:null,errors:[],showOthers:false,editing:false};
+function parseIcs(text){
+  const lines=String(text).replace(/\r?\n[ \t]/g,'').split(/\r?\n/);
+  const out=[];let ev=null;
+  const un=v=>v.replace(/\\n/gi,' ').replace(/\\([,;\\])/g,'$1');
+  for(const ln of lines){
+    if(ln==='BEGIN:VEVENT'){ev={};continue;}
+    if(ln==='END:VEVENT'){if(ev&&ev.DTSTART)out.push(ev);ev=null;continue;}
+    if(!ev)continue;
+    const i=ln.indexOf(':');if(i<0)continue;
+    const key=ln.slice(0,i).split(';')[0].toUpperCase();ev[key]=un(ln.slice(i+1));
+  }
+  return out.map(e=>{
+    const m=String(e.DTSTART).match(/^(\d{4})(\d{2})(\d{2})/);if(!m)return null;
+    const date=new Date(+m[1],+m[2]-1,+m[3],12);
+    const desc=e.DESCRIPTION||'';
+    const gm=desc.match(/^\s*TCG\s*-\s*(.+?)\s+release from\s+(.+?)\./i);
+    let gameName=gm?gm[1].replace(/\s+TCG(\s+TCG)?$/i,'').trim():'';
+    const pub=gm?gm[2]:'';
+    const hay=`${gameName} ${e.SUMMARY||''}`;
+    const hit=RELEASE_GAMES.find(g=>g[1].test(hay));
+    return{uid:e.UID||(e.SUMMARY+e.DTSTART),date,title:String(e.SUMMARY||'').replace(/\s*\([^)]*\)\s*$/,''),publisher:pub,game:hit?hit[2]:(gameName||'Other'),mine:!!hit,color:hit?hit[3]:'',url:e.URL||''};
+  }).filter(Boolean);
+}
+async function loadReleases(){
+  const feeds=(state.settings.releaseFeeds&&state.settings.releaseFeeds.length)?state.settings.releaseFeeds:DEFAULT_FEEDS;
+  const seen={},events=[],errors=[];
+  await Promise.all(feeds.map(async url=>{
+    try{const j=await sheetsCall({action:'feed',url});
+      if(!j.ok){errors.push(`${url.split('/').pop()}: ${j.error==='Unknown action'?'update your Apps Script to the latest version':j.error}`);return;}
+      parseIcs(j.text).forEach(e=>{if(!seen[e.uid]){seen[e.uid]=1;events.push(e);}});
+    }catch(e){errors.push(`${url.split('/').pop()}: ${e.message||e}`);}
+  }));
+  events.sort((a,b)=>a.date-b.date);
+  releasesState.events=events;releasesState.errors=errors;
+  renderReleases();try{renderDashSummary();}catch(e){}
+}
+function toggleReleaseOthers(){releasesState.showOthers=!releasesState.showOthers;renderReleases();}
+function toggleReleaseFeeds(){releasesState.editing=!releasesState.editing;renderReleases();}
+function saveReleaseFeeds(){
+  const v=(document.getElementById('release-feeds-input')?.value||'').split(/\s+/).map(x=>x.trim()).filter(x=>/^https:\/\/cardatlas\.app\//i.test(x));
+  state.settings.releaseFeeds=v.length?v:DEFAULT_FEEDS;scheduleSave('Settings');
+  releasesState.editing=false;releasesState.events=null;renderReleases();loadReleases();
+}
+function renderReleases(){
+  const el=document.getElementById('dash-releases');if(!el)return;
+  const today=new Date();today.setHours(12,0,0,0);const DAY=86400000;
+  const head=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
+    <div class="card-title" style="margin-bottom:0">Upcoming releases ${infoTip('From the Card Atlas release calendar, refreshed every 6 hours. Pokémon, MTG, One Piece and Cyberpunk are highlighted. Add more feeds (e.g. Card Atlas’s Pokémon or One Piece calendars) with Feeds.')}</div>
+    <button class="btn sm" onclick="toggleReleaseFeeds()">Feeds</button></div>`;
+  const feedsEditor=releasesState.editing?`<div style="margin-bottom:10px;font-size:12px">
+      <div style="color:var(--muted);margin-bottom:4px">One calendar (.ics) link per line — must be on cardatlas.app. Use the “Copy feed URL” button on a Card Atlas release page.</div>
+      <textarea id="release-feeds-input" rows="3" style="width:100%;font-size:12px;padding:6px">${((state.settings.releaseFeeds&&state.settings.releaseFeeds.length)?state.settings.releaseFeeds:DEFAULT_FEEDS).join('\n')}</textarea>
+      <div style="margin-top:6px;display:flex;gap:6px"><button class="btn sm primary" onclick="saveReleaseFeeds()">Save feeds</button><button class="btn sm" onclick="toggleReleaseFeeds()">Cancel</button></div></div>`:'';
+  if(releasesState.events===null){el.innerHTML=`<div class="card" style="padding:14px 18px">${head}${feedsEditor}<div style="color:var(--muted);font-size:12px">Loading release calendar…</div></div>`;return;}
+  const from=new Date(today.getTime()-14*DAY),to=new Date(today.getTime()+120*DAY);
+  const win=releasesState.events.filter(e=>e.date>=from&&e.date<=to);
+  const mine=win.filter(e=>e.mine),others=win.filter(e=>!e.mine);
+  const when=d=>{const n=Math.round((d-today)/DAY);return n===0?'today':n===1?'tomorrow':n>0?`in ${n} days`:n===-1?'yesterday':`${-n} days ago`;};
+  const row=e=>{const past=e.date<today;return`<div style="display:grid;grid-template-columns:92px 86px 1fr;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;${past?'opacity:.55':''}">
+      <div style="font-variant-numeric:tabular-nums">${e.date.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</div>
+      <div style="font-size:11px;color:${!past&&Math.round((e.date-today)/DAY)<=7?'var(--text)':'var(--muted)'};font-weight:${!past&&Math.round((e.date-today)/DAY)<=7?600:400}">${when(e.date)}</div>
+      <div style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        <span style="display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-right:6px;${e.mine?`background:${e.color};color:#fff`:'border:1px solid var(--border);color:var(--muted)'}">${e.game}</span>${e.url?`<a href="${e.url}" target="_blank" rel="noopener" style="color:inherit">${e.title}</a>`:e.title}${e.publisher?` <span style="color:var(--muted);font-size:11px">· ${e.publisher}</span>`:''}</div></div>`;};
+  const missing=(releasesState.errors.length&&!releasesState.events.length)?[]:RELEASE_GAMES.filter(g=>!releasesState.events.some(e=>e.game===g[2])).map(g=>g[2]);
+  el.innerHTML=`<div class="card" style="padding:14px 18px">${head}${feedsEditor}
+    ${releasesState.errors.length?`<div style="font-size:12px;color:var(--red);margin-bottom:8px">Couldn’t load: ${releasesState.errors.join(' · ')}</div>`:''}
+    ${mine.length?mine.map(row).join(''):(releasesState.errors.length&&!releasesState.events.length)?'':`<div style="font-size:12px;color:var(--muted);padding:4px 0">No Pokémon, MTG, One Piece or Cyberpunk releases in the next 4 months on your feeds.</div>`}
+    ${missing.length?`<div style="font-size:11px;color:var(--muted);margin-top:6px">Not on your feeds: ${missing.join(', ')} — add their Card Atlas calendar under Feeds.</div>`:''}
+    ${others.length?`<div style="margin-top:8px"><a href="#" onclick="event.preventDefault();toggleReleaseOthers()" style="font-size:12px;color:var(--muted)">${releasesState.showOthers?'▾ Hide':'▸ Show'} ${others.length} release${others.length===1?'':'s'} from other games</a>${releasesState.showOthers?`<div style="margin-top:4px">${others.map(row).join('')}</div>`:''}</div>`:''}
+  </div>`;
 }
 
 function commitInventoryValue(){
@@ -1714,6 +1779,7 @@ function renderDashboard(){
   renderSetPerformance();
   try{renderTaxYear();}catch(e){console.error(e);}
   try{renderDashSummary();}catch(e){console.error(e);}
+  try{renderReleases();}catch(e){console.error(e);}
   try{renderNetTimeline();}catch(e){console.error(e);}
   try{renderSpendVsReturn();}catch(e){console.error(e);}
   renderTopBuyers();
@@ -1871,6 +1937,8 @@ function renderDashSummary(){
     coll=`Worth ${b(fm(last.v))}, ${ch>=0?'up '+b(fm(ch)):'down '+fm(-ch)} since payday (last import ${last.d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}).`;}
   if(graded.length) coll+=` ${graded.length} graded card${graded.length===1?'':'s'} added this period, worth ${b(fm(sum(graded,g=>g.value)))}.`;
   if(coll) lines.push(['Collection',coll.trim()]);
+  if(releasesState.events){const t=new Date();t.setHours(0,0,0,0);const nx=releasesState.events.filter(e=>e.mine&&e.date>=t).slice(0,2);
+    if(nx.length)lines.push(['Coming up',nx.map(e=>`${e.game} <b style="color:var(--text)">${e.title}</b> ${e.date.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} (${Math.round((e.date-t)/86400000)===0?'today':'in '+Math.round((new Date(e.date).setHours(0,0,0,0)-t)/86400000)+' days'})`).join(' · ')]);}
   // Housekeeping nudge
   const untagged=periodSales.filter(s=>!Object.values(saleGameMix(s)).some(q=>q>0)).length;
   if(untagged) lines.push(['To tidy',`${untagged} sale${untagged===1?'':'s'} this period ${untagged===1?'has':'have'} no game set — see Spent vs back → Not tagged.`]);
@@ -4414,6 +4482,7 @@ async function init(){
     clearInterval(tick);
     document.getElementById('loading-overlay').style.display='none';
     renderDashboard();
+    loadReleases();
   }catch(e){
     clearInterval(tick);console.error(e);
     document.getElementById('loading-overlay').style.display='flex';
