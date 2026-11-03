@@ -257,7 +257,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 2 Nov 2026f</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 3 Nov 2026b</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
       <button class="btn sm" onclick="lockTracker()" title="Forget the passcode and clear saved data on this device"><i class="ti ti-lock"></i> Lock</button>
@@ -2170,6 +2170,31 @@ function collGame(c){
 function toggleSvr(k){svrOpen=svrOpen===k?null:k;svrMonth='';renderSpendVsReturn();}
 function svrTickAll(on){document.querySelectorAll('.svr-chk').forEach(c=>c.checked=on);svrCount();}
 function svrCount(){const n=document.querySelectorAll('.svr-chk:checked').length;const el=document.getElementById('svr-count');if(el)el.textContent=n+' ticked';}
+// Which "Spent vs back" row a purchase lands in (null = overheads / grading, shown elsewhere)
+function svrPurchaseKey(p){
+  let c=p.category||'other';
+  if(c==='supplies'||c==='equipment'||c==='grading')return null;
+  if(c==='marvel')c='mtg';
+  if(c==='pokemon_jp')c='pokemon';
+  return SVR_LBL[c]&&c!=='untagged'?c:'other';
+}
+// Purchases that look like grading fees but are filed under a game
+let gradingReviewOpen=false;
+function gradingLookalikes(){return state.purchases.map((p,i)=>({p,i})).filter(x=>x.p.category!=='grading'&&GRADING_RE.test(`${x.p.description||''} ${x.p.supplier||''} ${x.p.set||''}`));}
+function toggleGradingReview(){gradingReviewOpen=!gradingReviewOpen;renderSpendVsReturn();}
+function moveTickedToGrading(){
+  const idx=[...document.querySelectorAll('.grading-chk:checked')].map(x=>+x.dataset.idx);
+  if(!idx.length){alert('Tick at least one purchase.');return;}
+  idx.forEach(i=>{if(state.purchases[i])state.purchases[i].category='grading';});
+  scheduleSave('Purchases');gradingReviewOpen=false;renderSpendVsReturn();
+  showToast(`${idx.length} purchase${idx.length===1?'':'s'} moved to Grading service`);
+}
+function recatPurchase(idx,cat){
+  const p=state.purchases[idx];if(!p||!CAT_LABELS[cat])return;
+  p.category=cat;scheduleSave('Purchases');
+  renderSpendVsReturn();
+  showToast(`${p.description||'Purchase'} moved to ${CAT_LABELS[cat]}`);
+}
 function retagMany(from){
   const to=document.getElementById('svr-bulk-to')?.value;
   const idxs=[...document.querySelectorAll('.svr-chk:checked')].map(c=>+c.dataset.idx);
@@ -2269,15 +2294,27 @@ function renderSpendVsReturn(){
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px">
           <select onchange="svrMonth=this.value;renderSpendVsReturn()" style="font-size:12px;padding:3px 6px"><option value="">All months</option>${months.map(m=>`<option value="${m}" ${m===svrMonth?'selected':''}>${mLabel(m)}</option>`).join('')}</select>
           <span style="color:var(--muted)">${list.length} sale${list.length===1?'':'s'} · ${cardsShown} cards${list.length>300?' · showing newest 300':''}</span>
-          ${canTag?`<span style="flex:1"></span><label style="display:flex;align-items:center;gap:4px"><input type="checkbox" onchange="svrTickAll(this.checked)"> Tick all</label>
+          ${canTag&&all.length?`<span style="flex:1"></span><label style="display:flex;align-items:center;gap:4px"><input type="checkbox" onchange="svrTickAll(this.checked)"> Tick all</label>
           <span id="svr-count" style="color:var(--muted)">0 ticked</span>
           <span>Move ticked to</span><select id="svr-bulk-to" style="font-size:12px;padding:3px 6px">${opts(r.k)}</select>
           <button class="btn sm primary" onclick="retagMany('${r.k}')">Move</button>`:''}
         </div>
-        <div style="max-height:360px;overflow:auto"><table style="font-size:12px">
+        ${(()=>{if(r.k==='untagged')return'';
+          const buys=state.purchases.map((p,i)=>({p,i})).filter(x=>svrPurchaseKey(x.p)===r.k)
+            .filter(x=>!svrMonth||dayKey(x.p.date).slice(0,7)===svrMonth)
+            .sort((a,b)=>(parseDateToObj(b.p.date)||0)-(parseDateToObj(a.p.date)||0));
+          if(!buys.length)return'';
+          const catOpts=cur=>Object.entries(CAT_LABELS).map(([k,l])=>`<option value="${k}" ${k===cur?'selected':''}>${l}</option>`).join('');
+          return`<div style="font-weight:600;margin:2px 0 4px">Purchases counted here · ${buys.length} · ${fm(buys.reduce((a,x)=>a+(parseFloat(x.p.amount)||0),0))} <span style="font-weight:400;color:var(--muted)">— change a category to move it</span></div>
+          <div style="max-height:240px;overflow:auto;margin-bottom:12px"><table style="font-size:12px">
+            <thead><tr><th>Date</th><th>Description</th><th>Supplier</th><th style="text-align:right">Amount</th><th>Category</th></tr></thead>
+            <tbody>${buys.slice(0,300).map(({p,i})=>`<tr><td>${fd(p.date)}</td><td>${p.description||'—'}</td><td>${p.supplier||'—'}</td><td style="text-align:right">${fm(p.amount)}</td>
+              <td><select onchange="recatPurchase(${i},this.value)" style="font-size:12px;padding:2px 6px">${catOpts(p.category||'other')}</select></td></tr>`).join('')}</tbody></table></div>
+          ${r.sales.length?'<div style="font-weight:600;margin:2px 0 4px">Sales counted here</div>':''}`;})()}
+        ${list.length?`<div style="max-height:360px;overflow:auto"><table style="font-size:12px">
           <thead><tr>${canTag?'<th></th>':''}<th>Date</th><th>Sale</th><th>Buyer</th><th>Cards</th><th>Card value</th><th>Counted here</th></tr></thead>
           <tbody>${shown.map(x=>`<tr>${canTag?`<td><input type="checkbox" class="svr-chk" data-idx="${x.idx}" onchange="svrCount()"></td>`:''}<td>${fd(x.s.date)}</td><td>${x.s.item||'—'}${ids[String(x.s.item||'').trim()]>1?' <span style="color:var(--red)" title="This Sale ID appears more than once in your sales">⚠ logged twice?</span>':''}</td><td>${x.s.username||''}</td><td>${r.k==='untagged'?x.q:x.q+' of '+x.tot}</td><td>${fm(parseFloat(x.s.price)||0)}</td><td>${fm(x.kept*x.share)}</td></tr>`).join('')}</tbody>
-        </table></div>
+        </table></div>`:''}
       </div></td></tr>`;
   };
   const jpRow=bar=>{const tot=jp.back+jp.holding,p=jp.spent>0?Math.round(tot/jp.spent*100):null;
@@ -2309,7 +2346,17 @@ function renderSpendVsReturn(){
         <td style="font-weight:600">${open?'▾':'▸'} Graded cards</td><td>${G.cards}</td><td>${fm(G.spent)}</td><td>${fm(G.back)}</td><td style="color:var(--muted)">${fm(G.holding)}</td>
         <td><div style="display:flex;flex-direction:column;gap:3px">${bar(G.spent,'var(--red)')}${bar(G.total,'var(--green)')}</div></td><td>${res}</td></tr>${detail}`;
   };
-  el.innerHTML=`<div class="card" style="padding:0">
+  const look=gradingLookalikes();
+  const gradingBanner=look.length?`<div style="padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface2);font-size:12.5px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <span>🔎 <b>${look.length} past purchase${look.length===1?'':'s'}</b> (${fm(look.reduce((a,x)=>a+(parseFloat(x.p.amount)||0),0))}) look like grading but are filed under a game, so they’re counted twice.</span>
+        <button class="btn sm" onclick="toggleGradingReview()">${gradingReviewOpen?'Close':'Review & move'}</button></div>
+      ${gradingReviewOpen?`<div style="max-height:260px;overflow:auto;margin-top:8px"><table style="font-size:12px">
+        <thead><tr><th><input type="checkbox" checked onchange="document.querySelectorAll('.grading-chk').forEach(c=>c.checked=this.checked)"></th><th>Date</th><th>Description</th><th>Supplier</th><th>Filed under</th><th style="text-align:right">Amount</th></tr></thead>
+        <tbody>${look.map(({p,i})=>`<tr><td><input type="checkbox" class="grading-chk" data-idx="${i}" checked></td><td>${fd(p.date)}</td><td>${p.description||'—'}</td><td>${p.supplier||'—'}</td><td>${CAT_LABELS[p.category]||p.category||'Other'}</td><td style="text-align:right">${fm(p.amount)}</td></tr>`).join('')}</tbody></table></div>
+        <div style="margin-top:8px;display:flex;gap:8px;align-items:center"><button class="btn sm primary" onclick="moveTickedToGrading()">Move ticked to Grading service</button><span style="color:var(--muted)">Untick anything that isn’t a grading fee (e.g. a slab you bought).</span></div>`:''}
+    </div>`:'';
+  el.innerHTML=`<div class="card" style="padding:0">${gradingBanner}
     <div style="overflow-x:auto"><table>
       <thead><tr><th>Game</th><th>Cards sold</th><th>Spent</th><th>Back from sales</th><th>Still holding</th><th style="min-width:140px"></th><th>Result</th></tr></thead>
       <tbody>${rows.map(r=>`<tr onclick="toggleSvr('${r.k}')" style="cursor:pointer" title="Click to see the sales counted here">
