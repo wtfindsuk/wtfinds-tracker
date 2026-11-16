@@ -183,6 +183,22 @@ tr:hover td{background:var(--surface2)}
 .net-tile-sub{font-size:12px;color:var(--muted);margin-top:4px}
 .gq-panel{transition:background 0.1s,transform 0.1s,border-color .1s;user-select:none}
 /* Game breakdown: quick picks + the rest */
+.psa-wrap{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:1000px){.psa-wrap{grid-template-columns:1fr}}
+.psa-h{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
+.psa-h:first-child{margin-top:0}
+.psa-m{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.psa-m .form-group{margin-bottom:4px}
+.psa-m input{font-variant-numeric:tabular-nums}
+.psa-cond{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.psa-verdict{border-radius:var(--radius);padding:16px 18px;border:1px solid var(--border);background:var(--surface)}
+.psa-verdict .big{font-size:26px;font-weight:700;line-height:1.1}
+.psa-ws{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums;margin-top:12px}
+.psa-ws th{text-align:left;font-size:10.5px;color:var(--muted);font-weight:600;padding:5px 6px;border-bottom:1px solid var(--border)}
+.psa-ws td{padding:6px;border-bottom:1px solid var(--border)}
+.psa-ok{color:var(--green)}.psa-bad{color:var(--red)}.psa-warn{color:#B8860B}
+.psa-reasons{margin:10px 0 0;padding-left:18px;font-size:12.5px;line-height:1.55}
+.psa-g{display:inline-block;min-width:26px;text-align:center;font-weight:700;border-radius:5px;padding:1px 6px;font-size:12px;color:#fff}
 .log-sale-bar{position:sticky;bottom:0;z-index:20;display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 -6px 18px rgba(0,0,0,.18)}
 .gq-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:11.5px;color:var(--muted);flex-wrap:wrap}
 .gq-toolbar .btn{font-size:11.5px;padding:3px 9px}
@@ -249,6 +265,7 @@ tr:hover td{background:var(--surface2)}
       <div class="nav-section">
         <button class="nav-btn" onclick="showPage('collection')" id="nav-collection"><i class="ti ti-stack"></i> Collection</button>
         <button class="nav-btn" onclick="showPage('collection-movers')" id="nav-collection-movers"><i class="ti ti-trending-up"></i> Price movers</button>
+        <button class="nav-btn" onclick="showPage('psa-check')" id="nav-psa-check"><i class="ti ti-ruler-measure"></i> PSA check</button>
         <button class="nav-btn nav-btn-action" onclick="document.getElementById('collectr-csv-input').click()"><i class="ti ti-upload"></i> Import Collectr CSV</button>
         <input type="file" id="collectr-csv-input" accept=".csv" style="display:none" onchange="importCollectrCsv(this)">
         <button class="nav-btn nav-btn-action" onclick="showPage('add-item')" id="nav-add-item" title="For things Collectr doesn't have yet"><i class="ti ti-pencil-plus"></i> Add item by hand</button>
@@ -275,7 +292,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 16 Nov 2026c</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 16 Nov 2026e</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
       <button class="btn sm" onclick="lockTracker()" title="Forget the passcode and clear saved data on this device"><i class="ti ti-lock"></i> Lock</button>
@@ -648,6 +665,17 @@ tr:hover td{background:var(--surface2)}
     </div>
 
     <!-- RELEASE CALENDAR -->
+    <!-- PSA PRE-SUBMISSION CHECK -->
+    <div id="page-psa-check" class="page">
+      <div class="page-title">PSA check</div>
+      <div style="font-size:12.5px;color:var(--muted);margin:-6px 0 12px;max-width:760px">Measure each border with your loupe (cut edge to inner frame line, middle of each side), plus the edge and corner checks. The tracker works out the centering and the grade it’s likely to get, and whether sending it pays.</div>
+      <div class="psa-wrap">
+        <div class="card" id="psa-form"></div>
+        <div id="psa-result"></div>
+      </div>
+      <div class="card" style="margin-top:16px" id="psa-list"></div>
+    </div>
+
     <div id="page-releases" class="page">
       <div class="page-title">Release calendar</div>
       <div id="releases-page"></div>
@@ -950,6 +978,10 @@ async function loadFromSheets(){
     if(data.Sets&&data.Sets.length>1){
       state.sets=data.Sets.slice(1).map(r=>({set:r[0],game:r[1],cardsSold:parseInt(r[2])||0,revenue:parseFloat(r[3])||0,avgPrice:parseFloat(r[4])||0,profit:parseFloat(r[5])||0,profitPerCard:parseFloat(r[6])||0,costPaid:parseFloat(r[7])||0})).filter(s=>s.set);
     }
+    if(data.GradingChecks&&data.GradingChecks.length>1){
+      const h=data.GradingChecks[0].map(x=>String(x).trim());
+      state.gradingChecks=data.GradingChecks.slice(1).map(r=>{const o={};h.forEach((k,i)=>o[k]=r[i]);return psaFromRow(o);}).filter(c=>c.name);
+    }
     if(data.Games&&data.Games.length>1){
       state.games=data.Games.slice(1).map(r=>({id:r[0],name:r[1],platform:r[2],condition:r[3]||'',cost:parseFloat(r[4])||0,value:parseFloat(r[5])||0,added:r[6]||''})).filter(g=>g.name);
     }
@@ -1009,6 +1041,7 @@ async function flushSaves(){
     if(sheet==='Sales') await saveSheetData('Sales',['Date','Item','Platform','Price','ShippingCharged','PostageCost','Packaging','ArticleCount','ActualCommission','PromotedFee','PokemonQty','MTGQty','OnePieceQty','MarvelQty','OtherQty','DBZQty','RiftboundQty','MTGHobbitQty','MTGAvatarTLAQty','MTGAvatarTLEQty','MTGStrixhavenQty','MTGMarvelQty','MTGFFQty','BuyerUsername','YugiohQty','CyberpunkQty','MTGRealityFractureQty','PalworldQty','GundamQty','GradedQty','PokemonJPQty','MTGStarTrekQty'],state.sales.map(s=>[s.date,s.item,s.platform,s.price,s.shippingCharged||0,s.postageCost,JSON.stringify(s.packaging||[]),s.articleCount||1,s.actualCommission!==null&&s.actualCommission!==undefined?s.actualCommission:'',s.promotedFee||0,(s.gameQty?.pokemon||0),(s.gameQty?.mtg||0),(s.gameQty?.onepiece||0),(s.gameQty?.marvel||0),(s.gameQty?.other||0),(s.gameQty?.dbz||0),(s.gameQty?.riftbound||0),(s.gameQty?.mtg_hobbit||0),(s.gameQty?.mtg_avatar_tla||0),(s.gameQty?.mtg_avatar_tle||0),(s.gameQty?.mtg_strixhaven||0),(s.gameQty?.mtg_marvel||0),(s.gameQty?.mtg_ff||0),s.username||'',(s.gameQty?.yugioh||0),(s.gameQty?.cyberpunk||0),(s.gameQty?.mtg_fra||0),(s.gameQty?.palworld||0),(s.gameQty?.gundam||0),(s.gradedQty||0),(s.gameQty?.pokemon_jp||0),(s.gameQty?.mtg_startrek||0)]));
     if(sheet==='Purchases') await saveSheetData('Purchases',['Date','Description','Category','Amount','Supplier','Set'],state.purchases.map(p=>[p.date,p.description,p.category,p.amount,p.supplier||'',p.set||'']));
     if(sheet==='Collection') await saveSheetData('Collection',['ID','Name','Type','Game','Status','Set','CN','Cost','MarketValue','PriceUrl','Notes','Added','Source'],state.collection.map(c=>[c.id,c.name,c.type,c.game,c.status,c.set||'',c.cn||'',c.cost,c.marketValue,c.priceUrl||'',c.notes||'',c.added||'',c.source||'']));
+    if(sheet==='GradingChecks') await saveSheetData('GradingChecks',PSA_COLS,(state.gradingChecks||[]).map(c=>PSA_COLS.map(k=>c[PSA_KEY[k]]??'')));
     if(sheet==='Games') await saveSheetData('Games',['ID','Name','Platform','Condition','Cost','Value','Added'],state.games.map(g=>[g.id,g.name,g.platform,g.condition||'',g.cost,g.value,g.added]));
     if(sheet==='ItemSnapshots'){
       if(state.itemSnapshots&&Object.keys(state.itemSnapshots).length){
@@ -1793,6 +1826,7 @@ function showPage(id){
   if(id==='collection')renderCollectionTable(collTab);
   if(id==='collection-movers') renderMoversPage();
   if(id==='releases') renderReleasesPage();
+  if(id==='psa-check') renderPsaPage();
   if(id==='games'||id==='add-game') setNavMode('games',false);
   else if(id!=='settings') setNavMode('cards',false);
   if(id==='games')renderGamesPage();
@@ -3575,6 +3609,169 @@ function gqUsage(days=90){
   return use;
 }
 function gqLabel(k){const el=document.querySelector(`#game-breakdown-grid [onclick*="'gq-${k}'"] label`);return el?el.textContent:k;}
+// ── PSA pre-submission check ──
+// Official PSA centering: 10 = 55/45 front, 75/25 back · 9 = 60/40, 90/10 · 8 = 65/35, 90/10 · 7 = 70/30, 90/10
+// Edge/corner limits are Dan's screening rules from his loupe guide.
+const PSA_COLS=['ID','Date','Name','Number','Set','CollectionID','FrontL','FrontR','FrontT','FrontB','BackL','BackR','BackT','BackB','Slanted','Whitening','Corners','EdgeCut','Foil','Surface','RawValue','PSA10Value','PSA9Value','Fee','Predicted','Status','ActualGrade','Notes'];
+const PSA_KEY={ID:'id',Date:'date',Name:'name',Number:'number',Set:'set',CollectionID:'collectionId',FrontL:'fl',FrontR:'fr',FrontT:'ft',FrontB:'fb',BackL:'bl',BackR:'br',BackT:'bt',BackB:'bb',Slanted:'slanted',Whitening:'whitening',Corners:'corners',EdgeCut:'edgecut',Foil:'foil',Surface:'surface',RawValue:'raw',PSA10Value:'v10',PSA9Value:'v9',Fee:'fee',Predicted:'predicted',Status:'status',ActualGrade:'actual',Notes:'notes'};
+const PSA_NUM=['fl','fr','ft','fb','bl','br','bt','bb','raw','v10','v9','fee','actual'];
+function psaFromRow(o){const c={};PSA_COLS.forEach(k=>{let v=o[k];c[PSA_KEY[k]]=v==null?'':v;});
+  PSA_NUM.forEach(k=>{c[k]=c[k]===''||c[k]==null?'':parseFloat(c[k]);if(Number.isNaN(c[k]))c[k]='';});
+  c.slanted=c.slanted===true||/^(true|yes|1)$/i.test(String(c.slanted));c.date=c.date?dayKey(c.date):'';c.id=c.id||uid();return c;}
+const PSA_COND=[
+  ['whitening','Edge whitening',[['10','None, or one speck ≤ 0.1 mm (not on a corner)'],['9','Specks 0.1–0.3 mm, or a run over 2 mm'],['8','Over 0.3 mm, chips, or runs on 2+ edges']]],
+  ['corners','Corner tips',[['10','Sharp, rounding ≤ 0.1 mm, no fray'],['9','Softness 0.2–0.3 mm, or one tiny fray'],['8','Rounding ≥ 0.5 mm, bent or creased']]],
+  ['edgecut','Edge cut',[['10','Straight, clean, even thickness'],['9','Slightly rough or wavy'],['8','Layering, delamination, dents']]],
+  ['foil','Foil edges',[['na','No foil on this card'],['10','Flat to the edge, no lift'],['9','Tiny lift under 0.2 mm'],['8','Peeling or flaking']]],
+  ['surface','Surface (front & back)',[['10','Clean — no scratches, dents, print lines'],['9','One faint scratch or print line'],['8','Visible scratches, dents or marks']]],
+];
+const PSA_GRADE_COL={10:'#15803D',9:'#B8860B',8:'#C2410C'};
+let psaDraft=null,psaEditId=null;
+function psaBlank(){return{id:'',date:today(),name:'',number:'',set:'',collectionId:'',fl:'',fr:'',ft:'',fb:'',bl:'',br:'',bt:'',bb:'',slanted:false,whitening:'',corners:'',edgecut:'',foil:'',surface:'',raw:'',v10:'',v9:'',fee:psaLastFee(),predicted:'',status:'Thinking',actual:'',notes:''};}
+function psaLastFee(){const l=(state.gradingChecks||[]).filter(c=>c.fee!=='').slice(-1)[0];return l?l.fee:'';}
+// One axis: ratio = larger ÷ sum
+function psaAxis(a,b,face){
+  a=parseFloat(a);b=parseFloat(b);if(!(a>0)||!(b>0))return null;
+  const sum=a+b,big=Math.max(a,b),ratio=big/sum*100,gap=Math.abs(a-b);
+  const lim10=face==='front'?55:75,lim9=face==='front'?60:90;
+  const grade=face==='front'?(ratio<=55?10:ratio<=60?9:ratio<=65?8:ratio<=70?7:6):(ratio<=75?10:ratio<=90?9:8);
+  return{a,b,sum,ratio,gap,lim10,grade,maxGap10:sum*(2*lim10/100-1),maxGap9:sum*(2*lim9/100-1)};
+}
+function psaEvaluate(c){
+  const ax={'Front L/R':psaAxis(c.fl,c.fr,'front'),'Front T/B':psaAxis(c.ft,c.fb,'front'),'Back L/R':psaAxis(c.bl,c.br,'back'),'Back T/B':psaAxis(c.bt,c.bb,'back')};
+  const reasons=[],have=Object.values(ax).filter(Boolean);
+  let centering=have.length===4?Math.min(...have.map(x=>x.grade)):null;
+  Object.entries(ax).forEach(([k,x])=>{if(x&&x.grade<10)reasons.push(`${k} centering ${x.ratio.toFixed(1)}% is over ${x.lim10}% — a 10 needs the gap under ${x.maxGap10.toFixed(2)} mm (yours ${x.gap.toFixed(2)} mm)`);
+    else if(x&&x.ratio>x.lim10-1.5)reasons.push(`${k} centering ${x.ratio.toFixed(1)}% passes but is within 1.5 points of ${x.lim10}% — a small misread could tip it`);});
+  if(c.slanted)reasons.push('Slanted cut (a side differs by over 0.1 mm end to end) — treat centering as risky');
+  const condVals=PSA_COND.map(([k,l])=>[l,c[k]]).filter(([,v])=>v&&v!=='na');
+  const condDone=PSA_COND.every(([k])=>c[k]);
+  let condition=condVals.length?Math.min(...condVals.map(([,v])=>+v)):null;
+  condVals.forEach(([l,v])=>{if(+v<10)reasons.push(`${l}: ${v==='9'?'likely a 9':'8 or lower'}`);});
+  const complete=centering!==null&&condDone;
+  let grade=null;
+  if(centering!==null||condition!==null)grade=Math.min(centering??10,condition??10);
+  let label=grade===null?'Enter measurements':grade>=10?'Likely PSA 10':grade===9?'Likely PSA 9':'8 or lower';
+  if(grade>=10&&c.slanted)label='PSA 10 — risky';
+  if(!complete&&grade!==null)label+=' (so far)';
+  const n=v=>parseFloat(v)||0,fee=n(c.fee),raw=n(c.raw);
+  const money={if10:c.v10!==''?n(c.v10)-raw-fee:null,if9:c.v9!==''?n(c.v9)-raw-fee:null};
+  return{ax,centering,condition,grade,label,reasons,complete,money};
+}
+function psaPredText(c){const e=psaEvaluate(c);return e.grade===null?'':e.grade>=10?(c.slanted?'10 (risky)':'10'):e.grade===9?'9':'8 or lower';}
+function psaSet(k,v){if(!psaDraft)psaDraft=psaBlank();psaDraft[k]=PSA_NUM.includes(k)?(v===''?'':parseFloat(v)):v;renderPsaResult();}
+function psaPickCollection(id){
+  if(!psaDraft)psaDraft=psaBlank();const it=(state.collection||[]).find(c=>c.id===id);psaDraft.collectionId=id||'';
+  if(it){psaDraft.name=it.name;psaDraft.number=it.cn||'';psaDraft.set=it.set||'';if(it.marketValue)psaDraft.raw=parseFloat(it.marketValue)||'';}
+  renderPsaForm();renderPsaResult();
+}
+function renderPsaPage(){state.gradingChecks=state.gradingChecks||[];if(!psaDraft)psaDraft=psaBlank();renderPsaForm();renderPsaResult();renderPsaList();}
+function renderPsaForm(){
+  const el=document.getElementById('psa-form');if(!el)return;const c=psaDraft;
+  const inp=(k,label,extra='')=>`<div class="form-group"><label>${label}</label><input type="number" step="0.01" min="0" inputmode="decimal" value="${c[k]===''?'':c[k]}" oninput="psaSet('${k}',this.value)" ${extra}></div>`;
+  const txt=(k,label,ph='')=>`<div class="form-group"><label>${label}</label><input type="text" value="${relEsc(c[k])}" placeholder="${ph}" oninput="psaSet('${k}',this.value)"></div>`;
+  const singles=(state.collection||[]).filter(x=>x.type==='single').sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+  el.innerHTML=`
+    <div class="psa-h">${psaEditId?'Editing saved check':'Card'}</div>
+    ${singles.length?`<div class="form-group"><label>From your collection (optional — fills in the details)</label><select onchange="psaPickCollection(this.value)"><option value="">— pick a card —</option>${singles.map(x=>`<option value="${x.id}" ${x.id===c.collectionId?'selected':''}>${relEsc(x.name)}${x.cn?` #${relEsc(x.cn)}`:''}${x.set?` · ${relEsc(x.set)}`:''}</option>`).join('')}</select></div>`:''}
+    <div class="form-row" style="grid-template-columns:2fr 1fr 1.4fr">${txt('name','Card name','e.g. Umbreon ex')}${txt('number','Number','e.g. 161/131')}${txt('set','Set','e.g. Prismatic Evolutions')}</div>
+    <div class="psa-h">Front borders (mm)</div>
+    <div class="psa-m">${inp('fl','Left')}${inp('fr','Right')}${inp('ft','Top')}${inp('fb','Bottom')}</div>
+    <div class="psa-h">Back borders (mm)</div>
+    <div class="psa-m">${inp('bl','Left')}${inp('br','Right')}${inp('bt','Top')}${inp('bb','Bottom')}</div>
+    <label style="display:flex;gap:8px;align-items:center;font-size:12.5px;margin-top:6px;cursor:pointer"><input type="checkbox" ${c.slanted?'checked':''} onchange="psaSet('slanted',this.checked)"> Slanted cut — a side reads over 0.1 mm different near each end</label>
+    <div class="psa-h">Edges, corners & surface (10× loupe, front and back)</div>
+    <div class="psa-cond">${PSA_COND.map(([k,l,opts])=>`<div class="form-group"><label>${l}</label><select onchange="psaSet('${k}',this.value)"><option value="">— not checked —</option>${opts.map(([v,t])=>`<option value="${v}" ${String(c[k])===v?'selected':''}>${t}</option>`).join('')}</select></div>`).join('')}</div>
+    <div class="psa-h">Is it worth sending? (optional)</div>
+    <div class="psa-m">${inp('raw','Raw value £')}${inp('v10','PSA 10 value £')}${inp('v9','PSA 9 value £')}${inp('fee','Grading fee £','title="Fee per card, including postage and insurance share"')}</div>
+    <div class="form-group"><label>Notes</label><input type="text" value="${relEsc(c.notes)}" placeholder="e.g. tiny print line top right" oninput="psaSet('notes',this.value)"></div>
+    <div class="btn-row" style="gap:8px"><button class="btn primary" onclick="psaSave()"><i class="ti ti-device-floppy"></i> ${psaEditId?'Save changes':'Save check'}</button><button class="btn" onclick="psaNew()">${psaEditId?'Cancel':'Clear'}</button></div>`;
+}
+// Card diagram: outer card, inner frame placed by the measured borders (borders drawn 3× wider so offsets are visible)
+function psaCardSvg(c,face){
+  const P=face==='front'?['fl','fr','ft','fb']:['bl','br','bt','bb'];
+  const v=P.map(k=>parseFloat(c[k])),ok=v.map(x=>x>0);
+  const W=63,H=88,X=3,def=3;               // mm, standard card; exaggeration
+  const [L,R,T,B]=v.map((x,i)=>ok[i]?x:def);
+  const hx=psaAxis(c[P[0]],c[P[1]],face),vy=psaAxis(c[P[2]],c[P[3]],face);
+  const S=2.1,cw=W*S,ch=H*S,pad=34;          // px per mm
+  const sL=L*X*S,sR=R*X*S,sT=T*X*S,sB=B*X*S;
+  // keep the frame inside the card even with big numbers
+  const k=Math.min(1,(cw-30)/(sL+sR),(ch-30)/(sT+sB));
+  const l=sL*k,r=sR*k,t=sT*k,b=sB*k;
+  const col=x=>!x?'var(--muted)':x.grade>=10?'#1D9E75':x.grade===9?'#B8860B':'#D85A30';
+  const ox=pad,oy=34,fw=cw-l-r,fh=ch-t-b;
+  const lab=(x,y,txt,anchor='middle',color='var(--text)')=>`<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="11" fill="${color}" font-family="ui-monospace,monospace">${txt}</text>`;
+  const mm=(i)=>ok[i]?v[i].toFixed(2):'—';
+  return`<svg viewBox="0 0 ${cw+pad*2} ${ch+oy+50}" width="100%" style="max-width:240px;display:block;margin:0 auto">
+    <text x="${(cw+pad*2)/2}" y="13" text-anchor="middle" font-size="11" font-weight="700" fill="var(--muted)" letter-spacing=".06em">${face.toUpperCase()}</text>
+    <rect x="${ox}" y="${oy}" width="${cw}" height="${ch}" rx="9" fill="${face==='front'?'#E9E4D6':'#2B3A67'}" stroke="var(--border)"/>
+    <line x1="${ox+cw/2}" y1="${oy+4}" x2="${ox+cw/2}" y2="${oy+ch-4}" stroke="var(--muted)" stroke-dasharray="3 3" opacity=".5"/>
+    <line x1="${ox+4}" y1="${oy+ch/2}" x2="${ox+cw-4}" y2="${oy+ch/2}" stroke="var(--muted)" stroke-dasharray="3 3" opacity=".5"/>
+    <rect x="${ox+l}" y="${oy+t}" width="${fw}" height="${fh}" rx="3" fill="${face==='front'?'#F7F4EC':'#3C4F86'}" stroke="${col(hx&&vy?(hx.grade<vy.grade?hx:vy):(hx||vy))}" stroke-width="2"/>
+    <line x1="${ox+l+fw/2}" y1="${oy+t+6}" x2="${ox+l+fw/2}" y2="${oy+t+fh-6}" stroke="${col(hx)}" stroke-width="1.5" opacity=".8"/>
+    <line x1="${ox+l+6}" y1="${oy+t+fh/2}" x2="${ox+l+fw-6}" y2="${oy+t+fh/2}" stroke="${col(vy)}" stroke-width="1.5" opacity=".8"/>
+    ${lab(ox-4,oy+ch/2+4,mm(0),'end')}${lab(ox+cw+4,oy+ch/2+4,mm(1),'start')}
+    ${lab(ox+cw/2,oy-6,mm(2))}${lab(ox+cw/2,oy+ch+14,mm(3))}
+    ${lab(ox+cw/2,oy+ch+31,`L/R ${hx?hx.ratio.toFixed(1)+'%':'—'} · T/B ${vy?vy.ratio.toFixed(1)+'%':'—'}`,'middle','var(--muted)')}
+    ${lab(ox+cw/2,oy+ch+45,`limit ${face==='front'?'55':'75'}%`,'middle','var(--muted)')}
+  </svg>`;
+}
+function renderPsaResult(){
+  const el=document.getElementById('psa-result');if(!el||!psaDraft)return;const e=psaEvaluate(psaDraft);
+  const col=e.grade===null?'var(--muted)':PSA_GRADE_COL[Math.max(8,Math.min(10,e.grade))];
+  const row=(k,x,lim)=>x?`<tr><td>${k}</td><td>${x.a.toFixed(2)}</td><td>${x.b.toFixed(2)}</td><td>${x.sum.toFixed(2)}</td><td><b>${x.ratio.toFixed(1)}%</b></td><td>${lim}</td><td>${x.gap.toFixed(2)} / ${x.maxGap10.toFixed(2)}</td><td class="${x.grade>=10?'psa-ok':x.grade===9?'psa-warn':'psa-bad'}">${x.grade>=10?'✓ 10':x.grade===9?'9':x.grade+' or lower'}</td></tr>`
+    :`<tr><td>${k}</td><td colspan="7" style="color:var(--muted)">enter both sides</td></tr>`;
+  const m=e.money,mline=(lbl,v)=>v===null?'':`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>${lbl}</span><b class="${v>=0?'psa-ok':'psa-bad'}">${v>=0?'+':''}${fm(v)}</b></div>`;
+  const sendAdvice=m.if9===null?'':m.if9>=0?`<div class="psa-ok" style="margin-top:6px;font-size:12.5px">✓ Even a PSA 9 clears the fee — safe to send.</div>`:`<div class="psa-bad" style="margin-top:6px;font-size:12.5px">✗ A PSA 9 loses money — only send if you’re confident of the 10.</div>`;
+  el.innerHTML=`<div class="psa-verdict" style="border-color:${col}">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">Likely grade</div>
+      <div class="big" style="color:${col}">${e.label}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Centering: ${e.centering===null?'—':e.centering>=10?'10':e.centering===9?'9':e.centering+' or lower'} · Edges & corners: ${e.condition===null?'—':e.condition>=10?'10':e.condition===9?'9':'8 or lower'}</div>
+      ${e.reasons.length?`<ul class="psa-reasons">${e.reasons.map(r=>`<li>${r}</li>`).join('')}</ul>`:e.complete?`<div class="psa-ok" style="margin-top:10px;font-size:12.5px">Passes all four: front ≤ 55/45, back ≤ 75/25, no whitening over 0.1 mm, sharp corners.</div>`:''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">${psaCardSvg(psaDraft,'front')}${psaCardSvg(psaDraft,'back')}</div>
+      <div style="font-size:10.5px;color:var(--muted);text-align:center;margin-top:2px">Borders drawn 3× wider so small offsets show. Dashed lines = perfect centre; solid lines = where your card’s centre is. Green 10 · amber 9 · red 8 or lower.</div>
+      <table class="psa-ws"><thead><tr><th>Side</th><th>L / T</th><th>R / B</th><th>Sum</th><th>Ratio</th><th>Limit</th><th>Gap / max</th><th>Grade</th></tr></thead>
+        <tbody>${row('Front L/R',e.ax['Front L/R'],'55%')}${row('Front T/B',e.ax['Front T/B'],'55%')}${row('Back L/R',e.ax['Back L/R'],'75%')}${row('Back T/B',e.ax['Back T/B'],'75%')}</tbody></table>
+      ${m.if10!==null||m.if9!==null?`<div style="margin-top:12px;font-size:12.5px"><div style="font-weight:600;margin-bottom:2px">Profit after raw value and fee</div>${mline('If it gets a 10',m.if10)}${mline('If it gets a 9',m.if9)}${sendAdvice}</div>`:''}
+      <div style="font-size:10.5px;color:var(--muted);margin-top:12px">PSA publishes only the centering ratios (10: 55/45 front, 75/25 back · 9: 60/40, 90/10). The edge, corner and surface limits are screening rules, not PSA’s.</div>
+    </div>`;
+}
+function psaNew(){psaDraft=psaBlank();psaEditId=null;renderPsaForm();renderPsaResult();}
+function psaSave(){
+  const c=psaDraft;if(!c.name.trim()){alert('Add the card name first.');return;}
+  state.gradingChecks=state.gradingChecks||[];c.predicted=psaPredText(c);
+  if(psaEditId){const i=state.gradingChecks.findIndex(x=>x.id===psaEditId);if(i>=0)state.gradingChecks[i]={...c,id:psaEditId};}
+  else state.gradingChecks.push({...c,id:uid(),date:c.date||today()});
+  scheduleSave('GradingChecks');showToast(`Saved: ${c.name} — ${c.predicted?'predicted '+c.predicted:'no prediction yet'}`);
+  psaNew();renderPsaList();
+}
+function psaEdit(id){const c=(state.gradingChecks||[]).find(x=>x.id===id);if(!c)return;psaDraft={...c};psaEditId=id;renderPsaForm();renderPsaResult();document.getElementById('page-psa-check').scrollIntoView({behavior:'smooth'});}
+function psaDelete(id){const i=(state.gradingChecks||[]).findIndex(x=>x.id===id);if(i<0)return;if(!confirm(`Delete the check for ${state.gradingChecks[i].name}?`))return;state.gradingChecks.splice(i,1);scheduleSave('GradingChecks');if(psaEditId===id)psaNew();renderPsaList();}
+function psaUpdate(id,k,v){const c=(state.gradingChecks||[]).find(x=>x.id===id);if(!c)return;c[k]=k==='actual'?(v===''?'':parseFloat(v)):v;scheduleSave('GradingChecks');renderPsaList();}
+let psaListFilter='all';
+function renderPsaList(){
+  const el=document.getElementById('psa-list');if(!el)return;const all=(state.gradingChecks||[]).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const STATUSES=['Thinking','To submit','Submitted','Graded','Not sending'];
+  const list=psaListFilter==='all'?all:all.filter(c=>c.status===psaListFilter);
+  const graded=all.filter(c=>c.actual!==''&&c.predicted);
+  const hits=graded.filter(c=>{const p=parseInt(c.predicted)||8;return p>=10?c.actual>=10:p===9?c.actual===9:c.actual<=8;}).length;
+  const worst=(c,face)=>{const a=face==='f'?[psaAxis(c.fl,c.fr,'front'),psaAxis(c.ft,c.fb,'front')]:[psaAxis(c.bl,c.br,'back'),psaAxis(c.bt,c.bb,'back')];const v=a.filter(Boolean).map(x=>x.ratio);return v.length?Math.max(...v).toFixed(1)+'%':'—';};
+  const chip=f=>`<button class="rel-chip ${psaListFilter===f?'on':''}" onclick="psaListFilter='${f}';renderPsaList()">${f==='all'?'All':f} <span style="opacity:.6">${f==='all'?all.length:all.filter(c=>c.status===f).length}</span></button>`;
+  const toSubmit=all.filter(c=>c.status==='To submit');
+  el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px"><div class="card-title" style="margin:0">Saved checks</div>
+      <div style="font-size:12px;color:var(--muted)">${toSubmit.length?`${toSubmit.length} to submit · fees ${fm(toSubmit.reduce((a,c)=>a+(parseFloat(c.fee)||0),0))} · `:''}${graded.length?`Predictions right ${hits} of ${graded.length} graded`:'Add the real grade when cards come back to see how accurate your checks are'}</div></div>
+    <div class="rel-chips">${chip('all')}${STATUSES.map(chip).join('')}</div>
+    ${list.length?`<div style="overflow-x:auto"><table style="font-size:12.5px"><thead><tr><th>Date</th><th>Card</th><th>Front worst</th><th>Back worst</th><th>Predicted</th><th>Profit if 9 / 10</th><th>Status</th><th>Actual PSA</th><th></th></tr></thead><tbody>
+      ${list.map(c=>{const e=psaEvaluate(c),g=e.grade;const pc=g===null?'':`<span class="psa-g" style="background:${PSA_GRADE_COL[Math.max(8,Math.min(10,g))]}">${c.predicted||psaPredText(c)}</span>`;
+        return`<tr><td>${fd(c.date)}</td><td><b>${relEsc(c.name)}</b>${c.number?` #${relEsc(c.number)}`:''}${c.set?`<div style="font-size:11px;color:var(--muted)">${relEsc(c.set)}</div>`:''}</td>
+          <td>${worst(c,'f')}</td><td>${worst(c,'b')}</td><td>${pc}</td>
+          <td>${e.money.if9===null&&e.money.if10===null?'—':`${e.money.if9===null?'—':fm(e.money.if9)} / ${e.money.if10===null?'—':fm(e.money.if10)}`}</td>
+          <td><select onchange="psaUpdate('${c.id}','status',this.value)" style="font-size:12px;padding:2px 6px">${STATUSES.map(x=>`<option ${x===c.status?'selected':''}>${x}</option>`).join('')}</select></td>
+          <td><select onchange="psaUpdate('${c.id}','actual',this.value)" style="font-size:12px;padding:2px 6px"><option value="">—</option>${[10,9,8,7,6,5,4,3,2,1].map(n=>`<option value="${n}" ${c.actual===n?'selected':''}>${n}</option>`).join('')}</select></td>
+          <td style="white-space:nowrap"><button class="btn sm" onclick="psaEdit('${c.id}')">Edit</button> <a href="#" onclick="event.preventDefault();psaDelete('${c.id}')" style="color:var(--muted);text-decoration:none;margin-left:4px" title="Delete">✕</a></td></tr>`;}).join('')}
+    </tbody></table></div>`:`<div style="color:var(--muted);font-size:13px">${all.length?'Nothing with this status.':'No checks saved yet — measure a card above and press Save check.'}</div>`}`;
+}
 const GQ_KEYS=['1','2','3','4','5','6','7','8','9','q','w','e','r','t','y','u','i','o','p'];
 function layoutGameBreakdown(){
   const grid=document.getElementById('game-breakdown-grid'),host=document.getElementById('gq-layout');if(!grid||!host)return;
