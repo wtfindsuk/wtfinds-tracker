@@ -183,18 +183,20 @@ tr:hover td{background:var(--surface2)}
 .net-tile-sub{font-size:12px;color:var(--muted);margin-top:4px}
 .gq-panel{transition:background 0.1s,transform 0.1s,border-color .1s;user-select:none}
 /* Game breakdown: quick picks + the rest */
+.log-sale-bar{position:sticky;bottom:0;z-index:20;display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 -6px 18px rgba(0,0,0,.18)}
 .gq-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:11.5px;color:var(--muted);flex-wrap:wrap}
 .gq-toolbar .btn{font-size:11.5px;padding:3px 9px}
-.gq-quick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
-.gq-quick .pkg-item{position:relative;overflow:hidden;padding-left:13px;width:248px}
-.gq-quick .pkg-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gc)}
-.gq-quick .pkg-item label{color:var(--text);font-weight:600}
-.gq-key{font-size:9.5px;font-weight:700;border:1px solid var(--border);border-radius:4px;padding:0 4px;color:var(--muted)}
-.gq-minus{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:5px;width:22px;height:22px;font-size:14px;line-height:1;cursor:pointer;padding:0}
+.gq-quick,#game-breakdown-grid{grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:5px;margin-bottom:6px}
+.gq-quick{display:grid}
+.gq-panel.pkg-item{width:auto;min-width:0;padding:4px 6px 4px 11px;gap:5px;position:relative;overflow:hidden}
+.gq-panel.pkg-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gc);opacity:.55}
+.gq-quick .gq-panel.pkg-item::before{width:4px;opacity:1}
+.gq-quick .gq-panel label{color:var(--text);font-weight:600}
+.gq-panel.pkg-item input{width:38px;padding:2px 3px;font-size:12px}
+.gq-key{font-size:9.5px;font-weight:700;border:1px solid var(--border);border-radius:4px;width:15px;text-align:center;line-height:14px;color:var(--muted);flex-shrink:0;font-family:ui-monospace,monospace}
+.gq-minus{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:4px;width:20px;height:20px;font-size:13px;line-height:1;cursor:pointer;padding:0;flex-shrink:0}
 .gq-minus:hover{border-color:var(--gc)}
-#game-breakdown-grid .gq-panel{position:relative;overflow:hidden;padding-left:12px}
-#game-breakdown-grid .gq-panel::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gc);opacity:.55}
-.gq-more-head{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:6px 0 4px;width:100%}
+.gq-more-head{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:6px 0 1px;grid-column:1/-1}
 .gq-panel.gq-on{border-color:var(--gc,#534AB7);background:color-mix(in srgb,var(--gc,#534AB7) 14%,var(--surface2))}
 .gq-panel.gq-on label{color:var(--text);font-weight:600}
 
@@ -273,7 +275,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 16 Nov 2026b</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 16 Nov 2026c</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
       <button class="btn sm" onclick="lockTracker()" title="Forget the passcode and clear saved data on this device"><i class="ti ti-lock"></i> Lock</button>
@@ -516,7 +518,10 @@ tr:hover td{background:var(--surface2)}
         <div class="section-divider">Additional packaging</div>
         <div id="pkg-inputs-extra"></div>
         <div class="cost-preview" id="sale-preview" style="display:none"></div>
-        <div class="btn-row"><button class="btn primary" onclick="logSale()"><i class="ti ti-check"></i> Log sale</button></div>
+      </div>
+      <div class="log-sale-bar">
+        <span id="log-bar-summary" style="font-size:12.5px;color:var(--muted)"></span><span style="flex:1"></span>
+        <button class="btn primary" onclick="logSale()"><i class="ti ti-check"></i> Log sale <kbd style="font-size:10px;opacity:.75;margin-left:6px;border:1px solid currentColor;border-radius:4px;padding:0 4px">Ctrl+Enter</kbd></button>
       </div>
     </div>
 
@@ -3156,6 +3161,7 @@ function initSaleForm(){
   });
 
   layoutGameBreakdown();
+  ['s-item','s-price'].forEach(id=>{const el=document.getElementById(id);if(el&&!el.dataset.barHook){el.dataset.barHook=1;el.addEventListener('input',()=>{try{updateSalePreview();}catch(e){}});}});
   // Hook all game breakdown inputs to syncArticleCount
   document.querySelectorAll('.gq-panel[data-gq] input').forEach(inp=>{
     inp.addEventListener('input', syncArticleCount);
@@ -3167,6 +3173,8 @@ function initSaleForm(){
 }
 function updateSalePreview(){
   try{refreshGqState();}catch(e){}
+  try{const sm=document.getElementById('log-bar-summary');if(sm){const pr=parseFloat(document.getElementById('s-price')?.value)||0,n=getTotalGameQty(),id=document.getElementById('s-item')?.value.trim();
+    sm.innerHTML=`${id?`<b style="color:var(--text)">${id.replace(/[<>&"]/g,'')}</b> · `:''}${n} article${n===1?'':'s'}${pr?` · <b style="color:var(--text)">${fm(pr)}</b>`:''}${!id||!pr||!n?` · <span style="opacity:.8">still needed: ${[!id&&'Sale ID',!pr&&'price',!n&&'a game'].filter(Boolean).join(', ')}</span>`:''}`;}}catch(e){}
   const price=parseFloat(document.getElementById('s-price')?.value)||0,shipping=parseFloat(document.getElementById('s-shipping')?.value)||0,platform=document.getElementById('s-platform')?.value||'Cardmarket',postName=document.getElementById('s-postage')?.value,post=state.postage.find(p=>p.name===postName),pc=post?post.cost:0,articleCount=parseInt(document.getElementById('s-article-count')?.value)||1,promotedFee=parseFloat(document.getElementById('s-promoted')?.value)||0;
   const el=document.getElementById('sale-preview');
   if(!el) return;
@@ -3567,63 +3575,64 @@ function gqUsage(days=90){
   return use;
 }
 function gqLabel(k){const el=document.querySelector(`#game-breakdown-grid [onclick*="'gq-${k}'"] label`);return el?el.textContent:k;}
+const GQ_KEYS=['1','2','3','4','5','6','7','8','9','q','w','e','r','t','y','u','i','o','p'];
 function layoutGameBreakdown(){
   const grid=document.getElementById('game-breakdown-grid'),host=document.getElementById('gq-layout');if(!grid||!host)return;
   const panels=[...document.querySelectorAll('.gq-panel[onclick^="gqIncrement"]')];
   const keyOf=p=>(p.getAttribute('onclick').match(/'gq-([^']+)'/)||[])[1];
+  const use=gqUsage();
   panels.forEach(p=>{const k=keyOf(p);p.style.setProperty('--gc',gqColor(k));p.dataset.gq=k;
     const lab=p.querySelector('label');if(k.startsWith('mtg')&&lab&&!/^MTG\b/.test(lab.textContent))lab.textContent='MTG '+lab.textContent.replace(/\s*\bMTG\b\s*/,' ').trim();
     p.oncontextmenu=e=>{e.preventDefault();gqDecrement('gq-'+k);};
-    p.title='Click to add one · right-click to take one off';});
-  const use=gqUsage();
+    if(!p.querySelector('.gq-key')){const key=document.createElement('span');key.className='gq-key';p.prepend(key);}
+  });
   let top=Object.entries(use).sort((a,b)=>b[1]-a[1]).map(x=>x[0]).filter(k=>panels.some(p=>p.dataset.gq===k)).slice(0,4);
   ['pokemon','mtg','onepiece','cyberpunk'].forEach(k=>{if(top.length<4&&!top.includes(k))top.push(k);});
-  // Quick-pick tiles
-  const quick=document.createElement('div');quick.className='gq-quick';quick.id='gq-quick';
-  top.forEach((k,i)=>{const p=panels.find(x=>x.dataset.gq===k);if(!p)return;
-    if(!p.querySelector('.gq-minus')){
-      const input=p.querySelector('input');
-      const minus=document.createElement('button');minus.type='button';minus.className='gq-minus';minus.textContent='−';minus.title='Take one off';
-      minus.onclick=e=>{e.stopPropagation();gqDecrement('gq-'+k);};
-      const key=document.createElement('span');key.className='gq-key';
-      input.before(minus);input.after(key);
-    }
-    p.title=`${use[k]?`${use[k]} sold in the last 90 days · `:''}click to add one · right-click or − to take one off`;
-    p.querySelector('.gq-key').textContent=i+1;p.querySelector('.gq-key').title=`Press ${i+1} to add one (Shift+${i+1} to take one off)`;
-    quick.appendChild(p);});
-  // Everything else, grouped
-  const rest=panels.filter(p=>!top.includes(p.dataset.gq));
-  rest.forEach(p=>{p.querySelector('.gq-minus')?.remove();p.querySelector('.gq-key')?.remove();});
-  const mtgSets=rest.filter(p=>p.dataset.gq.startsWith('mtg')),others=rest.filter(p=>!p.dataset.gq.startsWith('mtg'));
   const byUse=(a,b)=>(use[b.dataset.gq]||0)-(use[a.dataset.gq]||0);
+  const quickP=top.map(k=>panels.find(x=>x.dataset.gq===k)).filter(Boolean);
+  const rest=panels.filter(p=>!top.includes(p.dataset.gq));
+  const mtgSets=rest.filter(p=>p.dataset.gq.startsWith('mtg')).sort(byUse),others=rest.filter(p=>!p.dataset.gq.startsWith('mtg')).sort(byUse);
+  // − button on the top 4 only
+  panels.forEach(p=>{const has=p.querySelector('.gq-minus'),want=quickP.includes(p);
+    if(want&&!has){const m=document.createElement('button');m.type='button';m.className='gq-minus';m.textContent='−';m.title='Take one off';
+      m.onclick=e=>{e.stopPropagation();gqDecrement('gq-'+p.dataset.gq);};p.querySelector('input').before(m);}
+    if(!want&&has)has.remove();});
+  // Keyboard keys in screen order: top 4, MTG sets, other games → 1–9 then Q–P
+  [...quickP,...mtgSets,...others].forEach((p,i)=>{const key=GQ_KEYS[i]||'';p.dataset.key=key;
+    const b=p.querySelector('.gq-key');b.textContent=key.toUpperCase();b.style.visibility=key?'visible':'hidden';
+    p.title=`${use[p.dataset.gq]?`${use[p.dataset.gq]} sold in the last 90 days · `:''}click or press ${key.toUpperCase()} to add one · right-click or Shift+${key.toUpperCase()} to take one off`;});
+  const quick=document.createElement('div');quick.className='gq-quick';quick.id='gq-quick';quickP.forEach(p=>quick.appendChild(p));
   grid.innerHTML='';
   const head=t=>{const d=document.createElement('div');d.className='gq-more-head';d.textContent=t;return d;};
-  if(mtgSets.length){grid.append(head('MTG sets · most sold first'));mtgSets.sort(byUse).forEach(p=>grid.append(p));}
-  if(others.length){grid.append(head('Other games · most sold first'));others.sort(byUse).forEach(p=>grid.append(p));}
-  host.innerHTML=`<div class="gq-toolbar"><span><b style="color:var(--text)">Most sold</b> · click to add a card · right-click or − to take one off · keys 1–${top.length}</span><span style="flex:1"></span>
+  if(mtgSets.length){grid.append(head('MTG sets · most sold first'));mtgSets.forEach(p=>grid.append(p));}
+  if(others.length){grid.append(head('Other games · most sold first'));others.forEach(p=>grid.append(p));}
+  host.innerHTML=`<div class="gq-toolbar"><span><b style="color:var(--text)">Most sold</b> · click or press the key shown to add a card · right-click or Shift+key to take one off</span><span style="flex:1"></span>
     <button type="button" class="btn sm" onclick="gqClearAll()">Clear</button></div>`;
   host.appendChild(quick);
   const toggle=document.createElement('div');toggle.className='gq-toolbar';toggle.id='gq-more-toggle';host.appendChild(toggle);
-  grid.style.display=gqMoreOpen?'flex':'none';
+  grid.style.display=gqMoreOpen?'grid':'none';
   refreshGqState();
 }
-function toggleGqMore(){gqMoreOpen=!gqMoreOpen;document.getElementById('game-breakdown-grid').style.display=gqMoreOpen?'flex':'none';refreshGqState();}
+function toggleGqMore(){gqMoreOpen=!gqMoreOpen;document.getElementById('game-breakdown-grid').style.display=gqMoreOpen?'grid':'none';refreshGqState();}
 // Colour any game that has cards in this sale, and keep "More games" open if one of them is in use
 function refreshGqState(){
   let hiddenUsed=[];
   document.querySelectorAll('.gq-panel[data-gq]').forEach(p=>{const v=parseInt(p.querySelector('input')?.value)||0;p.classList.toggle('gq-on',v>0);
     if(v>0&&!p.closest('#gq-quick'))hiddenUsed.push(`${p.querySelector('label').textContent} ×${v}`);});
   const grid=document.getElementById('game-breakdown-grid'),t=document.getElementById('gq-more-toggle');if(!grid||!t)return;
-  if(hiddenUsed.length&&!gqMoreOpen){gqMoreOpen=true;grid.style.display='flex';}
+  if(hiddenUsed.length&&!gqMoreOpen){gqMoreOpen=true;grid.style.display='grid';}
   t.innerHTML=`<a href="#" onclick="event.preventDefault();toggleGqMore()" style="color:var(--muted);font-weight:600">${gqMoreOpen?'▾ Hide':'▸ More games &amp; MTG sets'}</a>${hiddenUsed.length?`<span>In this sale: ${hiddenUsed.join(', ')}</span>`:''}`;
 }
 function gqDecrement(id){const el=document.getElementById(id);if(!el)return;el.value=Math.max(0,(parseInt(el.value)||0)-1);syncArticleCount();}
 function gqClearAll(){document.querySelectorAll('.gq-panel[data-gq] input').forEach(i=>i.value=0);syncArticleCount();}
 document.addEventListener('keydown',e=>{
   if(!document.getElementById('page-log-sale')?.classList.contains('active'))return;
+  // Ctrl+Enter logs the sale from anywhere on the page
+  if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();logSale();return;}
   if(e.ctrlKey||e.metaKey||e.altKey||/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName||''))return;
-  const n=parseInt((e.code||'').replace(/^Digit/,''));if(!(n>=1&&n<=4))return;
-  const p=document.querySelectorAll('#gq-quick .gq-panel')[n-1];if(!p)return;
+  const m=(e.code||'').match(/^(?:Digit|Numpad)([1-9])$|^Key([QWERTYUIOP])$/);if(!m)return;
+  const key=(m[1]||m[2]).toLowerCase();
+  const p=document.querySelector(`.gq-panel[data-key="${key}"]`);if(!p)return;
   e.preventDefault();if(e.shiftKey)gqDecrement('gq-'+p.dataset.gq);else gqIncrement('gq-'+p.dataset.gq);
   p.animate([{transform:'scale(1.04)'},{transform:'scale(1)'}],{duration:150});
 });
