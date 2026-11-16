@@ -185,21 +185,19 @@ tr:hover td{background:var(--surface2)}
 /* Game breakdown: quick picks + the rest */
 .gq-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:11.5px;color:var(--muted);flex-wrap:wrap}
 .gq-toolbar .btn{font-size:11.5px;padding:3px 9px}
-.gq-quick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:8px}
-@media(max-width:760px){.gq-quick{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.gq-quick .pkg-item{width:auto;flex-direction:column;align-items:stretch;gap:4px;padding:10px 12px 9px 15px;position:relative;overflow:hidden;background:var(--surface);border-width:1.5px}
-.gq-quick .pkg-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--gc)}
-.gq-quick .pkg-item label{font-size:14px;font-weight:600;color:var(--text)}
-.gq-quick .gq-sub{font-size:10.5px;color:var(--muted)}
-.gq-quick .gq-row{display:flex;align-items:center;gap:6px}
-.gq-quick .pkg-item input{width:52px;font-size:16px;font-weight:600;padding:3px 4px}
-.gq-key{font-size:10px;font-weight:700;border:1px solid var(--border);border-radius:4px;padding:0 5px;color:var(--muted);margin-left:auto}
-.gq-minus{border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;width:26px;height:26px;font-size:15px;line-height:1;cursor:pointer;padding:0}
+.gq-quick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.gq-quick .pkg-item{position:relative;overflow:hidden;padding-left:13px;width:248px}
+.gq-quick .pkg-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gc)}
+.gq-quick .pkg-item label{color:var(--text);font-weight:600}
+.gq-key{font-size:9.5px;font-weight:700;border:1px solid var(--border);border-radius:4px;padding:0 4px;color:var(--muted)}
+.gq-minus{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:5px;width:22px;height:22px;font-size:14px;line-height:1;cursor:pointer;padding:0}
 .gq-minus:hover{border-color:var(--gc)}
+#game-breakdown-grid .gq-panel{position:relative;overflow:hidden;padding-left:12px}
+#game-breakdown-grid .gq-panel::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gc);opacity:.55}
 .gq-more-head{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:6px 0 4px;width:100%}
 .gq-panel.gq-on{border-color:var(--gc,#534AB7);background:color-mix(in srgb,var(--gc,#534AB7) 14%,var(--surface2))}
 .gq-panel.gq-on label{color:var(--text);font-weight:600}
-.gq-quick .pkg-item.gq-on{background:color-mix(in srgb,var(--gc) 12%,var(--surface))}
+
 .gq-panel:hover{background:var(--surface2)}
 .gq-panel:active{transform:translateY(1px);filter:brightness(0.85)}
 #toast{position:fixed;top:16px;right:16px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:18px 22px;min-width:300px;max-width:420px;opacity:0;transition:opacity 0.25s,transform 0.25s;transform:translateY(-8px);pointer-events:none;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.45)}
@@ -275,7 +273,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 16 Nov 2026</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 16 Nov 2026b</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
       <button class="btn sm" onclick="lockTracker()" title="Forget the passcode and clear saved data on this device"><i class="ti ti-lock"></i> Lock</button>
@@ -3574,6 +3572,7 @@ function layoutGameBreakdown(){
   const panels=[...document.querySelectorAll('.gq-panel[onclick^="gqIncrement"]')];
   const keyOf=p=>(p.getAttribute('onclick').match(/'gq-([^']+)'/)||[])[1];
   panels.forEach(p=>{const k=keyOf(p);p.style.setProperty('--gc',gqColor(k));p.dataset.gq=k;
+    const lab=p.querySelector('label');if(k.startsWith('mtg')&&lab&&!/^MTG\b/.test(lab.textContent))lab.textContent='MTG '+lab.textContent.replace(/\s*\bMTG\b\s*/,' ').trim();
     p.oncontextmenu=e=>{e.preventDefault();gqDecrement('gq-'+k);};
     p.title='Click to add one · right-click to take one off';});
   const use=gqUsage();
@@ -3582,30 +3581,26 @@ function layoutGameBreakdown(){
   // Quick-pick tiles
   const quick=document.createElement('div');quick.className='gq-quick';quick.id='gq-quick';
   top.forEach((k,i)=>{const p=panels.find(x=>x.dataset.gq===k);if(!p)return;
-    if(!p.querySelector('.gq-row')){
-      const label=p.querySelector('label'),input=p.querySelector('input');
-      const row=document.createElement('div');row.className='gq-row';
+    if(!p.querySelector('.gq-minus')){
+      const input=p.querySelector('input');
       const minus=document.createElement('button');minus.type='button';minus.className='gq-minus';minus.textContent='−';minus.title='Take one off';
       minus.onclick=e=>{e.stopPropagation();gqDecrement('gq-'+k);};
-      const sub=document.createElement('div');sub.className='gq-sub';
       const key=document.createElement('span');key.className='gq-key';
-      row.append(minus,input,key);p.append(sub,row);label.after(sub);
+      input.before(minus);input.after(key);
     }
-    p.querySelector('.gq-sub').textContent=(k.startsWith('mtg_')?'MTG set · ':'')+(use[k]?`${use[k]} sold · last 90 days`:'one of your main games');
+    p.title=`${use[k]?`${use[k]} sold in the last 90 days · `:''}click to add one · right-click or − to take one off`;
     p.querySelector('.gq-key').textContent=i+1;p.querySelector('.gq-key').title=`Press ${i+1} to add one (Shift+${i+1} to take one off)`;
     quick.appendChild(p);});
   // Everything else, grouped
   const rest=panels.filter(p=>!top.includes(p.dataset.gq));
-  rest.forEach(p=>{p.querySelector('.gq-row')&&p.querySelector('.gq-row').replaceWith(p.querySelector('input'));p.querySelector('.gq-sub')?.remove();});
+  rest.forEach(p=>{p.querySelector('.gq-minus')?.remove();p.querySelector('.gq-key')?.remove();});
   const mtgSets=rest.filter(p=>p.dataset.gq.startsWith('mtg')),others=rest.filter(p=>!p.dataset.gq.startsWith('mtg'));
   const byUse=(a,b)=>(use[b.dataset.gq]||0)-(use[a.dataset.gq]||0);
   grid.innerHTML='';
   const head=t=>{const d=document.createElement('div');d.className='gq-more-head';d.textContent=t;return d;};
-  if(others.length){grid.append(head('Other games'));others.sort(byUse).forEach(p=>grid.append(p));}
-  if(mtgSets.length){grid.append(head('MTG sets'));mtgSets.sort(byUse).forEach(p=>grid.append(p));}
-  const last=(state.sales||[]).slice().sort((a,b)=>(parseDateToObj(b.date)||0)-(parseDateToObj(a.date)||0))[0];
-  host.innerHTML=`<div class="gq-toolbar"><span>Tap a game to add a card · right-click or − to take one off · keys 1–${top.length}</span><span style="flex:1"></span>
-    ${last?`<button type="button" class="btn sm" onclick="gqSameAsLast()" title="Copy the game counts from your last sale">↻ Same games as last sale</button>`:''}
+  if(mtgSets.length){grid.append(head('MTG sets · most sold first'));mtgSets.sort(byUse).forEach(p=>grid.append(p));}
+  if(others.length){grid.append(head('Other games · most sold first'));others.sort(byUse).forEach(p=>grid.append(p));}
+  host.innerHTML=`<div class="gq-toolbar"><span><b style="color:var(--text)">Most sold</b> · click to add a card · right-click or − to take one off · keys 1–${top.length}</span><span style="flex:1"></span>
     <button type="button" class="btn sm" onclick="gqClearAll()">Clear</button></div>`;
   host.appendChild(quick);
   const toggle=document.createElement('div');toggle.className='gq-toolbar';toggle.id='gq-more-toggle';host.appendChild(toggle);
@@ -3624,15 +3619,6 @@ function refreshGqState(){
 }
 function gqDecrement(id){const el=document.getElementById(id);if(!el)return;el.value=Math.max(0,(parseInt(el.value)||0)-1);syncArticleCount();}
 function gqClearAll(){document.querySelectorAll('.gq-panel[data-gq] input').forEach(i=>i.value=0);syncArticleCount();}
-function gqSameAsLast(){
-  const last=(state.sales||[]).slice().sort((a,b)=>(parseDateToObj(b.date)||0)-(parseDateToObj(a.date)||0))[0];if(!last)return;
-  const q=last.gameQty||{};
-  document.querySelectorAll('.gq-panel[data-gq]').forEach(p=>{const k=p.dataset.gq;let v=parseInt(q[k])||0;
-    if(k==='pokemon')v-=parseInt(q.pokemon_jp)||0;
-    if(k==='mtg')v-=Object.keys(q).filter(x=>x.startsWith('mtg_')).reduce((a,x)=>a+(parseInt(q[x])||0),0);
-    p.querySelector('input').value=Math.max(0,v);});
-  syncArticleCount();
-}
 document.addEventListener('keydown',e=>{
   if(!document.getElementById('page-log-sale')?.classList.contains('active'))return;
   if(e.ctrlKey||e.metaKey||e.altKey||/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName||''))return;
