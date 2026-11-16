@@ -292,7 +292,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 16 Nov 2026e</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 16 Nov 2026g</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
       <button class="btn sm" onclick="lockTracker()" title="Forget the passcode and clear saved data on this device"><i class="ti ti-lock"></i> Lock</button>
@@ -3612,9 +3612,21 @@ function gqLabel(k){const el=document.querySelector(`#game-breakdown-grid [oncli
 // ── PSA pre-submission check ──
 // Official PSA centering: 10 = 55/45 front, 75/25 back · 9 = 60/40, 90/10 · 8 = 65/35, 90/10 · 7 = 70/30, 90/10
 // Edge/corner limits are Dan's screening rules from his loupe guide.
-const PSA_COLS=['ID','Date','Name','Number','Set','CollectionID','FrontL','FrontR','FrontT','FrontB','BackL','BackR','BackT','BackB','Slanted','Whitening','Corners','EdgeCut','Foil','Surface','RawValue','PSA10Value','PSA9Value','Fee','Predicted','Status','ActualGrade','Notes'];
-const PSA_KEY={ID:'id',Date:'date',Name:'name',Number:'number',Set:'set',CollectionID:'collectionId',FrontL:'fl',FrontR:'fr',FrontT:'ft',FrontB:'fb',BackL:'bl',BackR:'br',BackT:'bt',BackB:'bb',Slanted:'slanted',Whitening:'whitening',Corners:'corners',EdgeCut:'edgecut',Foil:'foil',Surface:'surface',RawValue:'raw',PSA10Value:'v10',PSA9Value:'v9',Fee:'fee',Predicted:'predicted',Status:'status',ActualGrade:'actual',Notes:'notes'};
-const PSA_NUM=['fl','fr','ft','fb','bl','br','bt','bb','raw','v10','v9','fee','actual'];
+const PSA_COLS=['ID','Date','Name','Number','Set','CollectionID','FrontL','FrontR','FrontT','FrontB','BackL','BackR','BackT','BackB','Slanted','Whitening','Corners','EdgeCut','Foil','Surface','RawValue','PSA10Value','PSA9Value','Fee','Predicted','Status','ActualGrade','Notes','Extras','Tier'];
+const PSA_KEY={ID:'id',Date:'date',Name:'name',Number:'number',Set:'set',CollectionID:'collectionId',FrontL:'fl',FrontR:'fr',FrontT:'ft',FrontB:'fb',BackL:'bl',BackR:'br',BackT:'bt',BackB:'bb',Slanted:'slanted',Whitening:'whitening',Corners:'corners',EdgeCut:'edgecut',Foil:'foil',Surface:'surface',RawValue:'raw',PSA10Value:'v10',PSA9Value:'v9',Fee:'fee',Predicted:'predicted',Status:'status',ActualGrade:'actual',Notes:'notes',Extras:'extras',Tier:'tier'};
+const PSA_NUM=['fl','fr','ft','fb','bl','br','bt','bb','raw','v10','v9','fee','actual','extras'];
+// PSA UK service tiers — chosen by the card's graded value in US dollars
+const PSA_TIERS=[{name:'Value',fee:35,max:500},{name:'Priority',fee:65,max:1500},{name:'Express',fee:175,max:2500},{name:'Super Express',fee:395,max:5000}];
+let psaFx={rate:1.30,date:'',live:false,loading:false};
+async function psaLoadFx(){
+  if(psaFx.live||psaFx.loading)return;psaFx.loading=true;
+  for(const u of ['https://api.frankfurter.app/latest?from=GBP&to=USD','https://api.frankfurter.dev/v1/latest?base=GBP&symbols=USD']){
+    try{const r=await fetch(u);if(!r.ok)continue;const j=await r.json();const v=j?.rates?.USD;if(v>0){psaFx={rate:v,date:j.date||'',live:true,loading:false};renderPsaResult();renderPsaList();return;}}catch(e){}
+  }
+  psaFx.loading=false;
+}
+function psaSetFx(v){const n=parseFloat(v);if(n>0){psaFx={rate:n,date:'',live:false,loading:false,manual:true};renderPsaResult();renderPsaList();}}
+function psaTier(gbp){const usd=(parseFloat(gbp)||0)*psaFx.rate;return PSA_TIERS.find(t=>usd<=t.max)||{name:'Over $5,000',fee:null,max:Infinity,over:true};}
 function psaFromRow(o){const c={};PSA_COLS.forEach(k=>{let v=o[k];c[PSA_KEY[k]]=v==null?'':v;});
   PSA_NUM.forEach(k=>{c[k]=c[k]===''||c[k]==null?'':parseFloat(c[k]);if(Number.isNaN(c[k]))c[k]='';});
   c.slanted=c.slanted===true||/^(true|yes|1)$/i.test(String(c.slanted));c.date=c.date?dayKey(c.date):'';c.id=c.id||uid();return c;}
@@ -3627,8 +3639,8 @@ const PSA_COND=[
 ];
 const PSA_GRADE_COL={10:'#15803D',9:'#B8860B',8:'#C2410C'};
 let psaDraft=null,psaEditId=null;
-function psaBlank(){return{id:'',date:today(),name:'',number:'',set:'',collectionId:'',fl:'',fr:'',ft:'',fb:'',bl:'',br:'',bt:'',bb:'',slanted:false,whitening:'',corners:'',edgecut:'',foil:'',surface:'',raw:'',v10:'',v9:'',fee:psaLastFee(),predicted:'',status:'Thinking',actual:'',notes:''};}
-function psaLastFee(){const l=(state.gradingChecks||[]).filter(c=>c.fee!=='').slice(-1)[0];return l?l.fee:'';}
+function psaBlank(){return{id:'',date:today(),name:'',number:'',set:'',collectionId:'',fl:'',fr:'',ft:'',fb:'',bl:'',br:'',bt:'',bb:'',slanted:false,whitening:'',corners:'',edgecut:'',foil:'',surface:'',raw:'',v10:'',v9:'',fee:'',predicted:'',status:'Thinking',actual:'',notes:'',extras:psaLastExtras(),tier:''};}
+function psaLastExtras(){const l=(state.gradingChecks||[]).filter(c=>c.extras!==''&&c.extras!=null).slice(-1)[0];return l?l.extras:'';}
 // One axis: ratio = larger ÷ sum
 function psaAxis(a,b,face){
   a=parseFloat(a);b=parseFloat(b);if(!(a>0)||!(b>0))return null;
@@ -3654,18 +3666,26 @@ function psaEvaluate(c){
   let label=grade===null?'Enter measurements':grade>=10?'Likely PSA 10':grade===9?'Likely PSA 9':'8 or lower';
   if(grade>=10&&c.slanted)label='PSA 10 — risky';
   if(!complete&&grade!==null)label+=' (so far)';
-  const n=v=>parseFloat(v)||0,fee=n(c.fee),raw=n(c.raw);
-  const money={if10:c.v10!==''?n(c.v10)-raw-fee:null,if9:c.v9!==''?n(c.v9)-raw-fee:null};
-  return{ax,centering,condition,grade,label,reasons,complete,money};
+  const n=v=>parseFloat(v)||0,raw=n(c.raw),extras=n(c.extras);
+  const t10=c.v10!==''&&c.v10!=null?psaTier(c.v10):null,t9=c.v9!==''&&c.v9!=null?psaTier(c.v9):null;
+  const money={t10,t9,
+    if10:t10&&!t10.over?n(c.v10)-raw-t10.fee-extras:null,
+    if9:t9&&!t9.over?n(c.v9)-raw-t9.fee-extras:null};
+  // Which tier to submit at: the value of the grade it's most likely to get
+  money.tier=grade===null?null:grade>=10?(t10||t9):grade===9?(t9||t10):(t9||t10);
+  money.declared=money.tier===t10?c.v10:c.v9;
+  money.upcharge=grade===9&&t10&&t9&&!t10.over&&t10.fee>t9.fee?t10:null;
+  const rec=complete&&!['Submitted','Graded','Not sending'].includes(c.status)&&((grade>=10&&money.if10>0)||(grade===9&&money.if9>0));
+  return{ax,centering,condition,grade,label,reasons,complete,money,rec};
 }
 function psaPredText(c){const e=psaEvaluate(c);return e.grade===null?'':e.grade>=10?(c.slanted?'10 (risky)':'10'):e.grade===9?'9':'8 or lower';}
-function psaSet(k,v){if(!psaDraft)psaDraft=psaBlank();psaDraft[k]=PSA_NUM.includes(k)?(v===''?'':parseFloat(v)):v;renderPsaResult();}
+function psaSet(k,v){if(!psaDraft)psaDraft=psaBlank();if(psaViewId){psaViewId=null;setTimeout(renderPsaList,0);}psaDraft[k]=PSA_NUM.includes(k)?(v===''?'':parseFloat(v)):v;renderPsaResult();}
 function psaPickCollection(id){
   if(!psaDraft)psaDraft=psaBlank();const it=(state.collection||[]).find(c=>c.id===id);psaDraft.collectionId=id||'';
   if(it){psaDraft.name=it.name;psaDraft.number=it.cn||'';psaDraft.set=it.set||'';if(it.marketValue)psaDraft.raw=parseFloat(it.marketValue)||'';}
   renderPsaForm();renderPsaResult();
 }
-function renderPsaPage(){state.gradingChecks=state.gradingChecks||[];if(!psaDraft)psaDraft=psaBlank();renderPsaForm();renderPsaResult();renderPsaList();}
+function renderPsaPage(){state.gradingChecks=state.gradingChecks||[];if(!psaDraft)psaDraft=psaBlank();psaLoadFx();renderPsaForm();renderPsaResult();renderPsaList();}
 function renderPsaForm(){
   const el=document.getElementById('psa-form');if(!el)return;const c=psaDraft;
   const inp=(k,label,extra='')=>`<div class="form-group"><label>${label}</label><input type="number" step="0.01" min="0" inputmode="decimal" value="${c[k]===''?'':c[k]}" oninput="psaSet('${k}',this.value)" ${extra}></div>`;
@@ -3682,8 +3702,8 @@ function renderPsaForm(){
     <label style="display:flex;gap:8px;align-items:center;font-size:12.5px;margin-top:6px;cursor:pointer"><input type="checkbox" ${c.slanted?'checked':''} onchange="psaSet('slanted',this.checked)"> Slanted cut — a side reads over 0.1 mm different near each end</label>
     <div class="psa-h">Edges, corners & surface (10× loupe, front and back)</div>
     <div class="psa-cond">${PSA_COND.map(([k,l,opts])=>`<div class="form-group"><label>${l}</label><select onchange="psaSet('${k}',this.value)"><option value="">— not checked —</option>${opts.map(([v,t])=>`<option value="${v}" ${String(c[k])===v?'selected':''}>${t}</option>`).join('')}</select></div>`).join('')}</div>
-    <div class="psa-h">Is it worth sending? (optional)</div>
-    <div class="psa-m">${inp('raw','Raw value £')}${inp('v10','PSA 10 value £')}${inp('v9','PSA 9 value £')}${inp('fee','Grading fee £','title="Fee per card, including postage and insurance share"')}</div>
+    <div class="psa-h">Is it worth sending? (optional — enter graded values to get the tier)</div>
+    <div class="psa-m">${inp('raw','Raw value £')}${inp('v10','PSA 10 value £')}${inp('v9','PSA 9 value £')}${inp('extras','Postage & extras £','title="Your share of postage, insurance, VAT/import per card — added on top of the PSA tier fee"')}</div>
     <div class="form-group"><label>Notes</label><input type="text" value="${relEsc(c.notes)}" placeholder="e.g. tiny print line top right" oninput="psaSet('notes',this.value)"></div>
     <div class="btn-row" style="gap:8px"><button class="btn primary" onclick="psaSave()"><i class="ti ti-device-floppy"></i> ${psaEditId?'Save changes':'Save check'}</button><button class="btn" onclick="psaNew()">${psaEditId?'Cancel':'Clear'}</button></div>`;
 }
@@ -3717,23 +3737,40 @@ function psaCardSvg(c,face){
     ${lab(ox+cw/2,oy+ch+45,`limit ${face==='front'?'55':'75'}%`,'middle','var(--muted)')}
   </svg>`;
 }
+let psaViewId=null;
+function psaView(id){psaViewId=psaViewId===id?null:id;renderPsaResult();renderPsaList();
+  if(psaViewId&&window.innerWidth<1000)document.getElementById('psa-result').scrollIntoView({behavior:'smooth'});}
 function renderPsaResult(){
-  const el=document.getElementById('psa-result');if(!el||!psaDraft)return;const e=psaEvaluate(psaDraft);
+  const el=document.getElementById('psa-result');if(!el||!psaDraft)return;
+  const viewing=psaViewId&&(state.gradingChecks||[]).find(x=>x.id===psaViewId);
+  const C=viewing||psaDraft;const e=psaEvaluate(C);
   const col=e.grade===null?'var(--muted)':PSA_GRADE_COL[Math.max(8,Math.min(10,e.grade))];
   const row=(k,x,lim)=>x?`<tr><td>${k}</td><td>${x.a.toFixed(2)}</td><td>${x.b.toFixed(2)}</td><td>${x.sum.toFixed(2)}</td><td><b>${x.ratio.toFixed(1)}%</b></td><td>${lim}</td><td>${x.gap.toFixed(2)} / ${x.maxGap10.toFixed(2)}</td><td class="${x.grade>=10?'psa-ok':x.grade===9?'psa-warn':'psa-bad'}">${x.grade>=10?'✓ 10':x.grade===9?'9':x.grade+' or lower'}</td></tr>`
     :`<tr><td>${k}</td><td colspan="7" style="color:var(--muted)">enter both sides</td></tr>`;
   const m=e.money,mline=(lbl,v)=>v===null?'':`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>${lbl}</span><b class="${v>=0?'psa-ok':'psa-bad'}">${v>=0?'+':''}${fm(v)}</b></div>`;
+  const tierRow=t=>t?`${t.over?'<span class="psa-bad">over $5,000 — needs a higher PSA tier</span>':`<b>${t.name}</b> · £${t.fee}`}`:'—';
+  const usd=v=>v===''||v==null?'':` <span style="color:var(--muted)">≈ $${Math.round((parseFloat(v)||0)*psaFx.rate).toLocaleString('en-US')}</span>`;
+  const tierBox=(m.t10||m.t9)?`<div style="margin-top:12px;padding:10px 12px;border-radius:var(--radius-sm);background:var(--surface2);font-size:12.5px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span style="font-weight:600">Submit at</span>
+        ${m.tier?`<span style="font-size:15px">${m.tier.over?'<span class="psa-bad">Over $5,000</span>':`<b>${m.tier.name}</b> · £${m.tier.fee}`}</span>`:'<span style="color:var(--muted)">enter the checks for a grade first</span>'}</div>
+      ${m.tier?`<div style="color:var(--muted);margin-top:3px">Declared value: the ${m.tier===m.t10?'PSA 10':'PSA 9'} price, £${(parseFloat(m.declared)||0).toFixed(2)}${usd(m.declared)}</div>`:''}
+      <div style="margin-top:6px;display:grid;grid-template-columns:auto 1fr;gap:2px 10px"><span style="color:var(--muted)">If PSA 10</span><span>${tierRow(m.t10)}${usd(C.v10)}</span><span style="color:var(--muted)">If PSA 9</span><span>${tierRow(m.t9)}${usd(C.v9)}</span></div>
+      ${m.upcharge?`<div class="psa-warn" style="margin-top:6px">If it comes back a 10, PSA will upcharge you to ${m.upcharge.name} (£${m.upcharge.fee}).</div>`:''}
+      <div style="color:var(--muted);margin-top:6px;font-size:11px">Tiers: Value £35 ≤ $500 · Priority £65 ≤ $1,500 · Express £175 ≤ $2,500 · Super Express £395 ≤ $5,000. £1 = $<input type="number" step="0.01" value="${psaFx.rate.toFixed(4)}" onchange="psaSetFx(this.value)" style="width:64px;font-size:11px;padding:1px 4px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px"> ${psaFx.live?`(live rate, ${psaFx.date})`:psaFx.manual?'(your rate)':'(estimate — live rate unavailable)'}</div>
+    </div>`:'';
   const sendAdvice=m.if9===null?'':m.if9>=0?`<div class="psa-ok" style="margin-top:6px;font-size:12.5px">✓ Even a PSA 9 clears the fee — safe to send.</div>`:`<div class="psa-bad" style="margin-top:6px;font-size:12.5px">✗ A PSA 9 loses money — only send if you’re confident of the 10.</div>`;
-  el.innerHTML=`<div class="psa-verdict" style="border-color:${col}">
-      <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">Likely grade</div>
+  el.innerHTML=`${viewing?`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;font-size:12.5px"><span>Viewing saved: <b>${relEsc(C.name)}</b>${C.number?` #${relEsc(C.number)}`:''}</span><span><button class="btn sm" onclick="psaEdit('${C.id}')">Edit</button> <button class="btn sm" onclick="psaView('${C.id}')">Back to new check</button></span></div>`:''}
+    <div class="psa-verdict" style="border-color:${col}">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">Likely grade${e.rec?' · <span class="psa-ok">recommended to send</span>':''}</div>
       <div class="big" style="color:${col}">${e.label}</div>
       <div style="font-size:12px;color:var(--muted);margin-top:4px">Centering: ${e.centering===null?'—':e.centering>=10?'10':e.centering===9?'9':e.centering+' or lower'} · Edges & corners: ${e.condition===null?'—':e.condition>=10?'10':e.condition===9?'9':'8 or lower'}</div>
       ${e.reasons.length?`<ul class="psa-reasons">${e.reasons.map(r=>`<li>${r}</li>`).join('')}</ul>`:e.complete?`<div class="psa-ok" style="margin-top:10px;font-size:12.5px">Passes all four: front ≤ 55/45, back ≤ 75/25, no whitening over 0.1 mm, sharp corners.</div>`:''}
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">${psaCardSvg(psaDraft,'front')}${psaCardSvg(psaDraft,'back')}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">${psaCardSvg(C,'front')}${psaCardSvg(C,'back')}</div>
       <div style="font-size:10.5px;color:var(--muted);text-align:center;margin-top:2px">Borders drawn 3× wider so small offsets show. Dashed lines = perfect centre; solid lines = where your card’s centre is. Green 10 · amber 9 · red 8 or lower.</div>
       <table class="psa-ws"><thead><tr><th>Side</th><th>L / T</th><th>R / B</th><th>Sum</th><th>Ratio</th><th>Limit</th><th>Gap / max</th><th>Grade</th></tr></thead>
         <tbody>${row('Front L/R',e.ax['Front L/R'],'55%')}${row('Front T/B',e.ax['Front T/B'],'55%')}${row('Back L/R',e.ax['Back L/R'],'75%')}${row('Back T/B',e.ax['Back T/B'],'75%')}</tbody></table>
-      ${m.if10!==null||m.if9!==null?`<div style="margin-top:12px;font-size:12.5px"><div style="font-weight:600;margin-bottom:2px">Profit after raw value and fee</div>${mline('If it gets a 10',m.if10)}${mline('If it gets a 9',m.if9)}${sendAdvice}</div>`:''}
+      ${tierBox}
+      ${m.if10!==null||m.if9!==null?`<div style="margin-top:12px;font-size:12.5px"><div style="font-weight:600;margin-bottom:2px">Profit after raw value, tier fee${parseFloat(C.extras)?' and extras':''}</div>${mline('If it gets a 10',m.if10)}${mline('If it gets a 9',m.if9)}${sendAdvice}</div>`:''}
       <div style="font-size:10.5px;color:var(--muted);margin-top:12px">PSA publishes only the centering ratios (10: 55/45 front, 75/25 back · 9: 60/40, 90/10). The edge, corner and surface limits are screening rules, not PSA’s.</div>
     </div>`;
 }
@@ -3741,36 +3778,54 @@ function psaNew(){psaDraft=psaBlank();psaEditId=null;renderPsaForm();renderPsaRe
 function psaSave(){
   const c=psaDraft;if(!c.name.trim()){alert('Add the card name first.');return;}
   state.gradingChecks=state.gradingChecks||[];c.predicted=psaPredText(c);
+  const ev=psaEvaluate(c);c.tier=ev.money.tier&&!ev.money.tier.over?ev.money.tier.name:'';c.fee=ev.money.tier&&!ev.money.tier.over?ev.money.tier.fee:'';
   if(psaEditId){const i=state.gradingChecks.findIndex(x=>x.id===psaEditId);if(i>=0)state.gradingChecks[i]={...c,id:psaEditId};}
   else state.gradingChecks.push({...c,id:uid(),date:c.date||today()});
   scheduleSave('GradingChecks');showToast(`Saved: ${c.name} — ${c.predicted?'predicted '+c.predicted:'no prediction yet'}`);
   psaNew();renderPsaList();
 }
-function psaEdit(id){const c=(state.gradingChecks||[]).find(x=>x.id===id);if(!c)return;psaDraft={...c};psaEditId=id;renderPsaForm();renderPsaResult();document.getElementById('page-psa-check').scrollIntoView({behavior:'smooth'});}
+function psaEdit(id){const c=(state.gradingChecks||[]).find(x=>x.id===id);if(!c)return;psaDraft={...c};psaEditId=id;psaViewId=null;renderPsaForm();renderPsaResult();document.getElementById('page-psa-check').scrollIntoView({behavior:'smooth'});}
 function psaDelete(id){const i=(state.gradingChecks||[]).findIndex(x=>x.id===id);if(i<0)return;if(!confirm(`Delete the check for ${state.gradingChecks[i].name}?`))return;state.gradingChecks.splice(i,1);scheduleSave('GradingChecks');if(psaEditId===id)psaNew();renderPsaList();}
 function psaUpdate(id,k,v){const c=(state.gradingChecks||[]).find(x=>x.id===id);if(!c)return;c[k]=k==='actual'?(v===''?'':parseFloat(v)):v;scheduleSave('GradingChecks');renderPsaList();}
-let psaListFilter='all';
+let psaListFilter='rec',psaSort={key:'date',dir:-1};
+function psaSortBy(k){psaSort=psaSort.key===k?{key:k,dir:-psaSort.dir}:{key:k,dir:(k==='card'||k==='status')?1:-1};renderPsaList();}
 function renderPsaList(){
   const el=document.getElementById('psa-list');if(!el)return;const all=(state.gradingChecks||[]).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)));
   const STATUSES=['Thinking','To submit','Submitted','Graded','Not sending'];
-  const list=psaListFilter==='all'?all:all.filter(c=>c.status===psaListFilter);
+  const worstN=(c,face)=>{const a=face==='f'?[psaAxis(c.fl,c.fr,'front'),psaAxis(c.ft,c.fb,'front')]:[psaAxis(c.bl,c.br,'back'),psaAxis(c.bt,c.bb,'back')];const v=a.filter(Boolean).map(x=>x.ratio);return v.length?Math.max(...v):null;};
+  const sortVal={
+    date:c=>String(c.date||''),card:c=>`${c.name} ${c.number} ${c.set}`.toLowerCase(),
+    front:c=>worstN(c,'f'),back:c=>worstN(c,'b'),
+    predicted:c=>{const g=psaEvaluate(c).grade;return g===null?null:g-(c.slanted&&g>=10?0.5:0);},
+    profit:c=>{const m=psaEvaluate(c).money;return m.if9??m.if10;},
+    status:c=>STATUSES.indexOf(c.status||'Thinking'),actual:c=>c.actual===''?null:c.actual,
+    tier:c=>{const t=psaEvaluate(c).money.tier;return t?(t.over?9999:t.fee):null;}};
+  const sv=sortVal[psaSort.key]||sortVal.date;
+  const recOf=c=>psaEvaluate(c).rec;
+  const list=(psaListFilter==='all'?all:psaListFilter==='rec'?all.filter(recOf):all.filter(c=>c.status===psaListFilter)).slice().sort((a,b)=>{
+    const x=sv(a),y=sv(b);if(x===y)return 0;if(x===null||x===undefined)return 1;if(y===null||y===undefined)return -1; // blanks always last
+    return (x<y?-1:1)*psaSort.dir;});
+  const th=(k,l)=>`<th onclick="psaSortBy('${k}')" style="cursor:pointer;user-select:none;white-space:nowrap" title="Sort by ${l.toLowerCase()}">${l}${psaSort.key===k?(psaSort.dir>0?' ▲':' ▼'):'<span style="opacity:.3"> ↕</span>'}</th>`;
   const graded=all.filter(c=>c.actual!==''&&c.predicted);
   const hits=graded.filter(c=>{const p=parseInt(c.predicted)||8;return p>=10?c.actual>=10:p===9?c.actual===9:c.actual<=8;}).length;
   const worst=(c,face)=>{const a=face==='f'?[psaAxis(c.fl,c.fr,'front'),psaAxis(c.ft,c.fb,'front')]:[psaAxis(c.bl,c.br,'back'),psaAxis(c.bt,c.bb,'back')];const v=a.filter(Boolean).map(x=>x.ratio);return v.length?Math.max(...v).toFixed(1)+'%':'—';};
-  const chip=f=>`<button class="rel-chip ${psaListFilter===f?'on':''}" onclick="psaListFilter='${f}';renderPsaList()">${f==='all'?'All':f} <span style="opacity:.6">${f==='all'?all.length:all.filter(c=>c.status===f).length}</span></button>`;
+  const chip=f=>`<button class="rel-chip ${psaListFilter===f?'on':''}" onclick="psaListFilter='${f}';renderPsaList()">${f==='all'?'All':f==='rec'?'★ Recommended to send':f} <span style="opacity:.6">${f==='all'?all.length:f==='rec'?all.filter(recOf).length:all.filter(c=>c.status===f).length}</span></button>`;
   const toSubmit=all.filter(c=>c.status==='To submit');
   el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px"><div class="card-title" style="margin:0">Saved checks</div>
-      <div style="font-size:12px;color:var(--muted)">${toSubmit.length?`${toSubmit.length} to submit · fees ${fm(toSubmit.reduce((a,c)=>a+(parseFloat(c.fee)||0),0))} · `:''}${graded.length?`Predictions right ${hits} of ${graded.length} graded`:'Add the real grade when cards come back to see how accurate your checks are'}</div></div>
-    <div class="rel-chips">${chip('all')}${STATUSES.map(chip).join('')}</div>
-    ${list.length?`<div style="overflow-x:auto"><table style="font-size:12.5px"><thead><tr><th>Date</th><th>Card</th><th>Front worst</th><th>Back worst</th><th>Predicted</th><th>Profit if 9 / 10</th><th>Status</th><th>Actual PSA</th><th></th></tr></thead><tbody>
+      <div style="font-size:12px;color:var(--muted)">${toSubmit.length?`${toSubmit.length} to submit · fees ${fm(toSubmit.reduce((a,c)=>{const t=psaEvaluate(c).money.tier;return a+(t&&!t.over?t.fee:0)+(parseFloat(c.extras)||0);},0))} · `:''}${graded.length?`Predictions right ${hits} of ${graded.length} graded`:'Add the real grade when cards come back to see how accurate your checks are'}</div></div>
+    <div class="rel-chips">${chip('rec')}${chip('all')}${STATUSES.map(chip).join('')}</div>
+    ${psaListFilter==='rec'?`<div style="font-size:11.5px;color:var(--muted);margin:-6px 0 10px">Cards not yet sent where the likely grade is a 10 that profits, or a 9 that still profits after the tier fee. Click a row to see its check.</div>`:''}
+    ${list.length?`<div style="overflow-x:auto"><table style="font-size:12.5px"><thead><tr>${th('date','Date')}${th('card','Card')}${th('front','Front worst')}${th('back','Back worst')}${th('predicted','Predicted')}${th('profit','Profit if 9 / 10')}${th('tier','Tier')}${th('status','Status')}${th('actual','Actual PSA')}<th></th></tr></thead><tbody>
       ${list.map(c=>{const e=psaEvaluate(c),g=e.grade;const pc=g===null?'':`<span class="psa-g" style="background:${PSA_GRADE_COL[Math.max(8,Math.min(10,g))]}">${c.predicted||psaPredText(c)}</span>`;
-        return`<tr><td>${fd(c.date)}</td><td><b>${relEsc(c.name)}</b>${c.number?` #${relEsc(c.number)}`:''}${c.set?`<div style="font-size:11px;color:var(--muted)">${relEsc(c.set)}</div>`:''}</td>
+        const t=e.money.tier;
+        return`<tr onclick="if(!event.target.closest('select,button,a'))psaView('${c.id}')" style="cursor:pointer;${psaViewId===c.id?'background:var(--surface2);box-shadow:inset 3px 0 0 var(--text)':''}"><td>${fd(c.date)}</td><td><b>${relEsc(c.name)}</b>${c.number?` #${relEsc(c.number)}`:''}${c.set?`<div style="font-size:11px;color:var(--muted)">${relEsc(c.set)}</div>`:''}</td>
           <td>${worst(c,'f')}</td><td>${worst(c,'b')}</td><td>${pc}</td>
           <td>${e.money.if9===null&&e.money.if10===null?'—':`${e.money.if9===null?'—':fm(e.money.if9)} / ${e.money.if10===null?'—':fm(e.money.if10)}`}</td>
+          <td style="white-space:nowrap">${t?(t.over?'<span class="psa-bad">Over $5k</span>':`${t.name} <span style="color:var(--muted)">£${t.fee}</span>`):'—'}</td>
           <td><select onchange="psaUpdate('${c.id}','status',this.value)" style="font-size:12px;padding:2px 6px">${STATUSES.map(x=>`<option ${x===c.status?'selected':''}>${x}</option>`).join('')}</select></td>
           <td><select onchange="psaUpdate('${c.id}','actual',this.value)" style="font-size:12px;padding:2px 6px"><option value="">—</option>${[10,9,8,7,6,5,4,3,2,1].map(n=>`<option value="${n}" ${c.actual===n?'selected':''}>${n}</option>`).join('')}</select></td>
           <td style="white-space:nowrap"><button class="btn sm" onclick="psaEdit('${c.id}')">Edit</button> <a href="#" onclick="event.preventDefault();psaDelete('${c.id}')" style="color:var(--muted);text-decoration:none;margin-left:4px" title="Delete">✕</a></td></tr>`;}).join('')}
-    </tbody></table></div>`:`<div style="color:var(--muted);font-size:13px">${all.length?'Nothing with this status.':'No checks saved yet — measure a card above and press Save check.'}</div>`}`;
+    </tbody></table></div>`:`<div style="color:var(--muted);font-size:13px">${all.length?(psaListFilter==='rec'?'Nothing recommended yet — add PSA 10 / PSA 9 prices and the edge checks to your saved cards to see which are worth sending.':'Nothing with this status.'):'No checks saved yet — measure a card above and press Save check.'}</div>`}`;
 }
 const GQ_KEYS=['1','2','3','4','5','6','7','8','9','q','w','e','r','t','y','u','i','o','p'];
 function layoutGameBreakdown(){
