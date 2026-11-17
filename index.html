@@ -292,7 +292,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 17 Nov 2026b</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 17 Nov 2026c</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
       <button class="btn sm" onclick="lockTracker()" title="Forget the passcode and clear saved data on this device"><i class="ti ti-lock"></i> Lock</button>
@@ -3800,8 +3800,11 @@ function psaSubmitLines(){
   const groups=new Map();
   (state.gradingChecks||[]).filter(c=>c.status==='To submit').forEach(c=>{
     const parts=[c.name,psaRealSet(c),c.number].map(x=>String(x??'').trim()).filter(Boolean);if(!parts.length)return;
-    const key=parts.join('|').toLowerCase();const g=groups.get(key);if(g)g.n++;else groups.set(key,{text:parts.join(' - '),n:1});});
-  return[...groups.values()].sort((a,b)=>a.text.localeCompare(b.text)).map(g=>(g.n>1?`${g.n}x `:'')+g.text);
+    const key=parts.join('|').toLowerCase();const g=groups.get(key);
+    if(g)g.n++;else groups.set(key,{text:parts.join(' - '),n:1,set:psaRealSet(c).trim(),num:String(c.number??'').trim(),name:String(c.name??'').trim()});});
+  // By set (A–Z, no set last), then card number within the set (58/102 before 110/102, TG05 before TG12), then name
+  const cmp=(a,b)=>a.localeCompare(b,'en',{numeric:true,sensitivity:'base'});
+  return[...groups.values()].sort((a,b)=>(!a.set-!b.set)||cmp(a.set,b.set)||(!a.num-!b.num)||cmp(a.num,b.num)||cmp(a.name,b.name)).map(g=>(g.n>1?`${g.n}x `:'')+g.text);
 }
 function psaCopySubmit(){
   const t=psaSubmitLines().join('\n');const done=()=>showToast('Submission list copied');
