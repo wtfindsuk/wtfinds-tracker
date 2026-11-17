@@ -292,7 +292,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 16 Nov 2026g</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 17 Nov 2026</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
       <button class="btn sm" onclick="lockTracker()" title="Forget the passcode and clear saved data on this device"><i class="ti ti-lock"></i> Lock</button>
@@ -3787,6 +3787,19 @@ function psaSave(){
 function psaEdit(id){const c=(state.gradingChecks||[]).find(x=>x.id===id);if(!c)return;psaDraft={...c};psaEditId=id;psaViewId=null;renderPsaForm();renderPsaResult();document.getElementById('page-psa-check').scrollIntoView({behavior:'smooth'});}
 function psaDelete(id){const i=(state.gradingChecks||[]).findIndex(x=>x.id===id);if(i<0)return;if(!confirm(`Delete the check for ${state.gradingChecks[i].name}?`))return;state.gradingChecks.splice(i,1);scheduleSave('GradingChecks');if(psaEditId===id)psaNew();renderPsaList();}
 function psaUpdate(id,k,v){const c=(state.gradingChecks||[]).find(x=>x.id===id);if(!c)return;c[k]=k==='actual'?(v===''?'':parseFloat(v)):v;scheduleSave('GradingChecks');renderPsaList();}
+// Plain-text submission list: "2x Pikachu - Base Set - 58/102" (identical cards grouped)
+function psaSubmitLines(){
+  const groups=new Map();
+  (state.gradingChecks||[]).filter(c=>c.status==='To submit').forEach(c=>{
+    const parts=[c.name,c.set,c.number].map(x=>String(x??'').trim()).filter(Boolean);if(!parts.length)return;
+    const key=parts.join('|').toLowerCase();const g=groups.get(key);if(g)g.n++;else groups.set(key,{text:parts.join(' - '),n:1});});
+  return[...groups.values()].sort((a,b)=>a.text.localeCompare(b.text)).map(g=>(g.n>1?`${g.n}x `:'')+g.text);
+}
+function psaCopySubmit(){
+  const t=psaSubmitLines().join('\n');const done=()=>showToast('Submission list copied');
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(done,()=>{const el=document.getElementById('psa-submit-text');el.select();document.execCommand('copy');done();});
+  else{const el=document.getElementById('psa-submit-text');el.select();document.execCommand('copy');done();}
+}
 let psaListFilter='rec',psaSort={key:'date',dir:-1};
 function psaSortBy(k){psaSort=psaSort.key===k?{key:k,dir:-psaSort.dir}:{key:k,dir:(k==='card'||k==='status')?1:-1};renderPsaList();}
 function renderPsaList(){
@@ -3814,6 +3827,9 @@ function renderPsaList(){
   el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px"><div class="card-title" style="margin:0">Saved checks</div>
       <div style="font-size:12px;color:var(--muted)">${toSubmit.length?`${toSubmit.length} to submit · fees ${fm(toSubmit.reduce((a,c)=>{const t=psaEvaluate(c).money.tier;return a+(t&&!t.over?t.fee:0)+(parseFloat(c.extras)||0);},0))} · `:''}${graded.length?`Predictions right ${hits} of ${graded.length} graded`:'Add the real grade when cards come back to see how accurate your checks are'}</div></div>
     <div class="rel-chips">${chip('rec')}${chip('all')}${STATUSES.map(chip).join('')}</div>
+    ${psaListFilter==='To submit'&&toSubmit.length?(()=>{const lines=psaSubmitLines();const cards=toSubmit.length;return`<div style="margin:-4px 0 12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:12px"><span style="color:var(--muted)">Submission list · ${cards} card${cards===1?'':'s'}</span><button class="btn sm primary" onclick="psaCopySubmit()"><i class="ti ti-copy"></i> Copy list</button></div>
+      <textarea id="psa-submit-text" readonly rows="${Math.min(12,Math.max(2,lines.length))}" onclick="this.select()" style="width:100%;font-family:ui-monospace,monospace;font-size:12.5px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text);resize:vertical">${relEsc(lines.join('\n'))}</textarea></div>`;})():''}
     ${psaListFilter==='rec'?`<div style="font-size:11.5px;color:var(--muted);margin:-6px 0 10px">Cards not yet sent where the likely grade is a 10 that profits, or a 9 that still profits after the tier fee. Click a row to see its check.</div>`:''}
     ${list.length?`<div style="overflow-x:auto"><table style="font-size:12.5px"><thead><tr>${th('date','Date')}${th('card','Card')}${th('front','Front worst')}${th('back','Back worst')}${th('predicted','Predicted')}${th('profit','Profit if 9 / 10')}${th('tier','Tier')}${th('status','Status')}${th('actual','Actual PSA')}<th></th></tr></thead><tbody>
       ${list.map(c=>{const e=psaEvaluate(c),g=e.grade;const pc=g===null?'':`<span class="psa-g" style="background:${PSA_GRADE_COL[Math.max(8,Math.min(10,g))]}">${c.predicted||psaPredText(c)}</span>`;
