@@ -292,7 +292,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 17 Nov 2026</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 17 Nov 2026b</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
       <button class="btn sm" onclick="lockTracker()" title="Forget the passcode and clear saved data on this device"><i class="ti ti-lock"></i> Lock</button>
@@ -965,7 +965,7 @@ async function loadFromSheets(){
       state.purchases=data.Purchases.slice(1).map(r=>({date:r[0],description:r[1],category:r[2],amount:parseFloat(r[3])||0,supplier:r[4]||'',set:r[5]||''})).filter(p=>p.description);
     }
     if(data.Collection&&data.Collection.length>1){
-      state.collection=data.Collection.slice(1).map(r=>({id:r[0],name:r[1],type:r[2],game:r[3],status:r[4],set:r[5]||'',cn:r[6]||'',cost:parseFloat(r[7])||0,marketValue:parseFloat(r[8])||0,priceUrl:r[9]||'',notes:r[10]||'',added:r[11]?dayKey(r[11]):'',source:r[12]||''})).filter(c=>c.name);
+      state.collection=data.Collection.slice(1).map(r=>({id:r[0],name:r[1],type:r[2],game:r[3],status:r[4],set:r[5]||'',cn:r[6]||'',cost:parseFloat(r[7])||0,marketValue:parseFloat(r[8])||0,priceUrl:r[9]||'',notes:r[10]||'',added:r[11]?dayKey(r[11]):'',source:r[12]||'',cardSet:r[13]||''})).filter(c=>c.name);
     }
     if(data.Settings&&data.Settings.length>1){const map={};data.Settings.slice(1).forEach(r=>{if(r[0])map[r[0]]=r[1];});if(map.cmFee!==undefined)state.settings.cmFee=parseFloat(map.cmFee)||5;if(map.ebFee!==undefined)state.settings.ebFee=parseFloat(map.ebFee)||12;if(map.otFee!==undefined)state.settings.otFee=parseFloat(map.otFee)||0;if(map.inventoryValue!==undefined)state.settings.inventoryValue=parseFloat(map.inventoryValue)||0;try{state.settings.inventoryHistory=map.inventoryHistory?JSON.parse(map.inventoryHistory):[];}catch(e){state.settings.inventoryHistory=[];}try{if(map.releaseFeeds)state.settings.releaseFeeds=JSON.parse(map.releaseFeeds);}catch(e){}}
     if(data.Packaging&&data.Packaging.length>1){state.packaging=data.Packaging.slice(1).map(r=>({name:r[0],cost:parseFloat(r[1])||0})).filter(p=>p.name);}
@@ -1040,7 +1040,7 @@ async function flushSaves(){
   for(const sheet of sheets){
     if(sheet==='Sales') await saveSheetData('Sales',['Date','Item','Platform','Price','ShippingCharged','PostageCost','Packaging','ArticleCount','ActualCommission','PromotedFee','PokemonQty','MTGQty','OnePieceQty','MarvelQty','OtherQty','DBZQty','RiftboundQty','MTGHobbitQty','MTGAvatarTLAQty','MTGAvatarTLEQty','MTGStrixhavenQty','MTGMarvelQty','MTGFFQty','BuyerUsername','YugiohQty','CyberpunkQty','MTGRealityFractureQty','PalworldQty','GundamQty','GradedQty','PokemonJPQty','MTGStarTrekQty'],state.sales.map(s=>[s.date,s.item,s.platform,s.price,s.shippingCharged||0,s.postageCost,JSON.stringify(s.packaging||[]),s.articleCount||1,s.actualCommission!==null&&s.actualCommission!==undefined?s.actualCommission:'',s.promotedFee||0,(s.gameQty?.pokemon||0),(s.gameQty?.mtg||0),(s.gameQty?.onepiece||0),(s.gameQty?.marvel||0),(s.gameQty?.other||0),(s.gameQty?.dbz||0),(s.gameQty?.riftbound||0),(s.gameQty?.mtg_hobbit||0),(s.gameQty?.mtg_avatar_tla||0),(s.gameQty?.mtg_avatar_tle||0),(s.gameQty?.mtg_strixhaven||0),(s.gameQty?.mtg_marvel||0),(s.gameQty?.mtg_ff||0),s.username||'',(s.gameQty?.yugioh||0),(s.gameQty?.cyberpunk||0),(s.gameQty?.mtg_fra||0),(s.gameQty?.palworld||0),(s.gameQty?.gundam||0),(s.gradedQty||0),(s.gameQty?.pokemon_jp||0),(s.gameQty?.mtg_startrek||0)]));
     if(sheet==='Purchases') await saveSheetData('Purchases',['Date','Description','Category','Amount','Supplier','Set'],state.purchases.map(p=>[p.date,p.description,p.category,p.amount,p.supplier||'',p.set||'']));
-    if(sheet==='Collection') await saveSheetData('Collection',['ID','Name','Type','Game','Status','Set','CN','Cost','MarketValue','PriceUrl','Notes','Added','Source'],state.collection.map(c=>[c.id,c.name,c.type,c.game,c.status,c.set||'',c.cn||'',c.cost,c.marketValue,c.priceUrl||'',c.notes||'',c.added||'',c.source||'']));
+    if(sheet==='Collection') await saveSheetData('Collection',['ID','Name','Type','Game','Status','Set','CN','Cost','MarketValue','PriceUrl','Notes','Added','Source','CardSet'],state.collection.map(c=>[c.id,c.name,c.type,c.game,c.status,c.set||'',c.cn||'',c.cost,c.marketValue,c.priceUrl||'',c.notes||'',c.added||'',c.source||'',c.cardSet||'']));
     if(sheet==='GradingChecks') await saveSheetData('GradingChecks',PSA_COLS,(state.gradingChecks||[]).map(c=>PSA_COLS.map(k=>c[PSA_KEY[k]]??'')));
     if(sheet==='Games') await saveSheetData('Games',['ID','Name','Platform','Condition','Cost','Value','Added'],state.games.map(g=>[g.id,g.name,g.platform,g.condition||'',g.cost,g.value,g.added]));
     if(sheet==='ItemSnapshots'){
@@ -3680,9 +3680,17 @@ function psaEvaluate(c){
 }
 function psaPredText(c){const e=psaEvaluate(c);return e.grade===null?'':e.grade>=10?(c.slanted?'10 (risky)':'10'):e.grade===9?'9':'8 or lower';}
 function psaSet(k,v){if(!psaDraft)psaDraft=psaBlank();if(psaViewId){psaViewId=null;setTimeout(renderPsaList,0);}psaDraft[k]=PSA_NUM.includes(k)?(v===''?'':parseFloat(v)):v;renderPsaResult();}
+// The card's actual set (e.g. "Pitch Black") — the collection's .set is your Collectr portfolio ("Singles Pokemon")
+function psaIsPortfolio(v){v=String(v||'').trim();if(!v)return false;
+  return /^(singles|sealed)\b/i.test(v)||COLL_PORTFOLIOS.includes(v)||(state.collection||[]).some(x=>x.source!=='manual'&&x.set===v);}
+function psaRealSet(c){
+  if(c.set&&!psaIsPortfolio(c.set))return c.set;
+  const it=c.collectionId&&(state.collection||[]).find(x=>x.id===c.collectionId);
+  return it?(it.cardSet||(it.source==='manual'?it.set:'')||''):'';
+}
 function psaPickCollection(id){
   if(!psaDraft)psaDraft=psaBlank();const it=(state.collection||[]).find(c=>c.id===id);psaDraft.collectionId=id||'';
-  if(it){psaDraft.name=it.name;psaDraft.number=it.cn||'';psaDraft.set=it.set||'';if(it.marketValue)psaDraft.raw=parseFloat(it.marketValue)||'';}
+  if(it){psaDraft.name=String(it.name).replace(/\s*\(x\d+\)$/,'');psaDraft.number=it.cn||'';psaDraft.set=it.cardSet||(it.source==='manual'?it.set:'')||'';if(it.marketValue)psaDraft.raw=parseFloat(it.marketValue)||'';}
   renderPsaForm();renderPsaResult();
 }
 function renderPsaPage(){state.gradingChecks=state.gradingChecks||[];if(!psaDraft)psaDraft=psaBlank();psaLoadFx();renderPsaForm();renderPsaResult();renderPsaList();}
@@ -3693,7 +3701,7 @@ function renderPsaForm(){
   const singles=(state.collection||[]).filter(x=>x.type==='single').sort((a,b)=>String(a.name).localeCompare(String(b.name)));
   el.innerHTML=`
     <div class="psa-h">${psaEditId?'Editing saved check':'Card'}</div>
-    ${singles.length?`<div class="form-group"><label>From your collection (optional — fills in the details)</label><select onchange="psaPickCollection(this.value)"><option value="">— pick a card —</option>${singles.map(x=>`<option value="${x.id}" ${x.id===c.collectionId?'selected':''}>${relEsc(x.name)}${x.cn?` #${relEsc(x.cn)}`:''}${x.set?` · ${relEsc(x.set)}`:''}</option>`).join('')}</select></div>`:''}
+    ${singles.length?`<div class="form-group"><label>From your collection (optional — fills in the details)</label><select onchange="psaPickCollection(this.value)"><option value="">— pick a card —</option>${singles.map(x=>`<option value="${x.id}" ${x.id===c.collectionId?'selected':''}>${relEsc(x.name)}${x.cn?` #${relEsc(x.cn)}`:''}${x.cardSet?` · ${relEsc(x.cardSet)}`:''}</option>`).join('')}</select></div>`:''}
     <div class="form-row" style="grid-template-columns:2fr 1fr 1.4fr">${txt('name','Card name','e.g. Umbreon ex')}${txt('number','Number','e.g. 161/131')}${txt('set','Set','e.g. Prismatic Evolutions')}</div>
     <div class="psa-h">Front borders (mm)</div>
     <div class="psa-m">${inp('fl','Left')}${inp('fr','Right')}${inp('ft','Top')}${inp('fb','Bottom')}</div>
@@ -3759,7 +3767,7 @@ function renderPsaResult(){
       <div style="color:var(--muted);margin-top:6px;font-size:11px">Tiers: Value £35 ≤ $500 · Priority £65 ≤ $1,500 · Express £175 ≤ $2,500 · Super Express £395 ≤ $5,000. £1 = $<input type="number" step="0.01" value="${psaFx.rate.toFixed(4)}" onchange="psaSetFx(this.value)" style="width:64px;font-size:11px;padding:1px 4px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px"> ${psaFx.live?`(live rate, ${psaFx.date})`:psaFx.manual?'(your rate)':'(estimate — live rate unavailable)'}</div>
     </div>`:'';
   const sendAdvice=m.if9===null?'':m.if9>=0?`<div class="psa-ok" style="margin-top:6px;font-size:12.5px">✓ Even a PSA 9 clears the fee — safe to send.</div>`:`<div class="psa-bad" style="margin-top:6px;font-size:12.5px">✗ A PSA 9 loses money — only send if you’re confident of the 10.</div>`;
-  el.innerHTML=`${viewing?`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;font-size:12.5px"><span>Viewing saved: <b>${relEsc(C.name)}</b>${C.number?` #${relEsc(C.number)}`:''}</span><span><button class="btn sm" onclick="psaEdit('${C.id}')">Edit</button> <button class="btn sm" onclick="psaView('${C.id}')">Back to new check</button></span></div>`:''}
+  el.innerHTML=`${viewing?`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;font-size:12.5px"><span>Viewing saved: <b>${relEsc(C.name)}</b>${psaRealSet(C)?` · ${relEsc(psaRealSet(C))}`:''}${C.number?` #${relEsc(C.number)}`:''}</span><span><button class="btn sm" onclick="psaEdit('${C.id}')">Edit</button> <button class="btn sm" onclick="psaView('${C.id}')">Back to new check</button></span></div>`:''}
     <div class="psa-verdict" style="border-color:${col}">
       <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">Likely grade${e.rec?' · <span class="psa-ok">recommended to send</span>':''}</div>
       <div class="big" style="color:${col}">${e.label}</div>
@@ -3784,14 +3792,14 @@ function psaSave(){
   scheduleSave('GradingChecks');showToast(`Saved: ${c.name} — ${c.predicted?'predicted '+c.predicted:'no prediction yet'}`);
   psaNew();renderPsaList();
 }
-function psaEdit(id){const c=(state.gradingChecks||[]).find(x=>x.id===id);if(!c)return;psaDraft={...c};psaEditId=id;psaViewId=null;renderPsaForm();renderPsaResult();document.getElementById('page-psa-check').scrollIntoView({behavior:'smooth'});}
+function psaEdit(id){const c=(state.gradingChecks||[]).find(x=>x.id===id);if(!c)return;psaDraft={...c,set:psaRealSet(c)};psaEditId=id;psaViewId=null;renderPsaForm();renderPsaResult();document.getElementById('page-psa-check').scrollIntoView({behavior:'smooth'});}
 function psaDelete(id){const i=(state.gradingChecks||[]).findIndex(x=>x.id===id);if(i<0)return;if(!confirm(`Delete the check for ${state.gradingChecks[i].name}?`))return;state.gradingChecks.splice(i,1);scheduleSave('GradingChecks');if(psaEditId===id)psaNew();renderPsaList();}
 function psaUpdate(id,k,v){const c=(state.gradingChecks||[]).find(x=>x.id===id);if(!c)return;c[k]=k==='actual'?(v===''?'':parseFloat(v)):v;scheduleSave('GradingChecks');renderPsaList();}
 // Plain-text submission list: "2x Pikachu - Base Set - 58/102" (identical cards grouped)
 function psaSubmitLines(){
   const groups=new Map();
   (state.gradingChecks||[]).filter(c=>c.status==='To submit').forEach(c=>{
-    const parts=[c.name,c.set,c.number].map(x=>String(x??'').trim()).filter(Boolean);if(!parts.length)return;
+    const parts=[c.name,psaRealSet(c),c.number].map(x=>String(x??'').trim()).filter(Boolean);if(!parts.length)return;
     const key=parts.join('|').toLowerCase();const g=groups.get(key);if(g)g.n++;else groups.set(key,{text:parts.join(' - '),n:1});});
   return[...groups.values()].sort((a,b)=>a.text.localeCompare(b.text)).map(g=>(g.n>1?`${g.n}x `:'')+g.text);
 }
@@ -3807,7 +3815,7 @@ function renderPsaList(){
   const STATUSES=['Thinking','To submit','Submitted','Graded','Not sending'];
   const worstN=(c,face)=>{const a=face==='f'?[psaAxis(c.fl,c.fr,'front'),psaAxis(c.ft,c.fb,'front')]:[psaAxis(c.bl,c.br,'back'),psaAxis(c.bt,c.bb,'back')];const v=a.filter(Boolean).map(x=>x.ratio);return v.length?Math.max(...v):null;};
   const sortVal={
-    date:c=>String(c.date||''),card:c=>`${c.name} ${c.number} ${c.set}`.toLowerCase(),
+    date:c=>String(c.date||''),card:c=>`${c.name} ${c.number} ${psaRealSet(c)}`.toLowerCase(),
     front:c=>worstN(c,'f'),back:c=>worstN(c,'b'),
     predicted:c=>{const g=psaEvaluate(c).grade;return g===null?null:g-(c.slanted&&g>=10?0.5:0);},
     profit:c=>{const m=psaEvaluate(c).money;return m.if9??m.if10;},
@@ -3834,7 +3842,7 @@ function renderPsaList(){
     ${list.length?`<div style="overflow-x:auto"><table style="font-size:12.5px"><thead><tr>${th('date','Date')}${th('card','Card')}${th('front','Front worst')}${th('back','Back worst')}${th('predicted','Predicted')}${th('profit','Profit if 9 / 10')}${th('tier','Tier')}${th('status','Status')}${th('actual','Actual PSA')}<th></th></tr></thead><tbody>
       ${list.map(c=>{const e=psaEvaluate(c),g=e.grade;const pc=g===null?'':`<span class="psa-g" style="background:${PSA_GRADE_COL[Math.max(8,Math.min(10,g))]}">${c.predicted||psaPredText(c)}</span>`;
         const t=e.money.tier;
-        return`<tr onclick="if(!event.target.closest('select,button,a'))psaView('${c.id}')" style="cursor:pointer;${psaViewId===c.id?'background:var(--surface2);box-shadow:inset 3px 0 0 var(--text)':''}"><td>${fd(c.date)}</td><td><b>${relEsc(c.name)}</b>${c.number?` #${relEsc(c.number)}`:''}${c.set?`<div style="font-size:11px;color:var(--muted)">${relEsc(c.set)}</div>`:''}</td>
+        return`<tr onclick="if(!event.target.closest('select,button,a'))psaView('${c.id}')" style="cursor:pointer;${psaViewId===c.id?'background:var(--surface2);box-shadow:inset 3px 0 0 var(--text)':''}"><td>${fd(c.date)}</td><td><b>${relEsc(c.name)}</b>${c.number?` #${relEsc(c.number)}`:''}${psaRealSet(c)?`<div style="font-size:11px;color:var(--muted)">${relEsc(psaRealSet(c))}</div>`:`<div style="font-size:11px;color:var(--red)">set missing — Edit to add</div>`}</td>
           <td>${worst(c,'f')}</td><td>${worst(c,'b')}</td><td>${pc}</td>
           <td>${e.money.if9===null&&e.money.if10===null?'—':`${e.money.if9===null?'—':fm(e.money.if9)} / ${e.money.if10===null?'—':fm(e.money.if10)}`}</td>
           <td style="white-space:nowrap">${t?(t.over?'<span class="psa-bad">Over $5k</span>':`${t.name} <span style="color:var(--muted)">£${t.fee}</span>`):'—'}</td>
@@ -4587,6 +4595,7 @@ function addCollectionItem(){
     status:document.getElementById('ci-type').value==='graded'?document.getElementById('ci-status').value:'collection',
     set:document.getElementById('ci-set').value.trim(),
     cn:document.getElementById('ci-cn').value.trim(),
+    cardSet:document.getElementById('ci-set').value.trim(),
     cost:parseFloat(document.getElementById('ci-cost').value)||0,
     marketValue:parseFloat(document.getElementById('ci-value').value)||0,
     priceUrl:document.getElementById('ci-url').value.trim(),
@@ -4841,6 +4850,7 @@ function importCollectrCsv(input){
       const qtyIdx=headers.findIndex(h=>h==='quantity');
       const gradeIdx=headers.findIndex(h=>h==='grade');
       const cardNumIdx=headers.findIndex(h=>h.includes('card number'));
+      const setIdx=headers.findIndex(h=>h==='set'||h==='set name'||h==='expansion');
       const notesIdx=headers.findIndex(h=>h==='notes');
       const catIdx=headers.findIndex(h=>h==='category');
       const addedIdx=headers.findIndex(h=>h.includes('date added')||h==='added');
@@ -4899,12 +4909,13 @@ function importCollectrCsv(input){
         let name=cols[nameIdx].replace(/"/g,'').trim();
         if(qty>1) name=`${name} (x${qty})`;
         const cn=(cols[cardNumIdx]||'').replace(/"/g,'').trim();
+        const cardSet=setIdx>=0?String(cols[setIdx]||'').replace(/"/g,'').trim():'';
         const itemCost=round2(cost*qty);
         const itemMarket=round2(market*qty);
 
         const addedRaw=addedIdx>=0?String(cols[addedIdx]||'').replace(/"/g,'').trim():'';
         const addedD=addedRaw?parseDateToObj(addedRaw):null;
-        newCollection.push({id:uid(),name,type:itype,game,status:'collection',set:short,cn,cost:itemCost,marketValue:itemMarket,priceUrl:'',notes,added:addedD?dayKey(addedD):''});
+        newCollection.push({id:uid(),name,type:itype,game,status:'collection',set:short,cardSet,cn,cost:itemCost,marketValue:itemMarket,priceUrl:'',notes,added:addedD?dayKey(addedD):''});
         portfolioTotals[short]=(portfolioTotals[short]||0)+itemMarket;
         typeTotals[itype]=(typeTotals[itype]||0)+itemMarket;
         totalMarket+=itemMarket;
