@@ -292,7 +292,7 @@ tr:hover td{background:var(--surface2)}
     </div>
     <div class="sidebar-footer">
       <div class="sync-status" id="sync-status">Connected to Google Sheets</div>
-      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 17 Nov 2026c</span>
+      <span style="font-size:10px;color:var(--muted)" title="If this date is old, press Ctrl+F5 to load the latest version">v 24 Nov 2026</span>
       <button class="btn sm" onclick="syncNow()"><i class="ti ti-refresh"></i> Sync now</button>
       <button class="btn sm" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
       <button class="btn sm" onclick="lockTracker()" title="Forget the passcode and clear saved data on this device"><i class="ti ti-lock"></i> Lock</button>
@@ -1496,6 +1496,20 @@ function renderReleasesPage(){
     ${past.length?`<div style="margin-top:12px"><a href="#" onclick="event.preventDefault();toggleReleasePast()" style="font-size:12px;color:var(--muted)">${st.showPast?'▾ Hide':'▸ Show'} ${past.length} release${past.length===1?'':'s'} from the last 30 days</a>${st.showPast?`<div style="margin-top:6px">${past.map(row).join('')}</div>`:''}</div>`:''}</div>${sourcesCard}`;
 }
 
+// Cardmarket sales take their sale price off the inventory value (you set it by hand when you reprice or add stock)
+function adjustInventoryValue(delta){
+  const oldVal=parseFloat(state.settings.inventoryValue)||0;
+  const nv=Math.max(0,Math.round((oldVal+delta)*100)/100);
+  state.settings.inventoryValue=nv;
+  const h=(state.settings.inventoryHistory||[]).filter(x=>x.d!==today());
+  if(!h.length&&oldVal>0){const y=new Date();y.setDate(y.getDate()-1);h.push({d:dayKey(y),v:oldVal});}
+  h.push({d:today(),v:nv});h.sort((a,b)=>a.d.localeCompare(b.d));
+  state.settings.inventoryHistory=h;
+  const inp=document.getElementById('nav-inventory-input');if(inp)inp.value=nv;
+  const si=document.getElementById('set-inventory');if(si)si.value=nv;
+  scheduleSave('Settings');
+  return{oldVal,nv};
+}
 function commitInventoryValue(){
   const input=document.getElementById('nav-inventory-input');if(!input)return;
   const oldVal=parseFloat(state.settings.inventoryValue)||0;
@@ -1675,7 +1689,7 @@ function dismissToast(){
   clearInterval(t._prog);
 }
 
-function showSaleToast(sale, profit, articleCount){
+function showSaleToast(sale, profit, articleCount, invMsg){
   const t=document.getElementById('toast');
   const titleEl=document.getElementById('toast-title');
   const subEl=document.getElementById('toast-sub');
@@ -1692,6 +1706,7 @@ function showSaleToast(sale, profit, articleCount){
 
   // Build interesting tips
   const tips=[];
+  if(invMsg) tips.push(`📉 ${invMsg}`);
   const todayKey=today();
 
   // Today's sales so far (including this one) - dates normalised so Sheet-loaded sales count too
@@ -3105,7 +3120,11 @@ function renderSalesTable(){
     return`<tr><td>${fd(s.date)}</td><td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.item||''}">${s.item||'—'}</td><td><span class="badge badge-${(s.platform||'').toLowerCase()}">${s.platform}</span></td><td>${fm(s.price)}</td><td>${fm(sh)}</td><td>${fm(pc)}</td><td>${fm(sc)}</td><td>${fm(fee)}</td><td class="${pr>=0?'profit-pos':'profit-neg'}">${fm(pr)}</td><td><button class="btn sm danger" onclick="deleteSale(${idx})"><i class="ti ti-trash"></i></button></td></tr>`;
   }).join('');
 }
-function deleteSale(idx){if(!confirm('Delete this sale?'))return;state.sales.splice(idx,1);scheduleSave('Sales');renderSalesTable();}
+function deleteSale(idx){if(!confirm('Delete this sale?'))return;
+  const s=state.sales[idx];
+  if(s&&s.platform==='Cardmarket'&&(parseFloat(s.price)||0)>0&&confirm(`Add the ${fm(s.price)} sale price back to your inventory value?\n\nOK if this sale was taken off your inventory; Cancel if you’ve since reset the inventory value by hand.`)){
+    const r=adjustInventoryValue(parseFloat(s.price));showToast(`Inventory ${fm(r.oldVal)} → ${fm(r.nv)}`);}
+  state.sales.splice(idx,1);scheduleSave('Sales');renderSalesTable();}
 function initSaleForm(){
   document.getElementById('s-date').value=today();
   const sh=document.getElementById('s-shipping');if(sh&&!sh.value)sh.value='1.17';
@@ -3267,6 +3286,9 @@ function logSale(){
   const gradedQty=Math.min(parseInt(document.getElementById('s-graded-qty')?.value)||0,articleCount);
   const saleObj={date,platform,item,price,shippingCharged:shipping,postageCost:post?post.cost:0,packaging,articleCount,actualCommission:null,promotedFee,gameQty,gradedQty,username:buyerUsername};
   state.sales.push(saleObj);
+  let invMsg='';
+  if(platform==='Cardmarket'&&price>0&&(parseFloat(state.settings.inventoryValue)||0)>0){
+    const r=adjustInventoryValue(-price);invMsg=`Inventory ${fm(r.oldVal)} → ${fm(r.nv)}`;}
   const saleProfit=calcSaleProfit(saleObj);
   scheduleSave('Sales');
   buildBuyersFromSales();
@@ -3284,7 +3306,7 @@ function logSale(){
   state.packaging.forEach(p=>{const inp=document.getElementById('pkg-'+p.name.replace(/\W+/g,'_'));if(inp)inp.value=pkgDefault(p.name);});
   updateSalePreview();
   renderLogSaleWeekChart();
-  showSaleToast(saleObj, saleProfit, articleCount);
+  showSaleToast(saleObj, saleProfit, articleCount, invMsg);
   document.getElementById('page-log-sale').scrollTop=0;
   document.querySelector('.main-content')?.scrollTo(0,0);
   window.scrollTo(0,0);
